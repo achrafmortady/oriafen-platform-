@@ -78,7 +78,7 @@ export default function MonDossier() {
           setStatus(dossierData.status); setCurrentStep(dossierData.currentStep)
         }).finally(() => setLoadingData(false))
     )
-    }, [user?.id, handleDocChange])
+  }, [user?.id])
 
   const completedCount = steps.filter(s => s.status === 'done').length
 
