@@ -82,16 +82,16 @@ function DocRow({ required, doc, uploading, onUpload }) {
     pending:    'rgba(245,158,11,0.06)',
     missing:    'rgba(239,68,68,0.06)',
     correction: 'rgba(249,115,22,0.06)',
-    none:       'rgba(255,255,255,0.03)',
-  }[status] ?? 'rgba(255,255,255,0.03)'
+    none:       '#f9f7f3',
+  }[status] ?? '#f9f7f3'
 
   const rowBorder = {
     valid:      'rgba(16,185,129,0.2)',
     pending:    'rgba(245,158,11,0.2)',
     missing:    'rgba(239,68,68,0.2)',
     correction: 'rgba(249,115,22,0.2)',
-    none:       'rgba(255,255,255,0.07)',
-  }[status] ?? 'rgba(255,255,255,0.07)'
+    none:       '#e8e2d6',
+  }[status] ?? '#e8e2d6'
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
@@ -105,7 +105,7 @@ function DocRow({ required, doc, uploading, onUpload }) {
         <div style={{
           width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
           display:'flex', alignItems:'center', justifyContent:'center',
-          background: status==='valid' ? 'rgba(16,185,129,0.15)' : status==='pending' ? 'rgba(245,158,11,0.15)' : status==='missing' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.07)',
+          background: status==='valid' ? '#d1fae5' : status==='pending' ? '#fef3c7' : status==='missing' ? '#fee2e2' : '#f3f4f6',
         }}>
           {status==='valid' ? <CheckCircleIcon className="w-4 h-4" style={{color:'#10b981'}} /> :
            status==='pending' ? <ClockIcon className="w-4 h-4" style={{color:'#f59e0b'}} /> :
@@ -116,9 +116,9 @@ function DocRow({ required, doc, uploading, onUpload }) {
 
         {/* Label */}
         <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ margin:0, fontWeight:'600', color:'#f1f5f9', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{required.label}</p>
-          <p style={{ margin:0, fontSize:'11px', color:'rgba(255,255,255,0.35)', fontFamily:"'Montserrat', sans-serif", marginTop:'2px' }}>{required.sublabel}</p>
-          {hasFile && <p style={{ margin:0, fontSize:'11px', color:'rgba(201,168,76,0.7)', marginTop:'3px', fontFamily:"'Montserrat', sans-serif" }}>📎 {doc.fileName}</p>}
+          <p style={{ margin:0, fontWeight:'600', color:'#1a3d2b', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{required.label}</p>
+          <p style={{ margin:0, fontSize:'11px', color:'#6b7280', fontFamily:"'Montserrat', sans-serif", marginTop:'2px' }}>{required.sublabel}</p>
+          {hasFile && <p style={{ margin:0, fontSize:'11px', color:'#c49a2a', marginTop:'3px', fontFamily:"'Montserrat', sans-serif" }}>📎 {doc.fileName}</p>}
         </div>
 
         {/* Badge + button */}
@@ -259,8 +259,8 @@ export default function MonDossier() {
 
           <div style={{ display:'flex', flexWrap:'wrap', alignItems:'flex-start', justifyContent:'space-between', gap:'16px', marginBottom:'28px' }}>
             <div>
-              <h2 style={{ margin:0, fontSize:'22px', fontWeight:'300', color:'#f5f0e8', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'1px' }}>Mon Dossier ORIAS</h2>
-              <p style={{ margin:'4px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.45)', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>Suivi de votre immatriculation en temps réel</p>
+              <h2 style={{ margin:0, fontSize:'26px', fontWeight:'400', color:'#ffffff', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'1px' }}>Mon Dossier ORIAS</h2>
+              <p style={{ margin:'4px 0 0', fontSize:'13px', color:'rgba(255,255,255,0.65)', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>Suivi de votre immatriculation en temps réel</p>
             </div>
             <div style={{ display:'flex', flexWrap:'wrap', gap:'10px' }}>
               {[
@@ -269,8 +269,8 @@ export default function MonDossier() {
                 { label:'Statut', value: status, color:'#f59e0b' },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'8px 16px' }}>
-                  <p style={{ margin:0, fontSize:'10px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif", fontWeight:'500', letterSpacing:'1px', textTransform:'uppercase' }}>{label}</p>
-                  <p style={{ margin:'2px 0 0', fontWeight:'600', color, fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{value}</p>
+                  <p style={{ margin:0, fontSize:'10px', color:'rgba(255,255,255,0.6)', fontFamily:"'Montserrat', sans-serif", fontWeight:'600', letterSpacing:'1px', textTransform:'uppercase' }}>{label}</p>
+                  <p style={{ margin:'2px 0 0', fontWeight:'700', color, fontSize:'14px', fontFamily:"'Montserrat', sans-serif" }}>{value}</p>
                 </div>
               ))}
             </div>
@@ -304,10 +304,10 @@ export default function MonDossier() {
                         <StepIcon status={step.status} />
                       </div>
                       <p style={{ margin:0, fontSize:'10px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", lineHeight:'1.3',
-                        color: step.status==='done' ? '#4ade80' : step.status==='current' ? '#c9a84c' : 'rgba(255,255,255,0.3)',
+                        color: step.status==='done' ? '#6ee7b7' : step.status==='current' ? '#fcd34d' : 'rgba(255,255,255,0.5)',
                       }}>{step.label}</p>
                       <p style={{ margin:0, fontSize:'9px', fontFamily:"'Montserrat', sans-serif",
-                        color: step.status==='done' ? 'rgba(74,222,128,0.7)' : step.status==='current' ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.2)',
+                        color: step.status==='done' ? 'rgba(110,231,183,0.9)' : step.status==='current' ? 'rgba(252,211,77,0.9)' : 'rgba(255,255,255,0.4)',
                       }}>
                         {step.status==='done' ? 'Complété' : step.status==='current' ? 'En cours' : 'En attente'}
                       </p>
@@ -320,7 +320,7 @@ export default function MonDossier() {
                 <div style={{ marginTop:'16px', padding:'16px', borderRadius:'14px', fontSize:'13px', fontFamily:"'Montserrat', sans-serif",
                   background: selectedStep.status==='done' ? 'rgba(16,185,129,0.08)' : selectedStep.status==='current' ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${selectedStep.status==='done' ? 'rgba(16,185,129,0.2)' : selectedStep.status==='current' ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.07)'}`,
-                  color: selectedStep.status==='done' ? '#4ade80' : selectedStep.status==='current' ? '#c9a84c' : 'rgba(255,255,255,0.5)',
+                  color: selectedStep.status==='done' ? '#6ee7b7' : selectedStep.status==='current' ? '#fcd34d' : 'rgba(255,255,255,0.7)',
                 }}>
                   <p style={{ margin:'0 0 4px', fontWeight:'600' }}>Étape {selectedStep.id} — {selectedStep.label}</p>
                   <p style={{ margin:0, opacity:0.8 }}>{STEP_LABELS_FULL.find(s => s.id === selectedStep.id)?.description}</p>
@@ -335,10 +335,10 @@ export default function MonDossier() {
           <style>{`.lg-grid { @media (min-width:1024px) { grid-template-columns: 2fr 1fr !important; } }`}</style>
 
           {/* Documents */}
-          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'20px', padding:'24px', backdropFilter:'blur(10px)' }}>
+          <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'20px', padding:'24px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
             {/* Header */}
             <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:'12px', marginBottom:'20px' }}>
-              <h3 style={{ margin:0, fontSize:'16px', fontWeight:'500', color:'#f5f0e8', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'0.5px' }}>Documents du dossier</h3>
+              <h3 style={{ margin:0, fontSize:'18px', fontWeight:'600', color:'#1a3d2b', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'0.5px' }}>Documents du dossier</h3>
               <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
                 <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(16,185,129,0.1)', color:'#10b981', border:'1px solid rgba(16,185,129,0.25)', fontFamily:"'Montserrat', sans-serif" }}>
                   ✓ {validDocs} validé{validDocs>1?'s':''}
@@ -359,10 +359,10 @@ export default function MonDossier() {
             {/* Progress bar */}
             <div style={{ marginBottom:'20px' }}>
               <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
-                <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif" }}>Documents complétés</span>
-                <span style={{ fontSize:'11px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{validDocs} / {REQUIRED_DOCUMENTS.length}</span>
+                <span style={{ fontSize:'11px', color:'#6b7280', fontFamily:"'Montserrat', sans-serif" }}>Documents complétés</span>
+                <span style={{ fontSize:'11px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>{validDocs} / {REQUIRED_DOCUMENTS.length}</span>
               </div>
-              <div style={{ height:'6px', background:'rgba(255,255,255,0.06)', borderRadius:'10px', overflow:'hidden' }}>
+              <div style={{ height:'6px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden' }}>
                 <div style={{ height:'100%', background:'linear-gradient(90deg, #c9a84c, #f0d080)', borderRadius:'10px', width:`${progressPct}%`, transition:'width 0.7s ease' }} />
               </div>
             </div>
@@ -375,9 +375,9 @@ export default function MonDossier() {
             </div>
 
             {/* Info */}
-            <div style={{ marginTop:'16px', display:'flex', alignItems:'flex-start', gap:'12px', padding:'14px 16px', borderRadius:'14px', background:'rgba(201,168,76,0.05)', border:'1px solid rgba(201,168,76,0.12)', fontSize:'12px', color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>
+            <div style={{ marginTop:'16px', display:'flex', alignItems:'flex-start', gap:'12px', padding:'14px 16px', borderRadius:'14px', background:'#fefce8', border:'1px solid #fde68a', fontSize:'12px', color:'#78716c', fontFamily:"'Montserrat', sans-serif" }}>
               <span style={{flexShrink:0}}>ℹ️</span>
-              <p style={{margin:0, lineHeight:'1.6'}}>Formats acceptés : <strong style={{color:'rgba(201,168,76,0.8)'}}>PDF, JPG, PNG</strong> — max 10 Mo par fichier. Les documents sont vérifiés sous <strong style={{color:'rgba(201,168,76,0.8)'}}>24–48h</strong> par votre conseiller.</p>
+              <p style={{margin:0, lineHeight:'1.6'}}>Formats acceptés : <strong style={{color:'#b45309'}}>PDF, JPG, PNG</strong> — max 10 Mo par fichier. Les documents sont vérifiés sous <strong style={{color:'#b45309'}}>24–48h</strong> par votre conseiller.</p>
             </div>
           </div>
 
@@ -399,7 +399,7 @@ export default function MonDossier() {
                   { icon:'🕐', text:'Disponible 9h – 20h GMT+1' },
                   { icon:'📅', text:'Lundi – Samedi' },
                 ].map(({ icon, text }) => (
-                  <div key={text} style={{ display:'flex', alignItems:'center', gap:'8px', fontSize:'12px', color:'rgba(255,255,255,0.45)', fontFamily:"'Montserrat', sans-serif" }}>
+                  <div key={text} style={{ display:'flex', alignItems:'center', gap:'8px', fontSize:'13px', color:'rgba(255,255,255,0.65)', fontFamily:"'Montserrat', sans-serif" }}>
                     <span>{icon}</span><span>{text}</span>
                   </div>
                 ))}
@@ -419,7 +419,7 @@ export default function MonDossier() {
                   <span style={{ fontSize:'12px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{currentStep}</span>
                 </div>
                 <div>
-                  <p style={{ margin:0, fontWeight:'600', color:'#f1f5f9', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{steps.find(s => s.status === 'current')?.label ?? 'Terminé'}</p>
+                  <p style={{ margin:0, fontWeight:'600', color:'#1a3d2b', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{steps.find(s => s.status === 'current')?.label ?? 'Terminé'}</p>
                   <p style={{ margin:'4px 0 0', fontSize:'11px', color:'rgba(255,255,255,0.35)', fontFamily:"'Montserrat', sans-serif" }}>Cliquez sur une étape pour voir les détails.</p>
                 </div>
               </div>
