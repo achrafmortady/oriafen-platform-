@@ -275,51 +275,78 @@ export default function MonDossier() {
         <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'24px' }} className="lg-grid">
           <style>{`.lg-grid { @media (min-width:1024px) { grid-template-columns: 2fr 1fr !important; } }`}</style>
 
-          {/* Documents */}
-          <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'20px', padding:'24px', boxShadow:'0 2px 12px rgba(0,0,0,0.06)' }}>
-            {/* Header */}
-            <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:'12px', marginBottom:'20px' }}>
-              <h3 style={{ margin:0, fontSize:'18px', fontWeight:'600', color:'#1a3d2b', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'0.5px' }}>Documents du dossier</h3>
-              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
-                <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(16,185,129,0.1)', color:'#10b981', border:'1px solid rgba(16,185,129,0.25)', fontFamily:"'Montserrat', sans-serif" }}>
-                  ✓ {validDocs} validé{validDocs>1?'s':''}
-                </span>
-                {pendingDocs > 0 && (
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(245,158,11,0.1)', color:'#f59e0b', border:'1px solid rgba(245,158,11,0.25)', fontFamily:"'Montserrat', sans-serif" }}>
-                    ⏳ {pendingDocs} en attente
-                  </span>
-                )}
-                {missingDocs > 0 && (
-                  <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.4)', border:'1px solid rgba(255,255,255,0.1)', fontFamily:"'Montserrat', sans-serif" }}>
-                    — {missingDocs} manquant{missingDocs>1?'s':''}
-                  </span>
-                )}
-              </div>
-            </div>
+          {/* Infos & Formation */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
 
-            {/* Progress bar */}
-            <div style={{ marginBottom:'20px' }}>
-              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
-                <span style={{ fontSize:'11px', color:'#6b7280', fontFamily:"'Montserrat', sans-serif" }}>Documents complétés</span>
-                <span style={{ fontSize:'11px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>{validDocs} / {REQUIRED_DOCUMENTS.length}</span>
+            {/* Documents résumé rapide */}
+            <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'16px', padding:'20px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+              <p style={{ margin:'0 0 14px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a', fontFamily:"'Montserrat', sans-serif" }}>📋 Documents ORIAS</p>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+                <span style={{ fontSize:'13px', color:'#4b5563', fontFamily:"'Montserrat', sans-serif" }}>Progression</span>
+                <span style={{ fontSize:'13px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>{validDocs} / {REQUIRED_DOCUMENTS.length} validés</span>
               </div>
-              <div style={{ height:'6px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden' }}>
+              <div style={{ height:'8px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden', marginBottom:'12px' }}>
                 <div style={{ height:'100%', background:'linear-gradient(90deg, #c9a84c, #f0d080)', borderRadius:'10px', width:`${progressPct}%`, transition:'width 0.7s ease' }} />
               </div>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                {[
+                  { label:'Validés', value: validDocs, color:'#10b981', bg:'#d1fae5' },
+                  { label:'En attente', value: pendingDocs, color:'#d97706', bg:'#fef3c7' },
+                  { label:'Manquants', value: missingDocs, color:'#6b7280', bg:'#f3f4f6' },
+                ].map(({ label, value, color, bg }) => (
+                  <div key={label} style={{ flex:1, minWidth:'70px', textAlign:'center', padding:'8px', borderRadius:'10px', background:bg }}>
+                    <p style={{ margin:0, fontSize:'18px', fontWeight:'700', color, fontFamily:"'Montserrat', sans-serif" }}>{value}</p>
+                    <p style={{ margin:0, fontSize:'10px', color, fontFamily:"'Montserrat', sans-serif", opacity:0.8 }}>{label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Doc rows */}
-            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-              {REQUIRED_DOCUMENTS.map(req => (
-                <DocRow key={req.id} required={req} doc={docs[req.id]} uploading={!!uploading[req.id]} onUpload={handleUpload} />
-              ))}
+            {/* Formation IAS1 progression */}
+            <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'16px', padding:'20px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+              <p style={{ margin:'0 0 14px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a', fontFamily:"'Montserrat', sans-serif" }}>🎓 Formation IAS1</p>
+              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+                <span style={{ fontSize:'13px', color:'#4b5563', fontFamily:"'Montserrat', sans-serif" }}>Progression globale</span>
+                <span style={{ fontSize:'13px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>20 / 150h</span>
+              </div>
+              <div style={{ height:'8px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden', marginBottom:'12px' }}>
+                <div style={{ height:'100%', background:'linear-gradient(90deg, #1a3d2b, #2d6b45)', borderRadius:'10px', width:'13%', transition:'width 0.7s ease' }} />
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                {[
+                  { label:'Unité 1 — Savoirs généraux', status:'completed', hours:'20/20h' },
+                  { label:'Unité 2 — Produits assurance', status:'in_progress', hours:'0/30h' },
+                  { label:'Unité 3 — Réglementation', status:'locked', hours:'0/25h' },
+                ].map(({ label, status, hours }) => (
+                  <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:'8px', background: status==='completed' ? '#f0fdf4' : status==='in_progress' ? '#fefce8' : '#f9fafb' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                      <span style={{ fontSize:'12px' }}>{status==='completed' ? '✅' : status==='in_progress' ? '⏳' : '🔒'}</span>
+                      <span style={{ fontSize:'12px', color: status==='locked' ? '#9ca3af' : '#1a3d2b', fontFamily:"'Montserrat', sans-serif", fontWeight:'500' }}>{label}</span>
+                    </div>
+                    <span style={{ fontSize:'11px', fontWeight:'600', color: status==='completed' ? '#10b981' : status==='in_progress' ? '#d97706' : '#9ca3af', fontFamily:"'Montserrat', sans-serif" }}>{hours}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
-            {/* Info */}
-            <div style={{ marginTop:'16px', display:'flex', alignItems:'flex-start', gap:'12px', padding:'14px 16px', borderRadius:'14px', background:'#fefce8', border:'1px solid #fde68a', fontSize:'12px', color:'#78716c', fontFamily:"'Montserrat', sans-serif" }}>
-              <span style={{flexShrink:0}}>ℹ️</span>
-              <p style={{margin:0, lineHeight:'1.6'}}>Formats acceptés : <strong style={{color:'#b45309'}}>PDF, JPG, PNG</strong> — max 10 Mo par fichier. Les documents sont vérifiés sous <strong style={{color:'#b45309'}}>24–48h</strong> par votre conseiller.</p>
+            {/* Prochaine étape */}
+            <div style={{ background:'linear-gradient(135deg, rgba(201,168,76,0.06), rgba(26,61,43,0.04))', border:'1px solid rgba(201,168,76,0.2)', borderRadius:'16px', padding:'20px' }}>
+              <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a', fontFamily:"'Montserrat', sans-serif" }}>💡 Conseils pratiques</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                {[
+                  'Tous vos documents doivent dater de moins de 3 mois',
+                  'Le Kbis doit être en cours de validité',
+                  'La RCP doit couvrir votre activité d'intermédiaire',
+                  'Votre attestation IAS1 doit être certifiante (150h)',
+                ].map((tip, i) => (
+                  <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'8px', fontSize:'12px', color:'#4b5563', fontFamily:"'Montserrat', sans-serif", lineHeight:'1.5' }}>
+                    <span style={{ color:'#c9a84c', fontWeight:'700', flexShrink:0 }}>✓</span>
+                    <span>{tip}</span>
+                  </div>
+                ))}
+              </div>
             </div>
+
           </div>
 
           {/* Right sidebar */}
