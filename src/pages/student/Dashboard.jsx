@@ -69,6 +69,7 @@ export default function StudentDashboard() {
 
             {/* Logo */}
             <div style={{ display:'flex', alignItems:'center' }}>
+              <Logo size="sm" variant="dark" />
             </div>
 
             {/* Desktop: user + logout */}
@@ -124,6 +125,7 @@ export default function StudentDashboard() {
       {/* ── Footer ── */}
       <footer style={{ borderTop:'1px solid #e8e2d6', marginTop:'3rem', padding:'1.5rem', background:'#fff' }}>
         <div style={{ maxWidth:'1280px', margin:'0 auto', padding:'0 1.5rem', display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:'16px' }}>
+          <Logo size="sm" variant="light" />
           <p style={{ fontSize:'11px', color:'#9ca3af', margin:0, fontFamily:"'Montserrat', sans-serif" }}>© 2026 Oriafen Academy · Tous droits réservés</p>
         </div>
       </footer>
