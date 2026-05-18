@@ -336,7 +336,7 @@ export default function MonDossier() {
                 {[
                   'Tous vos documents doivent dater de moins de 3 mois',
                   'Le Kbis doit être en cours de validité',
-                  'La RCP doit couvrir votre activité d'intermédiaire',
+                  'La RCP doit couvrir votre activité d\'intermédiaire',
                   'Votre attestation IAS1 doit être certifiante (150h)',
                 ].map((tip, i) => (
                   <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:'8px', fontSize:'12px', color:'#4b5563', fontFamily:"'Montserrat', sans-serif", lineHeight:'1.5' }}>
