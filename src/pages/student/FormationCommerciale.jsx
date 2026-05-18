@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { saveExamResult } from '../../lib/api'
-import { CALL_SCRIPTS, PRODUCT_SCRIPTS, OBJECTIONS, CALL_SCENARIOS, COMMERCIAL_QUIZ } from '../../data/mockData'
+import { CALL_SCRIPTS, PRODUCT_SCRIPTS, OBJECTIONS, CALL_SCENARIOS, COMMERCIAL_QUIZ_POOL, getRandomQuiz } from '../../data/mockData'
 import { PhoneIcon, StarIcon, PlayIcon, AwardIcon, ChevronDownIcon, ChevronRightIcon, DownloadIcon, CheckCircleIcon } from '../../components/Icons'
 
 // ─────────────────────────────────────────────────────────────
@@ -69,12 +69,14 @@ function openCommercialCertificate(userName, score) {
 // Quiz (logique intacte)
 // ─────────────────────────────────────────────────────────────
 function CommercialQuiz({ userName, userId, onDone }) {
+  const [quiz]     = useState(() => getRandomQuiz(20))
   const [current,  setCurrent]  = useState(0)
   const [answers,  setAnswers]  = useState({})
   const [selected, setSelected] = useState(null)
   const [result,   setResult]   = useState(null)
   const [saving,   setSaving]   = useState(false)
 
+  const COMMERCIAL_QUIZ = quiz
   const q     = COMMERCIAL_QUIZ[current]
   const total = COMMERCIAL_QUIZ.length
 
@@ -322,23 +324,28 @@ function SimulationModal({ scenario, onClose }) {
 // ─────────────────────────────────────────────────────────────
 // ScriptCard
 // ─────────────────────────────────────────────────────────────
-function ScriptCard({ script, activeTab }) {
-  const [expanded, setExpanded] = useState(false)
-  const text = activeTab === 'fr' ? script.fr : script.darija
+function ScriptCard({ script }) {
+  const [expanded, setExpanded]       = useState(false)
+  const [activeVariant, setActiveVariant] = useState(0)
 
   const typeConfig = {
-    'Script Introduction': { color:'#3b82f6', bg:'#dbeafe', textC:'#1d4ed8', tip:"Utilisez ce script dans les 5 premières secondes. L'objectif : capter l'attention et obtenir 2 minutes d'écoute." },
-    'Script Découverte':   { color:'#10b981', bg:'#d1fae5', textC:'#065f46', tip:"Posez ces questions dans l'ordre. Écoutez activement et notez les réponses pour personnaliser votre offre." },
-    'Script Closing':      { color:'#f59e0b', bg:'#fef3c7', textC:'#92400e', tip:"N'attendez pas la fin de l'appel. Proposez dès que le prospect exprime un intérêt ou une confirmation de besoin." },
-    'Script Relance':      { color:'#8b5cf6', bg:'#ede9fe', textC:'#5b21b6', tip:"Rappelez toujours dans les 24h après un premier contact non concluant. La relance augmente le taux de conversion de 30%." },
+    'Script Introduction':   { color:'#3b82f6', bg:'#dbeafe', textC:'#1d4ed8', tip:"Utilisez dans les 5 premières secondes. Objectif : capter l'attention, obtenir 2 min." },
+    'Script Découverte':     { color:'#10b981', bg:'#d1fae5', textC:'#065f46', tip:"Posez les questions dans l'ordre. Écoutez activement, notez les réponses." },
+    'Script Argumentation':  { color:'#f59e0b', bg:'#fef3c7', textC:'#92400e', tip:"Structure CAB : Caractéristique → Avantage → Bénéfice personnalisé." },
+    'Script Closing':        { color:'#8b5cf6', bg:'#ede9fe', textC:'#5b21b6', tip:"Proposez le closing dès que le client exprime un intérêt. Ne tardez pas." },
+    'Script Relance':        { color:'#ef4444', bg:'#fee2e2', textC:'#991b1b', tip:"Rappelez dans les 24h. Toujours avec un nouvel angle ou une nouvelle info." },
   }
-  const cfg = typeConfig[script.type] || { color:'#6b7280', bg:'#f3f4f6', textC:'#374151', tip:"Adaptez ce script à votre style naturel tout en conservant les points clés." }
+  const cfg = typeConfig[script.type] || { color:'#6b7280', bg:'#f3f4f6', textC:'#374151', tip:"Adaptez à votre style naturel." }
+  const variants = script.variants || []
+  const currentVariant = variants[activeVariant]
+  const text = currentVariant?.fr || ''
 
   return (
     <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e8e2d6', overflow:'hidden', transition:'box-shadow 0.2s, border-color 0.2s' }}
       onMouseEnter={e => { e.currentTarget.style.borderColor='#c9a84c'; e.currentTarget.style.boxShadow='0 4px 16px rgba(201,168,76,0.12)' }}
       onMouseLeave={e => { e.currentTarget.style.borderColor='#e8e2d6'; e.currentTarget.style.boxShadow='none' }}
     >
+      {/* Header */}
       <div style={{ padding:'14px 18px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', borderBottom: expanded ? '1px solid #f0ebe0' : 'none' }}
         onClick={() => setExpanded(!expanded)}
       >
@@ -346,30 +353,50 @@ function ScriptCard({ script, activeTab }) {
           <div style={{ width:10, height:10, borderRadius:'50%', background:cfg.color, flexShrink:0 }} />
           <span style={{ fontSize:13, fontWeight:700, color:'#1a3d2b' }}>{script.type}</span>
           <span style={{ fontSize:11, fontWeight:600, padding:'2px 8px', borderRadius:20, background:cfg.bg, color:cfg.textC }}>
-            {activeTab === 'fr' ? 'Français' : 'Darija'}
+            {variants.length} variante{variants.length > 1 ? 's' : ''}
           </span>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-          <span style={{ fontSize:11, color:'#9ca3af' }}>{expanded ? 'Masquer' : 'Voir le script'}</span>
+          <span style={{ fontSize:11, color:'#9ca3af' }}>{expanded ? 'Masquer' : 'Voir les scripts'}</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ width:14, height:14, transform: expanded ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}>
             <polyline points="6 9 12 15 18 9"/>
           </svg>
         </div>
       </div>
+
+      {/* Content */}
       {expanded && (
         <div style={{ padding:'16px 18px', background:'#fafaf8' }}>
+          {/* Conseil */}
           <div style={{ display:'flex', gap:8, alignItems:'flex-start', background:'rgba(201,168,76,0.08)', borderRadius:10, padding:'10px 12px', marginBottom:14, border:'1px solid rgba(201,168,76,0.2)' }}>
             <span style={{ fontSize:14 }}>💡</span>
             <p style={{ fontSize:12, color:'#92700a', lineHeight:1.5, margin:0 }}>{cfg.tip}</p>
           </div>
-          <div style={{
-            background: activeTab === 'fr' ? '#fff' : 'rgba(26,61,43,0.04)',
-            border:`1.5px solid ${activeTab === 'fr' ? '#e8e2d6' : 'rgba(26,61,43,0.15)'}`,
-            borderRadius:10, padding:'14px 16px', fontSize:13, color:'#374151', lineHeight:1.8, whiteSpace:'pre-line'
-          }}>{text}</div>
+
+          {/* Variante tabs */}
+          {variants.length > 1 && (
+            <div style={{ display:'flex', gap:6, marginBottom:12, flexWrap:'wrap' }}>
+              {variants.map((v, i) => (
+                <button key={i} onClick={() => setActiveVariant(i)}
+                  style={{ fontSize:11, fontWeight:600, padding:'5px 12px', borderRadius:20, border:'1.5px solid', cursor:'pointer', transition:'all 0.15s',
+                    background: activeVariant===i ? '#1a3d2b' : 'transparent',
+                    borderColor: activeVariant===i ? '#1a3d2b' : '#d1d5db',
+                    color: activeVariant===i ? '#c9a84c' : '#6b7280'
+                  }}>
+                  {v.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Script text */}
+          <div style={{ background:'#fff', border:'1.5px solid #e8e2d6', borderRadius:10, padding:'16px', fontSize:13, color:'#374151', lineHeight:1.9, whiteSpace:'pre-line' }}>
+            {text}
+          </div>
+
+          {/* Copy button */}
           <div style={{ marginTop:12 }}>
-            <button
-              onClick={() => navigator.clipboard?.writeText(text)}
+            <button onClick={() => navigator.clipboard?.writeText(text)}
               style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'#1a3d2b', background:'transparent', border:'1.5px solid #1a3d2b', borderRadius:8, padding:'6px 14px', cursor:'pointer' }}
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width:13, height:13 }}>
@@ -403,7 +430,10 @@ function ObjectionCard({ obj, index }) {
           </svg>
         </div>
         <div style={{ flex:1 }}>
-          <div style={{ fontSize:11, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:3 }}>Objection {index + 1}</div>
+          <div style={{ display:'flex', gap:6, alignItems:'center', marginBottom:3 }}>
+                  <span style={{ fontSize:10, color:'#9ca3af', fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em' }}>Objection {index + 1}</span>
+                  {obj.category && <span style={{ fontSize:10, fontWeight:700, padding:'1px 7px', borderRadius:20, background:'#f3f4f6', color:'#6b7280' }}>{obj.category}</span>}
+                </div>
           <div style={{ fontSize:14, fontWeight:600, color:'#1f2937' }}>"{obj.objection}"</div>
         </div>
         <div style={{ display:'flex', alignItems:'center', gap:6 }}>
@@ -428,6 +458,76 @@ function ObjectionCard({ obj, index }) {
               <p style={{ fontSize:11, fontWeight:700, color:'#92400e', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>🎯 Exercice pratique</p>
               <p style={{ fontSize:13, color:'#374151', lineHeight:1.7, margin:0 }}>{obj.exercise}</p>
             </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────
+// ProductScriptCard — full rich content with intro + script + objections
+// ─────────────────────────────────────────────────────────────
+function ProductScriptCard({ ps }) {
+  const [expanded, setExpanded] = useState(false)
+  const colorMap = {
+    'Mutuelle Santé':       { bg:'#fce7f3', color:'#9d174d' },
+    'RC Pro / Décennale':   { bg:'#dbeafe', color:'#1d4ed8' },
+    'Assurance Auto Pro':   { bg:'#d1fae5', color:'#065f46' },
+    'Multirisque Habitation (MRH)': { bg:'#ede9fe', color:'#5b21b6' },
+    'Assurance Emprunteur': { bg:'#fef3c7', color:'#92400e' },
+  }
+  const pc = colorMap[ps.product] || { bg:'#f3f4f6', color:'#374151' }
+
+  return (
+    <div style={{ background:'#fff', borderRadius:14, border:'1.5px solid #e8e2d6', overflow:'hidden', gridColumn:'1 / -1', transition:'border-color 0.2s' }}
+      onMouseEnter={e => !expanded && (e.currentTarget.style.borderColor='#c9a84c')}
+      onMouseLeave={e => !expanded && (e.currentTarget.style.borderColor='#e8e2d6')}
+    >
+      {/* Header */}
+      <div style={{ padding:'16px 20px', display:'flex', alignItems:'center', justifyContent:'space-between', cursor:'pointer', borderBottom: expanded ? '1px solid #f0ebe0' : 'none' }}
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+          <span style={{ fontSize:13, fontWeight:700, padding:'4px 12px', borderRadius:20, background:pc.bg, color:pc.color }}>{ps.product}</span>
+          {ps.tagline && <span style={{ fontSize:12, color:'#6b7280' }}>{ps.tagline}</span>}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+          <span style={{ fontSize:11, color:'#9ca3af' }}>{expanded ? 'Masquer' : 'Voir le script complet'}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ width:14, height:14, transform: expanded ? 'rotate(180deg)' : 'none', transition:'transform 0.2s' }}>
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </div>
+      </div>
+
+      {/* Content */}
+      {expanded && (
+        <div style={{ padding:'20px', background:'#fafaf8', display:'flex', flexDirection:'column', gap:16 }}>
+          {/* Accroche */}
+          {ps.intro && (
+            <div style={{ background:'rgba(201,168,76,0.08)', borderRadius:12, padding:'14px 16px', border:'1px solid rgba(201,168,76,0.25)' }}>
+              <p style={{ fontSize:11, fontWeight:700, color:'#c9a84c', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:8 }}>🎯 Accroche d'ouverture</p>
+              <p style={{ fontSize:13, color:'#374151', lineHeight:1.7, margin:0, whiteSpace:'pre-line' }}>{ps.intro}</p>
+            </div>
+          )}
+
+          {/* Script principal */}
+          {ps.script && (
+            <div style={{ background:'#fff', borderRadius:12, padding:'16px', border:'1.5px solid #e8e2d6' }}>
+              <p style={{ fontSize:11, fontWeight:700, color:'#1a3d2b', textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:12 }}>📋 Script de présentation & objections</p>
+              <div style={{ fontSize:13, color:'#374151', lineHeight:1.9, whiteSpace:'pre-line' }}>{ps.script}</div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={() => navigator.clipboard?.writeText((ps.intro || '') + '\n\n' + (ps.script || ''))}
+              style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, fontWeight:600, color:'#1a3d2b', background:'transparent', border:'1.5px solid #1a3d2b', borderRadius:8, padding:'8px 16px', cursor:'pointer' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width:13, height:13 }}>
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Copier le script complet
+            </button>
           </div>
         </div>
       )}
@@ -489,7 +589,7 @@ export default function FormationCommerciale() {
   const [takingQuiz,     setTakingQuiz]     = useState(false)
 
   const modules = [
-    { id:1, title:"Scripts d'appel",           sub:'4 scripts · FR + Darija',                    icon:<PhoneIcon style={{ width:17, height:17 }} /> },
+    { id:1, title:"Scripts d'appel",           sub:`${CALL_SCRIPTS.length} types · Variantes multiples`,                    icon:<PhoneIcon style={{ width:17, height:17 }} /> },
     { id:2, title:'Gestion des objections',     sub:`${OBJECTIONS.length} objections traitées`,    icon:<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width:17, height:17 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> },
     { id:3, title:"Simulation d'appels",        sub:`${CALL_SCENARIOS?.length ?? 3} scénarios`,    icon:<PlayIcon style={{ width:17, height:17 }} /> },
     { id:4, title:'Évaluation & Certification', sub:`${COMMERCIAL_QUIZ.length} questions · Certificat`, icon:<AwardIcon style={{ width:17, height:17 }} /> },
@@ -535,7 +635,7 @@ export default function FormationCommerciale() {
             </p>
           </div>
           <div style={{ display:'flex', gap:10, flexWrap:'wrap' }}>
-            {[{v:'4',l:'Modules'},{v:'FR+DA',l:'Langues'},{v:COMMERCIAL_QUIZ.length,l:'Questions'}].map((s,i)=>(
+            {[{v:'4',l:'Modules'},{v:CALL_SCRIPTS.length,l:'Types scripts'},{v:COMMERCIAL_QUIZ.length,l:'Questions'}].map((s,i)=>(
               <div key={i} style={{ textAlign:'center', background:'rgba(255,255,255,0.06)', borderRadius:10, padding:'10px 16px', border:'1px solid rgba(201,168,76,0.2)' }}>
                 <div style={{ color:'#c9a84c', fontSize:18, fontWeight:800 }}>{s.v}</div>
                 <div style={{ color:'rgba(255,255,255,0.5)', fontSize:10, textTransform:'uppercase', letterSpacing:'0.06em' }}>{s.l}</div>
@@ -576,12 +676,8 @@ export default function FormationCommerciale() {
                 <h3 style={{ fontSize:17, fontWeight:700, color:'#1a3d2b', margin:'0 0 4px' }}>Scripts d'appel universels</h3>
                 <p style={{ fontSize:12, color:'#6b7280', margin:0 }}>Cliquez sur un script pour le développer. Copiez et adaptez à votre style.</p>
               </div>
-              <div style={{ display:'flex', borderRadius:10, border:'1.5px solid #e8e2d6', overflow:'hidden' }}>
-                {[['fr','🇫🇷 Français'],['darija','🇲🇦 Darija']].map(([lang,label]) => (
-                  <button key={lang} onClick={() => setScriptTab(lang)} style={{ padding:'8px 16px', fontSize:12, fontWeight:700, cursor:'pointer', border:'none', background: scriptTab===lang ? '#1a3d2b' : 'transparent', color: scriptTab===lang ? '#c9a84c' : '#6b7280', transition:'all 0.2s' }}>
-                    {label}
-                  </button>
-                ))}
+              <div style={{ background:'rgba(26,61,43,0.06)', borderRadius:8, padding:'6px 14px', border:'1px solid rgba(26,61,43,0.12)' }}>
+                <span style={{ fontSize:12, fontWeight:600, color:'#1a3d2b' }}>🇫🇷 Français</span>
               </div>
             </div>
 
@@ -605,7 +701,7 @@ export default function FormationCommerciale() {
             </div>
 
             <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(300px, 1fr))', gap:12 }}>
-              {CALL_SCRIPTS.map((s, i) => <ScriptCard key={i} script={s} activeTab={scriptTab} />)}
+              {CALL_SCRIPTS.map((s, i) => <ScriptCard key={i} script={s} />)}
             </div>
           </div>
 
@@ -613,28 +709,12 @@ export default function FormationCommerciale() {
           <div style={{ background:'#fff', borderRadius:16, padding:'22px 24px', border:'1.5px solid #e8e2d6' }}>
             <div style={{ marginBottom:16 }}>
               <h3 style={{ fontSize:17, fontWeight:700, color:'#1a3d2b', margin:'0 0 4px' }}>Scripts par produit</h3>
-              <p style={{ fontSize:12, color:'#6b7280', margin:0 }}>Scripts personnalisés selon le type d'assurance — cliquez sur l'icône pour copier</p>
+              <p style={{ fontSize:12, color:'#6b7280', margin:0 }}>Scripts complets avec accroche, présentation, objections et closing — cliquez pour développer</p>
             </div>
-            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(200px, 1fr))', gap:12 }}>
-              {PRODUCT_SCRIPTS.map((ps, i) => {
-                const pc = { 'Auto':{ bg:'#dbeafe',color:'#1d4ed8' }, 'Habitation':{ bg:'#d1fae5',color:'#065f46' }, 'Santé':{ bg:'#fce7f3',color:'#9d174d' }, 'Vie':{ bg:'#ede9fe',color:'#5b21b6' }, 'RC Pro':{ bg:'#fef3c7',color:'#92400e' } }[ps.product] || { bg:'#f3f4f6',color:'#374151' }
-                return (
-                  <div key={i} style={{ background:'#fafaf8', borderRadius:12, padding:16, border:'1.5px solid #e8e2d6', transition:'all 0.2s' }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor='#c9a84c'; e.currentTarget.style.background='#fff' }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor='#e8e2d6'; e.currentTarget.style.background='#fafaf8' }}
-                  >
-                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
-                      <span style={{ fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:20, background:pc.bg, color:pc.color }}>{ps.product}</span>
-                      <button onClick={() => navigator.clipboard?.writeText(ps.script)} style={{ background:'none', border:'none', cursor:'pointer', color:'#c9a84c', padding:4 }} title="Copier">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width:14, height:14 }}>
-                          <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-                        </svg>
-                      </button>
-                    </div>
-                    <p style={{ fontSize:12, color:'#4b5563', lineHeight:1.6, margin:0 }}>{ps.script}</p>
-                  </div>
-                )
-              })}
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {PRODUCT_SCRIPTS.map((ps, i) => (
+                <ProductScriptCard key={i} ps={ps} />
+              ))}
             </div>
           </div>
         </div>
