@@ -3,13 +3,10 @@ import { useAuth } from '../../context/AuthContext'
 import {
   fetchDossier,
   createDossierIfNeeded,
-  fetchDocumentsByCategory,
-  uploadDocumentFile,
-  subscribeToDocuments,
 } from '../../lib/api'
-import { DOSSIER_STEPS, REQUIRED_DOCUMENTS } from '../../data/mockData'
+import { DOSSIER_STEPS } from '../../data/mockData'
 import {
-  CheckCircleIcon, ClockIcon, XCircleIcon, LockIcon, WhatsAppIcon,
+  CheckCircleIcon, ClockIcon, LockIcon, WhatsAppIcon,
 } from '../../components/Icons'
 
 const STEP_LABELS_FULL = [
@@ -52,125 +49,6 @@ function StepIcon({ status }) {
   return <LockIcon className="w-4 h-4 text-gray-400" />
 }
 
-// ── Doc Status Badge ──────────────────────────────────────────
-function DocStatusBadge({ status }) {
-  const cfg = {
-    valid:      { label:'Validé',              bg:'rgba(16,185,129,0.12)', color:'#10b981', border:'rgba(16,185,129,0.3)' },
-    pending:    { label:'En attente',          bg:'rgba(245,158,11,0.1)',  color:'#f59e0b', border:'rgba(245,158,11,0.3)' },
-    missing:    { label:'Rejeté',              bg:'rgba(239,68,68,0.1)',   color:'#ef4444', border:'rgba(239,68,68,0.3)' },
-    correction: { label:'Correction demandée', bg:'rgba(249,115,22,0.1)', color:'#f97316', border:'rgba(249,115,22,0.3)' },
-    none:       { label:'Manquant',            bg:'rgba(148,163,184,0.1)', color:'#94a3b8', border:'rgba(148,163,184,0.2)' },
-  }
-  const c = cfg[status] ?? cfg.none
-  return (
-    <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:c.bg, color:c.color, border:`1px solid ${c.border}`, fontFamily:"'Montserrat', sans-serif", whiteSpace:'nowrap' }}>
-      {status==='valid'?'✓':status==='pending'?'⏳':status==='missing'?'✕':status==='correction'?'💬':'—'}
-      {' '}{c.label}
-    </span>
-  )
-}
-
-// ── Doc Row ───────────────────────────────────────────────────
-function DocRow({ required, doc, uploading, onUpload }) {
-  const inputRef = useRef(null)
-  const status   = doc?.status ?? 'none'
-  const hasFile  = !!doc?.fileName
-  const btnLabel = (status === 'none' || status === 'missing' || status === 'correction') ? 'Envoyer' : 'Remplacer'
-
-  const rowBg = {
-    valid:      'rgba(16,185,129,0.06)',
-    pending:    'rgba(245,158,11,0.06)',
-    missing:    'rgba(239,68,68,0.06)',
-    correction: 'rgba(249,115,22,0.06)',
-    none:       '#f9f7f3',
-  }[status] ?? '#f9f7f3'
-
-  const rowBorder = {
-    valid:      'rgba(16,185,129,0.2)',
-    pending:    'rgba(245,158,11,0.2)',
-    missing:    'rgba(239,68,68,0.2)',
-    correction: 'rgba(249,115,22,0.2)',
-    none:       '#e8e2d6',
-  }[status] ?? '#e8e2d6'
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0]
-    if (file) { onUpload(required.id, required.label, file); e.target.value = '' }
-  }
-
-  return (
-    <div style={{ background:rowBg, border:`1px solid ${rowBorder}`, borderRadius:'14px', padding:'14px 16px', transition:'all 0.2s' }}>
-      <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:'12px' }}>
-        {/* Icon */}
-        <div style={{
-          width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
-          display:'flex', alignItems:'center', justifyContent:'center',
-          background: status==='valid' ? '#d1fae5' : status==='pending' ? '#fef3c7' : status==='missing' ? '#fee2e2' : '#f3f4f6',
-        }}>
-          {status==='valid' ? <CheckCircleIcon className="w-4 h-4" style={{color:'#10b981'}} /> :
-           status==='pending' ? <ClockIcon className="w-4 h-4" style={{color:'#f59e0b'}} /> :
-           status==='missing' ? <XCircleIcon className="w-4 h-4" style={{color:'#ef4444'}} /> :
-           status==='correction' ? <span style={{fontSize:'14px'}}>💬</span> :
-           <span style={{fontSize:'13px', color:'#9ca3af', fontWeight:'700'}}>?</span>}
-        </div>
-
-        {/* Label */}
-        <div style={{ flex:1, minWidth:0 }}>
-          <p style={{ margin:0, fontWeight:'600', color:'#1a3d2b', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{required.label}</p>
-          <p style={{ margin:0, fontSize:'11px', color:'#6b7280', fontFamily:"'Montserrat', sans-serif", marginTop:'2px' }}>{required.sublabel}</p>
-          {hasFile && <p style={{ margin:0, fontSize:'11px', color:'#c49a2a', marginTop:'3px', fontFamily:"'Montserrat', sans-serif" }}>📎 {doc.fileName}</p>}
-        </div>
-
-        {/* Badge + button */}
-        <div style={{ display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
-          <DocStatusBadge status={status} />
-          {status !== 'valid' && (
-            <>
-              <input ref={inputRef} type="file" accept={required.accept} style={{display:'none'}} onChange={handleFileChange} />
-              <button
-                onClick={() => inputRef.current?.click()}
-                disabled={uploading}
-                style={{
-                  display:'flex', alignItems:'center', gap:'6px', padding:'7px 14px',
-                  borderRadius:'10px', fontSize:'12px', fontWeight:'600', border:'none', cursor: uploading ? 'not-allowed' : 'pointer',
-                  background: uploading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #1a4a2e, #2d6b45)',
-                  color: uploading ? 'rgba(255,255,255,0.3)' : '#fff',
-                  fontFamily:"'Montserrat', sans-serif",
-                  boxShadow: uploading ? 'none' : '0 2px 10px rgba(26,74,46,0.4)',
-                  transition:'all 0.2s',
-                }}
-              >
-                {uploading ? (
-                  <><svg style={{animation:'spin 0.8s linear infinite',width:'12px',height:'12px'}} viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25"/>
-                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75"/>
-                  </svg>Envoi…</>
-                ) : (
-                  <><svg style={{width:'12px',height:'12px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                  </svg>{btnLabel}</>
-                )}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      {(status === 'missing' || status === 'correction') && doc?.rejectionReason && (
-        <div style={{ marginTop:'10px', padding:'8px 12px', borderRadius:'10px', fontSize:'11px', fontFamily:"'Montserrat', sans-serif",
-          background: status==='missing' ? 'rgba(239,68,68,0.08)' : 'rgba(249,115,22,0.08)',
-          color: status==='missing' ? '#ef4444' : '#f97316',
-          border: `1px solid ${status==='missing' ? 'rgba(239,68,68,0.2)' : 'rgba(249,115,22,0.2)'}`,
-        }}>
-          {status==='missing' ? '✕ Raison du rejet : ' : '💬 Correction : '}
-          <strong>{doc.rejectionReason}</strong> — Veuillez renvoyer le document corrigé.
-        </div>
-      )}
-    </div>
-  )
-}
-
 // ── Main ──────────────────────────────────────────────────────
 export default function MonDossier() {
   const { user } = useAuth()
@@ -181,8 +59,6 @@ export default function MonDossier() {
   const [currentStep,   setCurrentStep]   = useState(4)
   const [loadingData,   setLoadingData]   = useState(true)
   const [selectedStep,  setSelectedStep]  = useState(null)
-  const [docs,          setDocs]          = useState({})
-  const [uploading,     setUploading]     = useState({})
   const [toasts,        setToasts]        = useState([])
   const toastIdRef = useRef(0)
 
@@ -194,48 +70,17 @@ export default function MonDossier() {
 
   const dismissToast = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), [])
 
-  const handleDocChange = useCallback((updated) => {
-    const { category, status: newStatus, rejectionReason, fileName, fileUrl } = updated
-    if (!category) return
-    setDocs(prev => {
-      const old = prev[category]
-      if (old?.status && old.status !== newStatus) {
-        const label = REQUIRED_DOCUMENTS.find(r => r.id === category)?.label ?? category
-        if (newStatus === 'valid') pushToast(`Votre ${label} a été validé ✓`, 'success')
-        else if (newStatus === 'missing') pushToast(`Votre ${label} a été rejeté.${rejectionReason ? ` Raison : ${rejectionReason}` : ''} Veuillez renvoyer.`, 'error', 8000)
-        else if (newStatus === 'correction') pushToast(`Correction demandée pour ${label}.${rejectionReason ? ` ${rejectionReason}` : ''}`, 'warning', 8000)
-      }
-      return { ...prev, [category]: { ...old, status: newStatus, rejectionReason, fileName: fileName ?? old?.fileName, fileUrl: fileUrl ?? old?.fileUrl } }
-    })
-  }, [pushToast])
-
   useEffect(() => {
     if (!user?.id) { setLoadingData(false); return }
     createDossierIfNeeded(user.id).then(() =>
-      Promise.all([fetchDossier(user.id), fetchDocumentsByCategory(user.id)])
-        .then(([dossierData, docsData]) => {
+      fetchDossier(user.id).then(dossierData => {
           setSteps(dossierData.steps); setDossierNumber(dossierData.dossierNumber)
-          setStatus(dossierData.status); setCurrentStep(dossierData.currentStep); setDocs(docsData)
+          setStatus(dossierData.status); setCurrentStep(dossierData.currentStep)
         }).finally(() => setLoadingData(false))
     )
-    const unsub = subscribeToDocuments(user.id, handleDocChange)
-    return unsub
-  }, [user?.id, handleDocChange])
-
-  const handleUpload = async (categoryId, categoryLabel, file) => {
-    setUploading(prev => ({ ...prev, [categoryId]: true }))
-    const result = await uploadDocumentFile(user?.id, categoryId, categoryLabel, file)
-    if (result.autoRejected) pushToast(result.message, 'error')
-    else if (result.success) { setDocs(prev => ({ ...prev, [categoryId]: result.doc })); pushToast(`${categoryLabel} envoyé — en attente de validation.`, 'success') }
-    else pushToast(`Erreur lors de l'envoi : ${result.error ?? 'réessayez.'}`, 'error')
-    setUploading(prev => ({ ...prev, [categoryId]: false }))
-  }
+    }, [user?.id, handleDocChange])
 
   const completedCount = steps.filter(s => s.status === 'done').length
-  const validDocs      = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
-  const pendingDocs    = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'pending').length
-  const missingDocs    = REQUIRED_DOCUMENTS.filter(r => !docs[r.id] || docs[r.id].status === 'none').length
-  const progressPct    = Math.round((validDocs / REQUIRED_DOCUMENTS.length) * 100)
 
   return (
     <>
