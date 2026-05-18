@@ -355,11 +355,8 @@ function UnitCard({ unit, onOpen }) {
   const btnCls   = unit.status === 'completed' ? 'btn-outline-green' : unit.status === 'in_progress' ? 'btn-gold' : 'px-5 py-2.5 rounded-lg font-semibold bg-gray-100 text-gray-400 cursor-not-allowed'
 
   return (
-    <div className={`card border-l-4 overflow-hidden transition-all duration-300 ${
-      unit.status === 'completed'   ? 'border-l-emerald-500' :
-      unit.status === 'in_progress' ? 'border-l-orias-gold' :
-                                       'border-l-gray-300'
-    }`}>
+    <div style={{ background:'#ffffff', borderRadius:'16px', overflow:'hidden', boxShadow:'0 2px 12px rgba(0,0,0,0.06)', border:'1px solid #e8e2d6', borderLeft: unit.status === 'completed' ? '4px solid #10b981' : unit.status === 'in_progress' ? '4px solid #c9a84c' : '4px solid #e5e7eb', transition:'all 0.2s' }} className={`
+`}>
       <div className="p-5">
         <div className="flex flex-wrap items-start gap-4 justify-between mb-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -375,11 +372,11 @@ function UnitCard({ unit, onOpen }) {
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className={`font-bold text-base ${unit.status === 'locked' ? 'text-gray-400' : 'text-orias-green'}`}>
+                <h3 style={{ fontWeight:'600', fontSize:'15px', color: unit.status === 'locked' ? '#9ca3af' : '#1a3d2b', fontFamily:"'Montserrat', sans-serif", margin:0 }}>
                   Unité {unit.id} — {unit.title}
                 </h3>
-                <span className={`status-badge border ${sc.bgCls} ${sc.textCls} text-xs`}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${sc.dot}`} />{sc.label}
+                <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background: unit.status==='completed' ? '#d1fae5' : unit.status==='in_progress' ? '#fef3c7' : '#f3f4f6', color: unit.status==='completed' ? '#10b981' : unit.status==='in_progress' ? '#d97706' : '#6b7280', fontFamily:"'Montserrat', sans-serif" }}>
+                  <span style={{ width:'6px', height:'6px', borderRadius:'50%', background: unit.status==='completed' ? '#10b981' : unit.status==='in_progress' ? '#c9a84c' : '#9ca3af', display:'inline-block' }} />{sc.label}
                 </span>
               </div>
               <p className={`text-sm mt-0.5 ${unit.status === 'locked' ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -388,7 +385,7 @@ function UnitCard({ unit, onOpen }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <p className={`text-lg font-bold ${unit.status === 'locked' ? 'text-gray-400' : 'text-orias-green'}`}>
+            <p style={{ fontSize:'15px', fontWeight:'700', color: unit.status==='locked' ? '#9ca3af' : '#1a3d2b', fontFamily:"'Montserrat', sans-serif", margin:0 }}>
               {unit.completedHours}/{unit.totalHours}h
             </p>
             <button
@@ -514,13 +511,14 @@ export default function MaFormation() {
   }
 
   return (
-    <div className="space-y-6">
+    <div style={{ display:'flex', flexDirection:'column', gap:'24px', fontFamily:"'Montserrat', sans-serif" }}>
       {/* Global progress */}
-      <div className="card p-6">
+      <div style={{ background:'linear-gradient(135deg, #1a3d2b 0%, #0d2818 100%)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:'20px', padding:'28px', boxShadow:'0 4px 30px rgba(0,0,0,0.15)' }}>
+        <div style={{ height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', marginBottom:'24px', borderRadius:'2px' }} />
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
-            <h2 className="section-title">Ma Formation IAS1</h2>
-            <p className="section-subtitle">Programme officiel de formation intermédiaire en assurance</p>
+            <h2 style={{ margin:0, fontSize:'24px', fontWeight:'300', color:'#ffffff', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'1px' }}>Formation IAS1</h2>
+            <p style={{ margin:'4px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>Programme officiel de formation intermédiaire en assurance</p>
           </div>
           {loadingData ? (
             <svg className="animate-spin w-6 h-6 text-orias-gold" viewBox="0 0 24 24" fill="none">
@@ -529,37 +527,35 @@ export default function MaFormation() {
             </svg>
           ) : (
             <div className="text-right">
-              <p className="text-3xl font-bold text-orias-green">{completedHours}<span className="text-lg text-gray-400">/{totalHours}h</span></p>
-              <p className="text-sm text-gray-500">heures complétées</p>
+              <p style={{ margin:0, fontSize:'32px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Cormorant Garamond', serif" }}>{completedHours}<span style={{ fontSize:'16px', color:'rgba(255,255,255,0.4)' }}>/{totalHours}h</span></p>
+              <p style={{ margin:'2px 0 0', fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif" }}>heures complétées</p>
             </div>
           )}
         </div>
         <ProgressBar value={completedHours} max={totalHours} height="h-3" showLabel={true} label="Progression globale" />
-        <div className="flex flex-wrap gap-4 mt-4 text-sm">
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-emerald-500 inline-block" />
-            <span className="text-gray-600">Complétées : <strong className="text-emerald-600">{units.filter(u => u.status === 'completed').length}</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-orias-gold inline-block" />
-            <span className="text-gray-600">En cours : <strong className="text-orias-gold">{units.filter(u => u.status === 'in_progress').length}</strong></span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-3 h-3 rounded-full bg-gray-300 inline-block" />
-            <span className="text-gray-600">Verrouillées : <strong className="text-gray-500">{units.filter(u => u.status === 'locked').length}</strong></span>
-          </div>
+        <div style={{ display:'flex', flexWrap:'wrap', gap:'12px', marginTop:'16px' }}>
+          {[
+            { dot:'#10b981', label:'Complétées', value: units.filter(u => u.status === 'completed').length, color:'#10b981' },
+            { dot:'#c9a84c', label:'En cours', value: units.filter(u => u.status === 'in_progress').length, color:'#c9a84c' },
+            { dot:'rgba(255,255,255,0.3)', label:'Verrouillées', value: units.filter(u => u.status === 'locked').length, color:'rgba(255,255,255,0.4)' },
+          ].map(({ dot, label, value, color }) => (
+            <div key={label} style={{ display:'flex', alignItems:'center', gap:'8px', padding:'6px 14px', borderRadius:'20px', background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ width:'8px', height:'8px', borderRadius:'50%', background:dot, display:'inline-block', boxShadow:`0 0 6px ${dot}` }} />
+              <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>{label} : <strong style={{ color }}>{value}</strong></span>
+            </div>
+          ))}
         </div>
       </div>
 
       {/* Units */}
-      <div className="space-y-4">
+      <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
         {units.map(unit => (
           <UnitCard key={unit.id} unit={unit} onOpen={openLesson} />
         ))}
       </div>
 
       {/* Final exam */}
-      <div className={`card p-6 border-2 ${examUnlocked ? 'border-orias-gold' : 'border-gray-200'}`}>
+      <div style={{ background:'#ffffff', border: examUnlocked ? '2px solid #c9a84c' : '1px solid #e8e2d6', borderRadius:'20px', padding:'24px', boxShadow: examUnlocked ? '0 4px 20px rgba(201,168,76,0.15)' : '0 2px 8px rgba(0,0,0,0.04)' }}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
@@ -569,7 +565,7 @@ export default function MaFormation() {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className={`font-bold text-lg ${examUnlocked ? 'text-orias-green' : 'text-gray-400'}`}>Examen Final IAS1</h3>
+                <h3 style={{ fontWeight:'700', fontSize:'17px', color: examUnlocked ? '#1a3d2b' : '#9ca3af', fontFamily:"'Cormorant Garamond', serif", margin:0, letterSpacing:'0.5px' }}>Examen Final IAS1</h3>
                 {!examUnlocked && (
                   <span className="status-badge bg-gray-100 border border-gray-200 text-gray-400 text-xs">
                     <LockIcon className="w-3 h-3" />Complétez tous les modules
