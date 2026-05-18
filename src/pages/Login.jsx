@@ -94,9 +94,9 @@ export default function Login() {
       fontFamily: 'Georgia, serif',
     },
     card: {
-      background: #0d2818,
-      // backdropFilter removed,
-      // WebkitBackdropFilter removed,
+      background: 'rgba(10,31,15,0.85)',
+      backdropFilter: 'blur(24px)',
+      WebkitBackdropFilter: 'blur(24px)',
       border: '1px solid rgba(201,168,76,0.18)',
       borderRadius: '20px',
       overflow: 'hidden',
@@ -150,7 +150,7 @@ export default function Login() {
   }
 
   return (
-    <div style={S.wrapper}>
+    <div id="login-root" style={S.wrapper}>
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
         .li { outline: none !important; }

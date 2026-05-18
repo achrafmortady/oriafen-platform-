@@ -8,9 +8,13 @@
   }
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background-color: transparent;
     color: #1a1a1a;
     -webkit-font-smoothing: antialiased;
+  }
+  /* Login page override */
+  body:has(#login-root) {
+    background: linear-gradient(135deg, #0a1f0f 0%, #0d2818 40%, #071208 100%) !important;
+    min-height: 100vh;
   }
 }
 
@@ -78,24 +82,12 @@
   }
 }
 
-/* Smooth accordion animation */
 .accordion-content {
   overflow: hidden;
   transition: max-height 0.3s ease-in-out, opacity 0.3s ease-in-out;
 }
 
-/* Custom gold scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: #c49a2a;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #d4aa3a;
-}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f9f7f3; }
+::-webkit-scrollbar-thumb { background: #c49a2a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #d4aa3a; }
