@@ -21,7 +21,6 @@ export default function Login() {
   }, [])
 
   if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
-
   const doRedirect = (role) => navigate(role === 'admin' ? '/admin' : '/dashboard', { replace: true })
 
   const handleSubmit = async (e) => {
@@ -47,81 +46,120 @@ export default function Login() {
   return (
     <div id="login-root" style={{
       minHeight: '100vh',
-      background: 'linear-gradient(160deg, #0f2d1a 0%, #1a4028 35%, #0f2d1a 65%, #0a1f10 100%)',
+      background: 'linear-gradient(145deg, #1c4a2e 0%, #2d6b45 30%, #1c4a2e 60%, #163822 100%)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '2rem 1rem', position: 'relative', overflow: 'hidden',
     }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse-gold { 0%,100% { opacity:0.4; } 50% { opacity:0.8; } }
-        .li { outline: none !important; color: #f5f0e8 !important; background: rgba(255,255,255,0.04) !important; }
-        .li:focus { border-color: rgba(201,168,76,0.6) !important; background: rgba(255,255,255,0.07) !important; box-shadow: 0 0 0 3px rgba(201,168,76,0.1) !important; }
-        .li::placeholder { color: rgba(245,240,232,0.25) !important; }
-        .ls:not(:disabled):hover { box-shadow: 0 8px 35px rgba(201,168,76,0.35) !important; transform: translateY(-2px) !important; }
-        .lf:hover { color: #c9a84c !important; }
-        .le:hover { color: rgba(201,168,76,0.8) !important; }
+        @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+        .li-login { 
+          outline: none !important; 
+          width: 100%;
+          background: rgba(255,255,255,0.08) !important;
+          border: 1px solid rgba(201,168,76,0.25) !important;
+          border-radius: 12px !important;
+          padding: 14px 18px !important;
+          color: #fff !important;
+          font-size: 14px !important;
+          font-family: 'Montserrat', sans-serif !important;
+          box-sizing: border-box !important;
+          transition: all 0.2s !important;
+        }
+        .li-login:focus { 
+          border-color: rgba(201,168,76,0.7) !important; 
+          background: rgba(255,255,255,0.12) !important; 
+          box-shadow: 0 0 0 3px rgba(201,168,76,0.12) !important; 
+        }
+        .li-login::placeholder { color: rgba(255,255,255,0.35) !important; }
+        .btn-login:not(:disabled):hover { 
+          box-shadow: 0 10px 40px rgba(201,168,76,0.4) !important; 
+          transform: translateY(-2px) !important; 
+        }
+        .btn-login:not(:disabled):active { transform: translateY(0) !important; }
+        .forgot-login:hover { color: #c9a84c !important; }
+        .eye-login:hover { color: rgba(201,168,76,0.9) !important; }
       `}</style>
 
-      {/* Orbs */}
-      <div style={{ position:'absolute', top:'-5%', right:'-8%', width:'600px', height:'600px', borderRadius:'50%', background:'radial-gradient(circle, rgba(201,168,76,0.07) 0%, transparent 65%)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', bottom:'-10%', left:'-8%', width:'500px', height:'500px', borderRadius:'50%', background:'radial-gradient(circle, rgba(26,100,50,0.15) 0%, transparent 65%)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', top:'40%', right:'15%', width:'200px', height:'200px', borderRadius:'50%', background:'radial-gradient(circle, rgba(201,168,76,0.05) 0%, transparent 70%)', pointerEvents:'none', animation:'pulse-gold 4s ease-in-out infinite' }} />
+      {/* Light orbs */}
+      <div style={{ position:'absolute', top:'-15%', right:'-10%', width:'700px', height:'700px', borderRadius:'50%', background:'radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 60%)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', bottom:'-15%', left:'-10%', width:'600px', height:'600px', borderRadius:'50%', background:'radial-gradient(circle, rgba(45,107,69,0.4) 0%, transparent 60%)', pointerEvents:'none' }} />
+      <div style={{ position:'absolute', top:'30%', left:'5%', width:'300px', height:'300px', borderRadius:'50%', background:'radial-gradient(circle, rgba(201,168,76,0.06) 0%, transparent 70%)', pointerEvents:'none', animation:'float 6s ease-in-out infinite' }} />
 
-      {/* Grid */}
-      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.03, pointerEvents:'none' }} preserveAspectRatio="xMidYMid slice">
-        <defs><pattern id="lg" width="70" height="70" patternUnits="userSpaceOnUse"><path d="M70 0L0 0 0 70" fill="none" stroke="#c9a84c" strokeWidth="0.5"/></pattern></defs>
-        <rect width="100%" height="100%" fill="url(#lg)" />
+      {/* Subtle grid */}
+      <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', opacity:0.04, pointerEvents:'none' }} preserveAspectRatio="xMidYMid slice">
+        <defs><pattern id="lg2" width="80" height="80" patternUnits="userSpaceOnUse"><path d="M80 0L0 0 0 80" fill="none" stroke="#c9a84c" strokeWidth="0.5"/></pattern></defs>
+        <rect width="100%" height="100%" fill="url(#lg2)" />
       </svg>
 
-      {/* Vertical accent lines */}
-      <div style={{ position:'absolute', top:0, left:'20%', width:'1px', height:'100%', background:'linear-gradient(to bottom, transparent, rgba(201,168,76,0.08), transparent)', pointerEvents:'none' }} />
-      <div style={{ position:'absolute', top:0, right:'20%', width:'1px', height:'100%', background:'linear-gradient(to bottom, transparent, rgba(201,168,76,0.08), transparent)', pointerEvents:'none' }} />
-
       <div style={{
-        position:'relative', width:'100%', maxWidth:'480px',
-        opacity: mounted ? 1 : 0, transform: mounted ? 'translateY(0)' : 'translateY(24px)',
-        transition: 'opacity 0.6s ease, transform 0.6s ease',
+        position:'relative', width:'100%', maxWidth:'460px',
+        opacity: mounted ? 1 : 0,
+        transform: mounted ? 'translateY(0)' : 'translateY(28px)',
+        transition: 'opacity 0.7s ease, transform 0.7s ease',
       }}>
-        {/* Logo */}
-        <div style={{ textAlign:'center', marginBottom:'2rem' }}>
-          <img src={LOGO_SRC} alt="Oriafen" style={{ width:'180px', height:'auto', filter:'brightness(1.1)' }} />
-          <div style={{ marginTop:'6px', fontSize:'10px', letterSpacing:'3.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.5)', fontFamily:'Georgia, serif' }}>
-            Academy — Espace Client
+
+        {/* Logo — transparent background */}
+        <div style={{ textAlign:'center', marginBottom:'1.8rem' }}>
+          <div style={{ 
+            display:'inline-block',
+            padding: '16px 32px',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: '16px',
+            border: '1px solid rgba(201,168,76,0.12)',
+          }}>
+            <img 
+              src={LOGO_SRC} 
+              alt="Oriafen" 
+              style={{ 
+                width:'160px', height:'auto',
+                mixBlendMode: 'screen',
+                filter: 'brightness(1.3) contrast(1.1)',
+              }} 
+            />
+          </div>
+          <div style={{ marginTop:'10px', fontSize:'10px', letterSpacing:'4px', textTransform:'uppercase', color:'rgba(201,168,76,0.55)', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>
+            Academy · Espace Client
           </div>
         </div>
 
         {/* Card */}
         <div style={{
-          background:'linear-gradient(160deg, #1a3d2b 0%, #152e20 100%)',
-          border:'1px solid rgba(201,168,76,0.22)',
-          borderRadius:'24px', overflow:'hidden',
-          boxShadow:'0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset, 0 1px 0 rgba(201,168,76,0.1) inset',
+          background: 'rgba(255,255,255,0.07)',
+          backdropFilter: 'blur(30px)',
+          WebkitBackdropFilter: 'blur(30px)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          boxShadow: '0 30px 80px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.1) inset',
         }}>
-          {/* Gold top bar */}
-          <div style={{ height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c 25%, #f0d080 50%, #c9a84c 75%, transparent)' }} />
+
+          {/* Gold top line */}
+          <div style={{ height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c 25%, #f5d76e 50%, #c9a84c 75%, transparent)' }} />
 
           {/* Header */}
-          <div style={{ padding:'2rem 2.5rem 1.5rem', textAlign:'center', borderBottom:'1px solid rgba(201,168,76,0.08)' }}>
-            <h1 style={{ fontSize:'22px', fontWeight:'300', color:'#f5f0e8', margin:0, letterSpacing:'1px', fontFamily:'Georgia, serif' }}>
+          <div style={{ padding:'2rem 2.5rem 1.5rem', textAlign:'center', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+            <h1 style={{ fontSize:'26px', fontWeight:'300', color:'#ffffff', margin:0, letterSpacing:'2px', fontFamily:"'Cormorant Garamond', serif" }}>
               Connectez-vous
             </h1>
-            <p style={{ fontSize:'13px', color:'rgba(245,240,232,0.45)', marginTop:'6px', marginBottom:0, fontFamily:'Georgia, serif' }}>
+            <p style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)', marginTop:'6px', marginBottom:0, fontFamily:"'Montserrat', sans-serif", fontWeight:'300', letterSpacing:'0.5px' }}>
               Accédez à votre espace Oriafen Academy
             </p>
           </div>
 
-          {/* Status */}
-          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', padding:'8px', background: isConfigured ? 'rgba(16,185,129,0.05)' : 'rgba(201,168,76,0.05)', borderBottom:'1px solid rgba(255,255,255,0.03)' }}>
-            <span style={{ width:'6px', height:'6px', borderRadius:'50%', background: isConfigured ? '#10b981' : '#c9a84c', boxShadow: isConfigured ? '0 0 8px #10b981' : '0 0 8px #c9a84c', display:'inline-block' }} />
-            <span style={{ fontSize:'10px', letterSpacing:'1.5px', textTransform:'uppercase', color: isConfigured ? 'rgba(16,185,129,0.8)' : 'rgba(201,168,76,0.8)', fontFamily:'Georgia, serif' }}>
-              {isConfigured ? 'Authentification sécurisée active' : 'Mode démonstration'}
+          {/* Status badge */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', padding:'8px 16px', background: isConfigured ? 'rgba(16,185,129,0.08)' : 'rgba(201,168,76,0.08)', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+            <span style={{ width:'6px', height:'6px', borderRadius:'50%', background: isConfigured ? '#10b981' : '#c9a84c', boxShadow: isConfigured ? '0 0 10px #10b981' : '0 0 10px #c9a84c', display:'inline-block', flexShrink:0 }} />
+            <span style={{ fontSize:'10px', letterSpacing:'1.5px', textTransform:'uppercase', color: isConfigured ? 'rgba(16,185,129,0.9)' : 'rgba(201,168,76,0.9)', fontFamily:"'Montserrat', sans-serif", fontWeight:'500' }}>
+              {isConfigured ? 'Authentification sécurisée' : 'Mode démonstration'}
             </span>
           </div>
 
           {/* Form */}
           <div style={{ padding:'2rem 2.5rem' }}>
             {error && (
-              <div style={{ background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.2)', borderRadius:'12px', padding:'12px 16px', marginBottom:'20px', display:'flex', alignItems:'center', gap:'10px', color:'#fca5a5', fontSize:'13px', fontFamily:'Georgia, serif' }}>
+              <div style={{ background:'rgba(239,68,68,0.1)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:'12px', padding:'12px 16px', marginBottom:'20px', display:'flex', alignItems:'center', gap:'10px', color:'#fca5a5', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{flexShrink:0}}>
                   <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
                 </svg>
@@ -130,26 +168,25 @@ export default function Login() {
             )}
 
             <div style={{ marginBottom:'20px' }}>
-              <label style={{ display:'block', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.65)', marginBottom:'9px', fontFamily:'Georgia, serif' }}>
+              <label style={{ display:'block', fontSize:'10px', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', color:'rgba(201,168,76,0.8)', marginBottom:'9px', fontFamily:"'Montserrat', sans-serif" }}>
                 Adresse email
               </label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-                className="li"
-                style={{ width:'100%', border:'1px solid rgba(201,168,76,0.18)', borderRadius:'12px', padding:'14px 18px', fontSize:'14px', fontFamily:'Georgia, serif', outline:'none', boxSizing:'border-box', transition:'all 0.2s' }}
+                className="li-login"
                 placeholder="votre@email.com" required autoFocus />
             </div>
 
             <div style={{ marginBottom:'28px' }}>
-              <label style={{ display:'block', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.65)', marginBottom:'9px', fontFamily:'Georgia, serif' }}>
+              <label style={{ display:'block', fontSize:'10px', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', color:'rgba(201,168,76,0.8)', marginBottom:'9px', fontFamily:"'Montserrat', sans-serif" }}>
                 Mot de passe
               </label>
               <div style={{ position:'relative' }}>
                 <input type={showPass ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                  className="li"
-                  style={{ width:'100%', border:'1px solid rgba(201,168,76,0.18)', borderRadius:'12px', padding:'14px 48px 14px 18px', fontSize:'14px', fontFamily:'Georgia, serif', outline:'none', boxSizing:'border-box', transition:'all 0.2s' }}
+                  className="li-login"
+                  style={{ paddingRight:'48px' }}
                   placeholder="••••••••" required />
-                <button type="button" className="le" onClick={() => setShowPass(!showPass)}
-                  style={{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'rgba(245,240,232,0.3)', padding:0, display:'flex', alignItems:'center', transition:'color 0.2s' }}>
+                <button type="button" className="eye-login" onClick={() => setShowPass(!showPass)}
+                  style={{ position:'absolute', right:'14px', top:'50%', transform:'translateY(-50%)', background:'none', border:'none', cursor:'pointer', color:'rgba(255,255,255,0.35)', padding:0, display:'flex', alignItems:'center', transition:'color 0.2s' }}>
                   {showPass
                     ? <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                     : <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -158,59 +195,79 @@ export default function Login() {
               </div>
             </div>
 
-            <button type="button" onClick={handleSubmit} disabled={loading} className="ls"
-              style={{ width:'100%', padding:'15px', background:'linear-gradient(135deg, #c9a84c, #b8960a)', border:'none', borderRadius:'12px', color:'#0a1f10', fontSize:'15px', fontWeight:'700', fontFamily:'Georgia, serif', letterSpacing:'0.5px', cursor: loading ? 'not-allowed' : 'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', transition:'all 0.25s', opacity: loading ? 0.75 : 1 }}>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="btn-login"
+              style={{
+                width:'100%', padding:'16px',
+                background:'linear-gradient(135deg, #c9a84c 0%, #e8c96a 50%, #c9a84c 100%)',
+                backgroundSize: '200% auto',
+                border:'none', borderRadius:'12px',
+                color:'#1a3d2b', fontSize:'14px', fontWeight:'600',
+                fontFamily:"'Montserrat', sans-serif", letterSpacing:'1.5px',
+                textTransform: 'uppercase',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display:'flex', alignItems:'center', justifyContent:'center', gap:'10px',
+                transition:'all 0.3s', opacity: loading ? 0.75 : 1,
+                boxShadow: '0 4px 20px rgba(201,168,76,0.2)',
+              }}>
               {loading ? (
                 <>
                   <svg width="17" height="17" viewBox="0 0 24 24" fill="none" style={{ animation:'spin 0.8s linear infinite' }}>
-                    <circle cx="12" cy="12" r="10" stroke="rgba(10,31,16,0.3)" strokeWidth="3"/>
-                    <path d="M12 2a10 10 0 0 1 10 10" stroke="#0a1f10" strokeWidth="3" strokeLinecap="round"/>
+                    <circle cx="12" cy="12" r="10" stroke="rgba(26,61,43,0.3)" strokeWidth="3"/>
+                    <path d="M12 2a10 10 0 0 1 10 10" stroke="#1a3d2b" strokeWidth="3" strokeLinecap="round"/>
                   </svg>
                   Connexion en cours…
                 </>
               ) : (
                 <>
                   Se connecter
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </>
               )}
             </button>
 
-            <button type="button" className="lf"
-              style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'rgba(245,240,232,0.3)', fontFamily:'Georgia, serif', display:'block', margin:'16px auto 0', transition:'color 0.2s' }}>
+            <button type="button" className="forgot-login"
+              style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'rgba(255,255,255,0.3)', fontFamily:"'Montserrat', sans-serif", display:'block', margin:'14px auto 0', transition:'color 0.2s', letterSpacing:'0.5px' }}>
               Mot de passe oublié ?
             </button>
           </div>
 
           {!isConfigured && (
             <div style={{ padding:'0 2.5rem 2rem' }}>
-              <div style={{ background:'rgba(201,168,76,0.04)', border:'1px solid rgba(201,168,76,0.12)', borderRadius:'14px', padding:'16px' }}>
-                <p style={{ fontSize:'9px', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', color:'rgba(201,168,76,0.45)', margin:'0 0 12px 0', fontFamily:'Georgia, serif' }}>Comptes de démonstration</p>
+              <div style={{ background:'rgba(201,168,76,0.05)', border:'1px solid rgba(201,168,76,0.15)', borderRadius:'14px', padding:'16px' }}>
+                <p style={{ fontSize:'9px', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', color:'rgba(201,168,76,0.5)', margin:'0 0 12px 0', fontFamily:"'Montserrat', sans-serif" }}>
+                  Comptes de démonstration
+                </p>
                 {[
                   { label:'Étudiant', e:'student@oriafen.com', p:'demo123', color:'#c9a84c' },
                   { label:'Admin', e:'admin@oriafen.com', p:'admin123', color:'#10b981' },
                 ].map(({ label, e, p, color }) => (
                   <button key={label} type="button"
                     onClick={() => { setEmail(e); setPassword(p) }}
-                    style={{ background:'none', border:'none', cursor:'pointer', width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:'10px', display:'flex', alignItems:'center', gap:'10px', color:'rgba(245,240,232,0.4)', fontSize:'12px', fontFamily:'Georgia, serif', transition:'all 0.2s' }}
-                    onMouseEnter={ev => { ev.currentTarget.style.background='rgba(201,168,76,0.07)'; ev.currentTarget.style.color='#c9a84c' }}
-                    onMouseLeave={ev => { ev.currentTarget.style.background='none'; ev.currentTarget.style.color='rgba(245,240,232,0.4)' }}>
-                    <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:color, flexShrink:0, boxShadow:`0 0 7px ${color}` }} />
-                    <span><strong style={{ color:'rgba(245,240,232,0.65)' }}>{label} :</strong> {e} / {p}</span>
+                    style={{ background:'none', border:'none', cursor:'pointer', width:'100%', textAlign:'left', padding:'8px 10px', borderRadius:'10px', display:'flex', alignItems:'center', gap:'10px', color:'rgba(255,255,255,0.4)', fontSize:'12px', fontFamily:"'Montserrat', sans-serif", transition:'all 0.2s' }}
+                    onMouseEnter={ev => { ev.currentTarget.style.background='rgba(201,168,76,0.08)'; ev.currentTarget.style.color='#c9a84c' }}
+                    onMouseLeave={ev => { ev.currentTarget.style.background='none'; ev.currentTarget.style.color='rgba(255,255,255,0.4)' }}>
+                    <span style={{ width:'6px', height:'6px', borderRadius:'50%', background:color, flexShrink:0, boxShadow:`0 0 8px ${color}` }} />
+                    <span><strong style={{ color:'rgba(255,255,255,0.65)' }}>{label} :</strong> {e} / {p}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          <div style={{ height:'1px', background:'linear-gradient(90deg, transparent, rgba(201,168,76,0.18), transparent)' }} />
+          <div style={{ height:'1px', background:'linear-gradient(90deg, transparent, rgba(201,168,76,0.2), transparent)' }} />
         </div>
 
         {/* Footer */}
         <div style={{ textAlign:'center', marginTop:'1.5rem', display:'flex', alignItems:'center', justifyContent:'center', gap:'12px' }}>
-          <div style={{ height:'1px', width:'40px', background:'rgba(201,168,76,0.18)' }} />
-          <p style={{ fontSize:'11px', color:'rgba(201,168,76,0.3)', margin:0, letterSpacing:'1px', fontFamily:'Georgia, serif' }}>© 2026 Oriafen Academy</p>
-          <div style={{ height:'1px', width:'40px', background:'rgba(201,168,76,0.18)' }} />
+          <div style={{ height:'1px', width:'40px', background:'rgba(201,168,76,0.2)' }} />
+          <p style={{ fontSize:'11px', color:'rgba(255,255,255,0.25)', margin:0, letterSpacing:'1px', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>
+            © 2026 Oriafen Academy
+          </p>
+          <div style={{ height:'1px', width:'40px', background:'rgba(201,168,76,0.2)' }} />
         </div>
       </div>
     </div>
