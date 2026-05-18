@@ -12,8 +12,6 @@ import {
   CheckCircleIcon, ClockIcon, XCircleIcon, LockIcon, WhatsAppIcon,
 } from '../../components/Icons'
 
-// ── Step descriptions ─────────────────────────────────────────
-
 const STEP_LABELS_FULL = [
   { id: 1, description: "Premier entretien avec votre conseiller pour évaluer votre projet et définir les étapes." },
   { id: 2, description: "Rassemblement et vérification de tous les documents nécessaires à votre dossier ORIAS." },
@@ -23,142 +21,132 @@ const STEP_LABELS_FULL = [
   { id: 6, description: "Vous êtes officiellement autorisé à exercer ! Lancement de votre activité." },
 ]
 
-// ── Toast notifications ───────────────────────────────────────
-
+// ── Toast ─────────────────────────────────────────────────────
 function Toast({ toasts, onDismiss }) {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-2 pointer-events-none" style={{ maxWidth: 360 }}>
+    <div style={{ position:'fixed', top:'1rem', right:'1rem', zIndex:50, display:'flex', flexDirection:'column', gap:'8px', pointerEvents:'none', maxWidth:'360px' }}>
       {toasts.map(t => (
-        <div
-          key={t.id}
-          className={`flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border text-sm font-medium pointer-events-auto animate-slide-in ${
-            t.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-            t.type === 'error'   ? 'bg-red-50 border-red-200 text-red-800' :
-            t.type === 'warning' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                                   'bg-white border-orias-border text-gray-700'
-          }`}
-        >
-          <span className="flex-shrink-0 text-base leading-tight">
-            {t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : t.type === 'warning' ? '⚠️' : 'ℹ️'}
-          </span>
-          <p className="flex-1 leading-snug">{t.message}</p>
-          <button onClick={() => onDismiss(t.id)} className="flex-shrink-0 opacity-50 hover:opacity-100 ml-1">✕</button>
+        <div key={t.id} style={{
+          display:'flex', alignItems:'flex-start', gap:'10px',
+          padding:'12px 16px', borderRadius:'14px',
+          border: t.type==='success' ? '1px solid rgba(16,185,129,0.3)' : t.type==='error' ? '1px solid rgba(239,68,68,0.3)' : t.type==='warning' ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(201,168,76,0.2)',
+          background: t.type==='success' ? 'rgba(16,185,129,0.1)' : t.type==='error' ? 'rgba(239,68,68,0.1)' : t.type==='warning' ? 'rgba(245,158,11,0.1)' : 'rgba(255,255,255,0.9)',
+          backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)',
+          boxShadow:'0 8px 30px rgba(0,0,0,0.15)',
+          pointerEvents:'auto', color: t.type==='success' ? '#10b981' : t.type==='error' ? '#ef4444' : t.type==='warning' ? '#f59e0b' : '#1a3d2b',
+          fontFamily:"'Montserrat', sans-serif", fontSize:'13px',
+        }}>
+          <span style={{flexShrink:0}}>{t.type==='success'?'✅':t.type==='error'?'❌':t.type==='warning'?'⚠️':'ℹ️'}</span>
+          <p style={{flex:1, margin:0, lineHeight:'1.4'}}>{t.message}</p>
+          <button onClick={()=>onDismiss(t.id)} style={{background:'none',border:'none',cursor:'pointer',opacity:0.5,flexShrink:0,color:'inherit',fontSize:'14px'}}>✕</button>
         </div>
       ))}
     </div>
   )
 }
 
-// ── Step icon ─────────────────────────────────────────────────
-
+// ── Step Icon ─────────────────────────────────────────────────
 function StepIcon({ status }) {
   if (status === 'done')    return <CheckCircleIcon className="w-5 h-5 text-white" />
-  if (status === 'current') return <ClockIcon className="w-5 h-5 text-orias-green" />
+  if (status === 'current') return <ClockIcon className="w-5 h-5 text-white" />
   return <LockIcon className="w-4 h-4 text-gray-400" />
 }
 
-// ── Document status badge ─────────────────────────────────────
-
+// ── Doc Status Badge ──────────────────────────────────────────
 function DocStatusBadge({ status }) {
   const cfg = {
-    valid:      { icon: '✅', label: 'Validé',              cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
-    pending:    { icon: '⏳', label: 'En attente',          cls: 'text-amber-700 bg-amber-50 border-amber-200' },
-    missing:    { icon: '❌', label: 'Rejeté',              cls: 'text-red-700 bg-red-50 border-red-200' },
-    correction: { icon: '💬', label: 'Correction demandée', cls: 'text-orange-700 bg-orange-50 border-orange-200' },
-    none:       { icon: '➖', label: 'Manquant',            cls: 'text-gray-500 bg-gray-50 border-gray-200' },
+    valid:      { label:'Validé',              bg:'rgba(16,185,129,0.12)', color:'#10b981', border:'rgba(16,185,129,0.3)' },
+    pending:    { label:'En attente',          bg:'rgba(245,158,11,0.1)',  color:'#f59e0b', border:'rgba(245,158,11,0.3)' },
+    missing:    { label:'Rejeté',              bg:'rgba(239,68,68,0.1)',   color:'#ef4444', border:'rgba(239,68,68,0.3)' },
+    correction: { label:'Correction demandée', bg:'rgba(249,115,22,0.1)', color:'#f97316', border:'rgba(249,115,22,0.3)' },
+    none:       { label:'Manquant',            bg:'rgba(148,163,184,0.1)', color:'#94a3b8', border:'rgba(148,163,184,0.2)' },
   }
-  const { icon, label, cls } = cfg[status] ?? cfg.none
+  const c = cfg[status] ?? cfg.none
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${cls}`}>
-      <span>{icon}</span>{label}
+    <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:c.bg, color:c.color, border:`1px solid ${c.border}`, fontFamily:"'Montserrat', sans-serif", whiteSpace:'nowrap' }}>
+      {status==='valid'?'✓':status==='pending'?'⏳':status==='missing'?'✕':status==='correction'?'💬':'—'}
+      {' '}{c.label}
     </span>
   )
 }
 
-// ── Individual document row ───────────────────────────────────
-
+// ── Doc Row ───────────────────────────────────────────────────
 function DocRow({ required, doc, uploading, onUpload }) {
   const inputRef = useRef(null)
   const status   = doc?.status ?? 'none'
   const hasFile  = !!doc?.fileName
+  const btnLabel = (status === 'none' || status === 'missing' || status === 'correction') ? 'Envoyer' : 'Remplacer'
 
   const rowBg = {
-    valid:      'bg-emerald-50/60 border-emerald-100',
-    pending:    'bg-amber-50/60 border-amber-100',
-    missing:    'bg-red-50/60 border-red-100',
-    correction: 'bg-orange-50/60 border-orange-100',
-    none:       'bg-gray-50/40 border-gray-100',
-  }[status] ?? 'bg-gray-50/40 border-gray-100'
+    valid:      'rgba(16,185,129,0.06)',
+    pending:    'rgba(245,158,11,0.06)',
+    missing:    'rgba(239,68,68,0.06)',
+    correction: 'rgba(249,115,22,0.06)',
+    none:       'rgba(255,255,255,0.03)',
+  }[status] ?? 'rgba(255,255,255,0.03)'
 
-  const btnLabel = status === 'none' || status === 'missing' || status === 'correction'
-    ? 'Envoyer'
-    : 'Remplacer'
+  const rowBorder = {
+    valid:      'rgba(16,185,129,0.2)',
+    pending:    'rgba(245,158,11,0.2)',
+    missing:    'rgba(239,68,68,0.2)',
+    correction: 'rgba(249,115,22,0.2)',
+    none:       'rgba(255,255,255,0.07)',
+  }[status] ?? 'rgba(255,255,255,0.07)'
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
-    if (file) {
-      onUpload(required.id, required.label, file)
-      e.target.value = ''  // allow re-selecting same file
-    }
+    if (file) { onUpload(required.id, required.label, file); e.target.value = '' }
   }
 
   return (
-    <div className={`rounded-xl border p-3.5 transition-all ${rowBg}`}>
-      <div className="flex flex-wrap items-center gap-3">
+    <div style={{ background:rowBg, border:`1px solid ${rowBorder}`, borderRadius:'14px', padding:'14px 16px', transition:'all 0.2s' }}>
+      <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', gap:'12px' }}>
         {/* Icon */}
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          status === 'valid'      ? 'bg-emerald-100' :
-          status === 'pending'    ? 'bg-amber-100' :
-          status === 'missing'    ? 'bg-red-100' :
-          status === 'correction' ? 'bg-orange-100' :
-                                    'bg-gray-100'
-        }`}>
-          {status === 'valid'      ? <CheckCircleIcon className="w-4 h-4 text-emerald-600" /> :
-           status === 'pending'    ? <ClockIcon className="w-4 h-4 text-amber-600" /> :
-           status === 'missing'    ? <XCircleIcon className="w-4 h-4 text-red-600" /> :
-           status === 'correction' ? <span className="text-sm">💬</span> :
-                                     <span className="text-xs text-gray-400 font-bold">?</span>}
+        <div style={{
+          width:'36px', height:'36px', borderRadius:'10px', flexShrink:0,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          background: status==='valid' ? 'rgba(16,185,129,0.15)' : status==='pending' ? 'rgba(245,158,11,0.15)' : status==='missing' ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.07)',
+        }}>
+          {status==='valid' ? <CheckCircleIcon className="w-4 h-4" style={{color:'#10b981'}} /> :
+           status==='pending' ? <ClockIcon className="w-4 h-4" style={{color:'#f59e0b'}} /> :
+           status==='missing' ? <XCircleIcon className="w-4 h-4" style={{color:'#ef4444'}} /> :
+           status==='correction' ? <span style={{fontSize:'14px'}}>💬</span> :
+           <span style={{fontSize:'11px', color:'rgba(255,255,255,0.3)', fontWeight:'700'}}>?</span>}
         </div>
 
         {/* Label */}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-gray-800 text-sm">{required.label}</p>
-          <p className="text-xs text-gray-400">{required.sublabel}</p>
-          {hasFile && (
-            <p className="text-xs text-gray-500 mt-0.5 truncate max-w-xs">
-              📎 {doc.fileName}
-            </p>
-          )}
+        <div style={{ flex:1, minWidth:0 }}>
+          <p style={{ margin:0, fontWeight:'600', color:'#f1f5f9', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{required.label}</p>
+          <p style={{ margin:0, fontSize:'11px', color:'rgba(255,255,255,0.35)', fontFamily:"'Montserrat', sans-serif", marginTop:'2px' }}>{required.sublabel}</p>
+          {hasFile && <p style={{ margin:0, fontSize:'11px', color:'rgba(201,168,76,0.7)', marginTop:'3px', fontFamily:"'Montserrat', sans-serif" }}>📎 {doc.fileName}</p>}
         </div>
 
-        {/* Status + upload */}
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {/* Badge + button */}
+        <div style={{ display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
           <DocStatusBadge status={status} />
           {status !== 'valid' && (
             <>
-              <input
-                ref={inputRef}
-                type="file"
-                accept={required.accept}
-                className="hidden"
-                onChange={handleFileChange}
-              />
+              <input ref={inputRef} type="file" accept={required.accept} style={{display:'none'}} onChange={handleFileChange} />
               <button
                 onClick={() => inputRef.current?.click()}
                 disabled={uploading}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  uploading
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-orias-green text-white hover:bg-orias-green-light shadow-sm'
-                }`}
+                style={{
+                  display:'flex', alignItems:'center', gap:'6px', padding:'7px 14px',
+                  borderRadius:'10px', fontSize:'12px', fontWeight:'600', border:'none', cursor: uploading ? 'not-allowed' : 'pointer',
+                  background: uploading ? 'rgba(255,255,255,0.05)' : 'linear-gradient(135deg, #1a4a2e, #2d6b45)',
+                  color: uploading ? 'rgba(255,255,255,0.3)' : '#fff',
+                  fontFamily:"'Montserrat', sans-serif",
+                  boxShadow: uploading ? 'none' : '0 2px 10px rgba(26,74,46,0.4)',
+                  transition:'all 0.2s',
+                }}
               >
                 {uploading ? (
-                  <><svg className="animate-spin w-3 h-3" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  <><svg style={{animation:'spin 0.8s linear infinite',width:'12px',height:'12px'}} viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75"/>
                   </svg>Envoi…</>
                 ) : (
-                  <><svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <><svg style={{width:'12px',height:'12px'}} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                     <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                   </svg>{btnLabel}</>
@@ -169,23 +157,21 @@ function DocRow({ required, doc, uploading, onUpload }) {
         </div>
       </div>
 
-      {/* Rejection / correction message */}
       {(status === 'missing' || status === 'correction') && doc?.rejectionReason && (
-        <div className={`mt-2.5 px-3 py-2 rounded-lg text-xs leading-relaxed ${
-          status === 'missing' ? 'bg-red-100 text-red-700 border border-red-200' :
-                                 'bg-orange-100 text-orange-700 border border-orange-200'
-        }`}>
-          {status === 'missing' ? '❌ Raison du rejet : ' : '💬 Correction demandée : '}
-          <span className="font-medium">{doc.rejectionReason}</span>
-          {' '}— Veuillez renvoyer le document corrigé.
+        <div style={{ marginTop:'10px', padding:'8px 12px', borderRadius:'10px', fontSize:'11px', fontFamily:"'Montserrat', sans-serif",
+          background: status==='missing' ? 'rgba(239,68,68,0.08)' : 'rgba(249,115,22,0.08)',
+          color: status==='missing' ? '#ef4444' : '#f97316',
+          border: `1px solid ${status==='missing' ? 'rgba(239,68,68,0.2)' : 'rgba(249,115,22,0.2)'}`,
+        }}>
+          {status==='missing' ? '✕ Raison du rejet : ' : '💬 Correction : '}
+          <strong>{doc.rejectionReason}</strong> — Veuillez renvoyer le document corrigé.
         </div>
       )}
     </div>
   )
 }
 
-// ── Main component ────────────────────────────────────────────
-
+// ── Main ──────────────────────────────────────────────────────
 export default function MonDossier() {
   const { user } = useAuth()
 
@@ -195,12 +181,9 @@ export default function MonDossier() {
   const [currentStep,   setCurrentStep]   = useState(4)
   const [loadingData,   setLoadingData]   = useState(true)
   const [selectedStep,  setSelectedStep]  = useState(null)
-
-  // docs: { [categoryId]: { id, status, fileName, fileUrl, rejectionReason } }
-  const [docs,       setDocs]      = useState({})
-  const [uploading,  setUploading] = useState({})  // { [categoryId]: bool }
-  const [toasts,     setToasts]    = useState([])
-
+  const [docs,          setDocs]          = useState({})
+  const [uploading,     setUploading]     = useState({})
+  const [toasts,        setToasts]        = useState([])
   const toastIdRef = useRef(0)
 
   const pushToast = useCallback((message, type = 'info', duration = 5000) => {
@@ -209,159 +192,124 @@ export default function MonDossier() {
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), duration)
   }, [])
 
-  const dismissToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
-  }, [])
+  const dismissToast = useCallback((id) => setToasts(prev => prev.filter(t => t.id !== id)), [])
 
-  // Handle realtime update from Supabase
   const handleDocChange = useCallback((updated) => {
     const { category, status: newStatus, rejectionReason, fileName, fileUrl } = updated
     if (!category) return
-
     setDocs(prev => {
       const old = prev[category]
-      const oldStatus = old?.status
-
-      // Trigger notification only if status actually changed
-      if (oldStatus && oldStatus !== newStatus) {
-        const reqDoc = REQUIRED_DOCUMENTS.find(r => r.id === category)
-        const label  = reqDoc?.label ?? category
-
-        if (newStatus === 'valid') {
-          pushToast(`Votre ${label} a été validé ✓`, 'success')
-        } else if (newStatus === 'missing') {
-          pushToast(
-            `Votre ${label} a été rejeté.${rejectionReason ? ` Raison : ${rejectionReason}` : ''} Veuillez renvoyer le document.`,
-            'error', 8000
-          )
-        } else if (newStatus === 'correction') {
-          pushToast(
-            `Correction demandée pour ${label}.${rejectionReason ? ` ${rejectionReason}` : ''}`,
-            'warning', 8000
-          )
-        }
+      if (old?.status && old.status !== newStatus) {
+        const label = REQUIRED_DOCUMENTS.find(r => r.id === category)?.label ?? category
+        if (newStatus === 'valid') pushToast(`Votre ${label} a été validé ✓`, 'success')
+        else if (newStatus === 'missing') pushToast(`Votre ${label} a été rejeté.${rejectionReason ? ` Raison : ${rejectionReason}` : ''} Veuillez renvoyer.`, 'error', 8000)
+        else if (newStatus === 'correction') pushToast(`Correction demandée pour ${label}.${rejectionReason ? ` ${rejectionReason}` : ''}`, 'warning', 8000)
       }
-
-      return {
-        ...prev,
-        [category]: {
-          ...old,
-          status: newStatus,
-          rejectionReason,
-          fileName:  fileName ?? old?.fileName,
-          fileUrl:   fileUrl  ?? old?.fileUrl,
-        },
-      }
+      return { ...prev, [category]: { ...old, status: newStatus, rejectionReason, fileName: fileName ?? old?.fileName, fileUrl: fileUrl ?? old?.fileUrl } }
     })
   }, [pushToast])
 
   useEffect(() => {
     if (!user?.id) { setLoadingData(false); return }
-
     createDossierIfNeeded(user.id).then(() =>
-      Promise.all([
-        fetchDossier(user.id),
-        fetchDocumentsByCategory(user.id),
-      ]).then(([dossierData, docsData]) => {
-        setSteps(dossierData.steps)
-        setDossierNumber(dossierData.dossierNumber)
-        setStatus(dossierData.status)
-        setCurrentStep(dossierData.currentStep)
-        setDocs(docsData)
-      }).finally(() => setLoadingData(false))
+      Promise.all([fetchDossier(user.id), fetchDocumentsByCategory(user.id)])
+        .then(([dossierData, docsData]) => {
+          setSteps(dossierData.steps); setDossierNumber(dossierData.dossierNumber)
+          setStatus(dossierData.status); setCurrentStep(dossierData.currentStep); setDocs(docsData)
+        }).finally(() => setLoadingData(false))
     )
-
     const unsub = subscribeToDocuments(user.id, handleDocChange)
     return unsub
   }, [user?.id, handleDocChange])
 
   const handleUpload = async (categoryId, categoryLabel, file) => {
     setUploading(prev => ({ ...prev, [categoryId]: true }))
-
     const result = await uploadDocumentFile(user?.id, categoryId, categoryLabel, file)
-
-    if (result.autoRejected) {
-      pushToast(result.message, 'error')
-    } else if (result.success) {
-      setDocs(prev => ({ ...prev, [categoryId]: result.doc }))
-      pushToast(`${categoryLabel} envoyé — en attente de validation par votre conseiller.`, 'success')
-    } else {
-      pushToast(`Erreur lors de l'envoi : ${result.error ?? 'réessayez.'}`, 'error')
-    }
-
+    if (result.autoRejected) pushToast(result.message, 'error')
+    else if (result.success) { setDocs(prev => ({ ...prev, [categoryId]: result.doc })); pushToast(`${categoryLabel} envoyé — en attente de validation.`, 'success') }
+    else pushToast(`Erreur lors de l'envoi : ${result.error ?? 'réessayez.'}`, 'error')
     setUploading(prev => ({ ...prev, [categoryId]: false }))
   }
 
-  const completedCount  = steps.filter(s => s.status === 'done').length
-  const validDocs       = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
-  const pendingDocs     = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'pending').length
-  const missingDocs     = REQUIRED_DOCUMENTS.filter(r => !docs[r.id] || docs[r.id].status === 'none').length
+  const completedCount = steps.filter(s => s.status === 'done').length
+  const validDocs      = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
+  const pendingDocs    = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'pending').length
+  const missingDocs    = REQUIRED_DOCUMENTS.filter(r => !docs[r.id] || docs[r.id].status === 'none').length
+  const progressPct    = Math.round((validDocs / REQUIRED_DOCUMENTS.length) * 100)
 
   return (
     <>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600;700&display=swap');
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+        .doc-row-hover:hover { background: rgba(255,255,255,0.06) !important; transform: translateX(2px); }
+        .step-btn:hover .step-circle { transform: scale(1.1); box-shadow: 0 0 20px rgba(201,168,76,0.3) !important; }
+        .upload-btn:hover:not(:disabled) { background: linear-gradient(135deg, #2d6b45, #3d8b5e) !important; box-shadow: 0 4px 20px rgba(45,107,69,0.5) !important; transform: translateY(-1px); }
+      `}</style>
+
       <Toast toasts={toasts} onDismiss={dismissToast} />
 
-      <div className="space-y-6">
-        {/* Dossier overview */}
-        <div className="card p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+      <div style={{ display:'flex', flexDirection:'column', gap:'24px', animation:'fadeIn 0.5s ease' }}>
+
+        {/* ── Dossier Overview Card ── */}
+        <div style={{ background:'linear-gradient(135deg, rgba(26,61,43,0.8) 0%, rgba(13,40,24,0.9) 100%)', border:'1px solid rgba(201,168,76,0.15)', borderRadius:'20px', padding:'28px', backdropFilter:'blur(10px)', boxShadow:'0 4px 30px rgba(0,0,0,0.2)' }}>
+          {/* Top bar */}
+          <div style={{ height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', marginBottom:'24px', borderRadius:'2px' }} />
+
+          <div style={{ display:'flex', flexWrap:'wrap', alignItems:'flex-start', justifyContent:'space-between', gap:'16px', marginBottom:'28px' }}>
             <div>
-              <h2 className="section-title">Mon Dossier ORIAS</h2>
-              <p className="section-subtitle">Suivi de votre immatriculation en temps réel</p>
+              <h2 style={{ margin:0, fontSize:'22px', fontWeight:'300', color:'#f5f0e8', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'1px' }}>Mon Dossier ORIAS</h2>
+              <p style={{ margin:'4px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.45)', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>Suivi de votre immatriculation en temps réel</p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="bg-orias-bg rounded-lg px-4 py-2 border border-orias-border">
-                <p className="text-xs text-gray-500 font-medium">N° Dossier</p>
-                <p className="font-bold text-orias-green text-sm">{dossierNumber}</p>
-              </div>
-              <div className="bg-orias-bg rounded-lg px-4 py-2 border border-orias-border">
-                <p className="text-xs text-gray-500 font-medium">Pack</p>
-                <p className="font-bold text-orias-green text-sm">{user?.pack ?? 'Essentiel'}</p>
-              </div>
-              <div className="bg-amber-50 rounded-lg px-4 py-2 border border-amber-200">
-                <p className="text-xs text-amber-600 font-medium">Statut</p>
-                <p className="font-bold text-amber-700 text-sm">{status}</p>
-              </div>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:'10px' }}>
+              {[
+                { label:'N° Dossier', value: dossierNumber, color:'#c9a84c' },
+                { label:'Pack', value: user?.pack ?? 'Essentiel', color:'#c9a84c' },
+                { label:'Statut', value: status, color:'#f59e0b' },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.08)', borderRadius:'12px', padding:'8px 16px' }}>
+                  <p style={{ margin:0, fontSize:'10px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif", fontWeight:'500', letterSpacing:'1px', textTransform:'uppercase' }}>{label}</p>
+                  <p style={{ margin:'2px 0 0', fontWeight:'600', color, fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{value}</p>
+                </div>
+              ))}
             </div>
           </div>
 
           {loadingData ? (
-            <div className="h-24 flex items-center justify-center">
-              <svg className="animate-spin w-6 h-6 text-orias-gold" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+            <div style={{ height:'80px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <svg style={{ animation:'spin 1s linear infinite', width:'28px', height:'28px', color:'#c9a84c' }} viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
+                <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75"/>
               </svg>
             </div>
           ) : (
             <>
-              {/* Progress line */}
-              <div className="relative mb-2">
-                <div className="absolute top-5 left-[calc(1/12*100%)] right-[calc(1/12*100%)] h-0.5 bg-gray-200 hidden sm:block">
-                  <div className="h-full bg-orias-gold transition-all duration-700" style={{ width: `${(completedCount / 5) * 100}%` }} />
-                </div>
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 relative z-10">
+              {/* Steps timeline */}
+              <div style={{ position:'relative', marginBottom:'8px' }}>
+                {/* Connector line */}
+                <div style={{ position:'absolute', top:'20px', left:'calc(100%/12)', right:'calc(100%/12)', height:'2px', background:'rgba(255,255,255,0.08)', display:'none' }} className="sm-show" />
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:'8px', position:'relative', zIndex:1 }}>
                   {steps.map(step => (
-                    <button
-                      key={step.id}
+                    <button key={step.id} className="step-btn"
                       onClick={() => setSelectedStep(selectedStep?.id === step.id ? null : step)}
-                      className="flex flex-col items-center text-center gap-2 group focus:outline-none"
-                    >
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all duration-300 group-hover:scale-110 ${
-                        step.status === 'done'    ? 'bg-orias-green border-orias-green shadow-md' :
-                        step.status === 'current' ? 'bg-orias-gold border-orias-gold shadow-lg ring-4 ring-orias-gold/20' :
-                                                    'bg-gray-100 border-gray-300'
-                      }`}>
+                      style={{ background:'none', border:'none', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', textAlign:'center', gap:'8px', padding:'4px' }}>
+                      <div className="step-circle" style={{
+                        width:'40px', height:'40px', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0,
+                        transition:'all 0.3s',
+                        background: step.status==='done' ? 'linear-gradient(135deg, #1a4a2e, #2d6b45)' : step.status==='current' ? 'linear-gradient(135deg, #c9a84c, #f0d080)' : 'rgba(255,255,255,0.05)',
+                        border: step.status==='done' ? '2px solid rgba(45,107,69,0.6)' : step.status==='current' ? '2px solid #c9a84c' : '2px solid rgba(255,255,255,0.1)',
+                        boxShadow: step.status==='current' ? '0 0 20px rgba(201,168,76,0.4)' : 'none',
+                      }}>
                         <StepIcon status={step.status} />
                       </div>
-                      <p className={`text-xs font-semibold leading-tight ${
-                        step.status === 'done'    ? 'text-orias-green' :
-                        step.status === 'current' ? 'text-orias-gold' : 'text-gray-400'
-                      }`}>{step.label}</p>
-                      <p className={`text-xs ${
-                        step.status === 'done'    ? 'text-emerald-500' :
-                        step.status === 'current' ? 'text-orias-gold'  : 'text-gray-300'
-                      }`}>
-                        {step.status === 'done' ? 'Complété' : step.status === 'current' ? 'En cours' : 'En attente'}
+                      <p style={{ margin:0, fontSize:'10px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", lineHeight:'1.3',
+                        color: step.status==='done' ? '#4ade80' : step.status==='current' ? '#c9a84c' : 'rgba(255,255,255,0.3)',
+                      }}>{step.label}</p>
+                      <p style={{ margin:0, fontSize:'9px', fontFamily:"'Montserrat', sans-serif",
+                        color: step.status==='done' ? 'rgba(74,222,128,0.7)' : step.status==='current' ? 'rgba(201,168,76,0.7)' : 'rgba(255,255,255,0.2)',
+                      }}>
+                        {step.status==='done' ? 'Complété' : step.status==='current' ? 'En cours' : 'En attente'}
                       </p>
                     </button>
                   ))}
@@ -369,157 +317,135 @@ export default function MonDossier() {
               </div>
 
               {selectedStep && (
-                <div className={`mt-4 p-4 rounded-xl border text-sm transition-all duration-200 ${
-                  selectedStep.status === 'done'    ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
-                  selectedStep.status === 'current' ? 'bg-amber-50 border-amber-200 text-amber-800' :
-                                                      'bg-gray-50 border-gray-200 text-gray-600'
-                }`}>
-                  <p className="font-semibold mb-1">Étape {selectedStep.id} — {selectedStep.label}</p>
-                  <p>{STEP_LABELS_FULL.find(s => s.id === selectedStep.id)?.description}</p>
+                <div style={{ marginTop:'16px', padding:'16px', borderRadius:'14px', fontSize:'13px', fontFamily:"'Montserrat', sans-serif",
+                  background: selectedStep.status==='done' ? 'rgba(16,185,129,0.08)' : selectedStep.status==='current' ? 'rgba(201,168,76,0.08)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${selectedStep.status==='done' ? 'rgba(16,185,129,0.2)' : selectedStep.status==='current' ? 'rgba(201,168,76,0.2)' : 'rgba(255,255,255,0.07)'}`,
+                  color: selectedStep.status==='done' ? '#4ade80' : selectedStep.status==='current' ? '#c9a84c' : 'rgba(255,255,255,0.5)',
+                }}>
+                  <p style={{ margin:'0 0 4px', fontWeight:'600' }}>Étape {selectedStep.id} — {selectedStep.label}</p>
+                  <p style={{ margin:0, opacity:0.8 }}>{STEP_LABELS_FULL.find(s => s.id === selectedStep.id)?.description}</p>
                 </div>
               )}
             </>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Documents section */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="card p-6">
-              {/* Header + counters */}
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-                <h3 className="font-bold text-orias-green text-lg">Documents du dossier</h3>
-                <div className="flex gap-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 border border-emerald-200 text-emerald-700">
-                    ✅ {validDocs} validé{validDocs > 1 ? 's' : ''}
+        {/* ── Main grid ── */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr', gap:'24px' }} className="lg-grid">
+          <style>{`.lg-grid { @media (min-width:1024px) { grid-template-columns: 2fr 1fr !important; } }`}</style>
+
+          {/* Documents */}
+          <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'20px', padding:'24px', backdropFilter:'blur(10px)' }}>
+            {/* Header */}
+            <div style={{ display:'flex', flexWrap:'wrap', alignItems:'center', justifyContent:'space-between', gap:'12px', marginBottom:'20px' }}>
+              <h3 style={{ margin:0, fontSize:'16px', fontWeight:'500', color:'#f5f0e8', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'0.5px' }}>Documents du dossier</h3>
+              <div style={{ display:'flex', gap:'8px', flexWrap:'wrap' }}>
+                <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(16,185,129,0.1)', color:'#10b981', border:'1px solid rgba(16,185,129,0.25)', fontFamily:"'Montserrat', sans-serif" }}>
+                  ✓ {validDocs} validé{validDocs>1?'s':''}
+                </span>
+                {pendingDocs > 0 && (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(245,158,11,0.1)', color:'#f59e0b', border:'1px solid rgba(245,158,11,0.25)', fontFamily:"'Montserrat', sans-serif" }}>
+                    ⏳ {pendingDocs} en attente
                   </span>
-                  {pendingDocs > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 border border-amber-200 text-amber-700">
-                      ⏳ {pendingDocs} en attente
-                    </span>
-                  )}
-                  {missingDocs > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-600">
-                      ➖ {missingDocs} manquant{missingDocs > 1 ? 's' : ''}
-                    </span>
-                  )}
-                </div>
+                )}
+                {missingDocs > 0 && (
+                  <span style={{ display:'inline-flex', alignItems:'center', gap:'5px', padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(255,255,255,0.05)', color:'rgba(255,255,255,0.4)', border:'1px solid rgba(255,255,255,0.1)', fontFamily:"'Montserrat', sans-serif" }}>
+                    — {missingDocs} manquant{missingDocs>1?'s':''}
+                  </span>
+                )}
               </div>
+            </div>
 
-              {/* Progress bar */}
-              <div className="mb-5">
-                <div className="flex justify-between text-xs text-gray-500 mb-1.5">
-                  <span>Documents complétés</span>
-                  <span className="font-bold text-orias-green">{validDocs} / {REQUIRED_DOCUMENTS.length}</span>
-                </div>
-                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-orias-gold transition-all duration-700 rounded-full"
-                    style={{ width: `${(validDocs / REQUIRED_DOCUMENTS.length) * 100}%` }}
-                  />
-                </div>
+            {/* Progress bar */}
+            <div style={{ marginBottom:'20px' }}>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
+                <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif" }}>Documents complétés</span>
+                <span style={{ fontSize:'11px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{validDocs} / {REQUIRED_DOCUMENTS.length}</span>
               </div>
+              <div style={{ height:'6px', background:'rgba(255,255,255,0.06)', borderRadius:'10px', overflow:'hidden' }}>
+                <div style={{ height:'100%', background:'linear-gradient(90deg, #c9a84c, #f0d080)', borderRadius:'10px', width:`${progressPct}%`, transition:'width 0.7s ease' }} />
+              </div>
+            </div>
 
-              {/* Document rows */}
-              <div className="space-y-2.5">
-                {REQUIRED_DOCUMENTS.map(req => (
-                  <DocRow
-                    key={req.id}
-                    required={req}
-                    doc={docs[req.id]}
-                    uploading={!!uploading[req.id]}
-                    onUpload={handleUpload}
-                  />
-                ))}
-              </div>
+            {/* Doc rows */}
+            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              {REQUIRED_DOCUMENTS.map(req => (
+                <DocRow key={req.id} required={req} doc={docs[req.id]} uploading={!!uploading[req.id]} onUpload={handleUpload} />
+              ))}
+            </div>
 
-              {/* Info banner */}
-              <div className="mt-5 flex items-start gap-3 p-4 rounded-xl bg-orias-bg border border-orias-border text-sm text-gray-600">
-                <span className="text-lg flex-shrink-0">ℹ️</span>
-                <p>
-                  Formats acceptés : <strong>PDF, JPG, PNG</strong> — max 10 Mo par fichier.
-                  Les documents sont vérifiés sous <strong>24–48h</strong> par votre conseiller.
-                  En cas de rejet, vous recevrez une notification avec la raison.
-                </p>
-              </div>
+            {/* Info */}
+            <div style={{ marginTop:'16px', display:'flex', alignItems:'flex-start', gap:'12px', padding:'14px 16px', borderRadius:'14px', background:'rgba(201,168,76,0.05)', border:'1px solid rgba(201,168,76,0.12)', fontSize:'12px', color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>
+              <span style={{flexShrink:0}}>ℹ️</span>
+              <p style={{margin:0, lineHeight:'1.6'}}>Formats acceptés : <strong style={{color:'rgba(201,168,76,0.8)'}}>PDF, JPG, PNG</strong> — max 10 Mo par fichier. Les documents sont vérifiés sous <strong style={{color:'rgba(201,168,76,0.8)'}}>24–48h</strong> par votre conseiller.</p>
             </div>
           </div>
 
-          {/* Conseiller card */}
-          <div className="space-y-4">
-            <div className="card-dark p-6 text-white">
-              <h3 className="font-bold text-orias-gold text-sm uppercase tracking-wider mb-4">Votre Conseiller Dédié</h3>
-              <div className="flex items-center gap-4 mb-5">
-                <div className="w-14 h-14 rounded-full bg-orias-gold/20 border-2 border-orias-gold flex items-center justify-center text-xl font-bold text-orias-gold flex-shrink-0">MA</div>
+          {/* Right sidebar */}
+          <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+
+            {/* Conseiller card */}
+            <div style={{ background:'linear-gradient(135deg, #1a4a2e 0%, #0d2818 100%)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:'20px', padding:'24px', boxShadow:'0 8px 30px rgba(0,0,0,0.2)' }}>
+              <p style={{ margin:'0 0 16px', fontSize:'10px', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', color:'rgba(201,168,76,0.7)', fontFamily:"'Montserrat', sans-serif" }}>Votre Conseiller Dédié</p>
+              <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'16px' }}>
+                <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(201,168,76,0.15)', border:'2px solid rgba(201,168,76,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:'700', color:'#c9a84c', flexShrink:0, fontFamily:"'Montserrat', sans-serif" }}>MA</div>
                 <div>
-                  <p className="font-bold text-white text-lg">Mehdi Alaoui</p>
-                  <p className="text-green-300 text-sm">Conseiller ORIAS</p>
+                  <p style={{ margin:0, fontWeight:'600', color:'#f5f0e8', fontSize:'16px', fontFamily:"'Cormorant Garamond', serif" }}>Mehdi Alaoui</p>
+                  <p style={{ margin:'2px 0 0', fontSize:'12px', color:'rgba(201,168,76,0.7)', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>Conseiller ORIAS</p>
                 </div>
               </div>
-              <div className="space-y-2 mb-5">
-                <div className="flex items-center gap-2 text-green-200 text-sm">
-                  <svg className="w-4 h-4 text-orias-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-                  </svg>
-                  Disponible 9h – 20h GMT+1
-                </div>
-                <div className="flex items-center gap-2 text-green-200 text-sm">
-                  <svg className="w-4 h-4 text-orias-gold" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                  </svg>
-                  Lundi – Samedi
-                </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
+                {[
+                  { icon:'🕐', text:'Disponible 9h – 20h GMT+1' },
+                  { icon:'📅', text:'Lundi – Samedi' },
+                ].map(({ icon, text }) => (
+                  <div key={text} style={{ display:'flex', alignItems:'center', gap:'8px', fontSize:'12px', color:'rgba(255,255,255,0.45)', fontFamily:"'Montserrat', sans-serif" }}>
+                    <span>{icon}</span><span>{text}</span>
+                  </div>
+                ))}
               </div>
-              <a
-                href="https://wa.me/33600000000"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-white bg-[#25d366] hover:bg-[#20bd5a] transition-colors shadow-lg"
-              >
+              <a href="https://wa.me/33600000000" target="_blank" rel="noopener noreferrer"
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', width:'100%', padding:'13px', borderRadius:'14px', fontWeight:'600', color:'#fff', background:'linear-gradient(135deg, #25d366, #1db954)', textDecoration:'none', fontSize:'13px', fontFamily:"'Montserrat', sans-serif", boxShadow:'0 4px 20px rgba(37,211,102,0.25)', transition:'all 0.2s' }}>
                 <WhatsAppIcon className="w-5 h-5" />
                 Contacter sur WhatsApp
               </a>
             </div>
 
-            <div className="card p-5">
-              <h3 className="font-bold text-orias-green text-sm mb-3">Étape actuelle</h3>
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-orias-gold/10 border border-orias-gold/30 flex items-center justify-center flex-shrink-0">
-                  <span className="text-xs font-bold text-orias-gold">{currentStep}</span>
+            {/* Current step */}
+            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'18px' }}>
+              <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.6)', fontFamily:"'Montserrat', sans-serif" }}>Étape actuelle</p>
+              <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
+                <div style={{ width:'34px', height:'34px', borderRadius:'50%', background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                  <span style={{ fontSize:'12px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{currentStep}</span>
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-800 text-sm">{steps.find(s => s.status === 'current')?.label ?? 'Terminé'}</p>
-                  <p className="text-xs text-gray-500 mt-1">Cliquez sur une étape ci-dessus pour voir les détails.</p>
+                  <p style={{ margin:0, fontWeight:'600', color:'#f1f5f9', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{steps.find(s => s.status === 'current')?.label ?? 'Terminé'}</p>
+                  <p style={{ margin:'4px 0 0', fontSize:'11px', color:'rgba(255,255,255,0.35)', fontFamily:"'Montserrat', sans-serif" }}>Cliquez sur une étape pour voir les détails.</p>
                 </div>
               </div>
             </div>
 
-            {/* Document summary card */}
-            <div className="card p-5">
-              <h3 className="font-bold text-orias-green text-sm mb-3">Résumé documents</h3>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Validés</span>
-                  <span className="font-bold text-emerald-600">{validDocs} / {REQUIRED_DOCUMENTS.length}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">En attente</span>
-                  <span className="font-bold text-amber-600">{pendingDocs}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Manquants</span>
-                  <span className="font-bold text-gray-500">{missingDocs}</span>
-                </div>
-                <div className="pt-2 border-t border-orias-border">
-                  <div className="flex justify-between text-xs text-gray-500 mb-1">
-                    <span>Complétude</span>
-                    <span className="font-bold">{Math.round((validDocs / REQUIRED_DOCUMENTS.length) * 100)}%</span>
+            {/* Doc summary */}
+            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'18px' }}>
+              <p style={{ margin:'0 0 14px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.6)', fontFamily:"'Montserrat', sans-serif" }}>Résumé documents</p>
+              <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                {[
+                  { label:'Validés', value:`${validDocs} / ${REQUIRED_DOCUMENTS.length}`, color:'#10b981' },
+                  { label:'En attente', value: pendingDocs, color:'#f59e0b' },
+                  { label:'Manquants', value: missingDocs, color:'rgba(255,255,255,0.4)' },
+                ].map(({ label, value, color }) => (
+                  <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', fontSize:'13px' }}>
+                    <span style={{ color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>{label}</span>
+                    <span style={{ fontWeight:'700', color, fontFamily:"'Montserrat', sans-serif" }}>{value}</span>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-orias-gold rounded-full transition-all duration-700"
-                      style={{ width: `${(validDocs / REQUIRED_DOCUMENTS.length) * 100}%` }}
-                    />
+                ))}
+                <div style={{ paddingTop:'10px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
+                    <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif" }}>Complétude</span>
+                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{progressPct}%</span>
+                  </div>
+                  <div style={{ height:'4px', background:'rgba(255,255,255,0.06)', borderRadius:'10px', overflow:'hidden' }}>
+                    <div style={{ height:'100%', background:'linear-gradient(90deg, #c9a84c, #f0d080)', borderRadius:'10px', width:`${progressPct}%`, transition:'width 0.7s ease' }} />
                   </div>
                 </div>
               </div>
