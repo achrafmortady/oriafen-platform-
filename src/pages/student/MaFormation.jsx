@@ -517,7 +517,7 @@ export default function MaFormation() {
         <div style={{ height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', marginBottom:'24px', borderRadius:'2px' }} />
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
-            <h2 style={{ margin:0, fontSize:'24px', fontWeight:'300', color:'#ffffff', fontFamily:"'Cormorant Garamond', serif", letterSpacing:'1px' }}>Formation IAS1</h2>
+            <h2 style={{ margin:0, fontSize:'20px', fontWeight:'700', color:'#ffffff', fontFamily:"'Montserrat', sans-serif", letterSpacing:'0.3px' }}>Formation IAS1</h2>
             <p style={{ margin:'4px 0 0', fontSize:'12px', color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>Programme officiel de formation intermédiaire en assurance</p>
           </div>
           {loadingData ? (
@@ -565,7 +565,7 @@ export default function MaFormation() {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 style={{ fontWeight:'700', fontSize:'17px', color: examUnlocked ? '#1a3d2b' : '#9ca3af', fontFamily:"'Cormorant Garamond', serif", margin:0, letterSpacing:'0.5px' }}>Examen Final IAS1</h3>
+                <h3 style={{ fontWeight:'700', fontSize:'16px', color: examUnlocked ? '#1a3d2b' : '#9ca3af', fontFamily:"'Montserrat', sans-serif", margin:0 }}>Examen Final IAS1</h3>
                 {!examUnlocked && (
                   <span className="status-badge bg-gray-100 border border-gray-200 text-gray-400 text-xs">
                     <LockIcon className="w-3 h-3" />Complétez tous les modules
