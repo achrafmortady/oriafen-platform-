@@ -81,6 +81,10 @@ export default function MonDossier() {
   }, [user?.id])
 
   const completedCount = steps.filter(s => s.status === 'done').length
+  const validDocs   = 0
+  const pendingDocs = 0
+  const missingDocs = 0
+  const progressPct = 0
 
   return (
     <>
