@@ -94,9 +94,9 @@ export default function Login() {
       fontFamily: 'Georgia, serif',
     },
     card: {
-      background: 'rgba(10,31,15,0.85)',
-      backdropFilter: 'blur(24px)',
-      WebkitBackdropFilter: 'blur(24px)',
+      background: "#0d2818",
+
+
       border: '1px solid rgba(201,168,76,0.18)',
       borderRadius: '20px',
       overflow: 'hidden',
