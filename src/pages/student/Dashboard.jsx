@@ -13,7 +13,7 @@ import Support from './Support'
 const NAV_ITEMS = [
   { id: 'dossier',     label: 'Mon Dossier',  short: 'Dossier' },
   { id: 'formation',   label: 'Formation IAS1', short: 'IAS1' },
-  { id: 'commercial',  label: 'Commercial',   short: 'Commercial' },
+  { id: 'commercial',  label: 'Vente & Scripts', short: 'Vente' },
   { id: 'documents',   label: 'Documents',    short: 'Documents' },
   { id: 'support',     label: 'Support',      short: 'Support' },
 ]
