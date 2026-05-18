@@ -111,7 +111,7 @@ function DocRow({ required, doc, uploading, onUpload }) {
            status==='pending' ? <ClockIcon className="w-4 h-4" style={{color:'#f59e0b'}} /> :
            status==='missing' ? <XCircleIcon className="w-4 h-4" style={{color:'#ef4444'}} /> :
            status==='correction' ? <span style={{fontSize:'14px'}}>💬</span> :
-           <span style={{fontSize:'11px', color:'rgba(255,255,255,0.3)', fontWeight:'700'}}>?</span>}
+           <span style={{fontSize:'13px', color:'#9ca3af', fontWeight:'700'}}>?</span>}
         </div>
 
         {/* Label */}
@@ -412,39 +412,39 @@ export default function MonDossier() {
             </div>
 
             {/* Current step */}
-            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'18px' }}>
-              <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.6)', fontFamily:"'Montserrat', sans-serif" }}>Étape actuelle</p>
+            <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'16px', padding:'18px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+              <p style={{ margin:'0 0 12px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a', fontFamily:"'Montserrat', sans-serif" }}>Étape actuelle</p>
               <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
                 <div style={{ width:'34px', height:'34px', borderRadius:'50%', background:'rgba(201,168,76,0.1)', border:'1px solid rgba(201,168,76,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                   <span style={{ fontSize:'12px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{currentStep}</span>
                 </div>
                 <div>
-                  <p style={{ margin:0, fontWeight:'600', color:'#1a3d2b', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{steps.find(s => s.status === 'current')?.label ?? 'Terminé'}</p>
-                  <p style={{ margin:'4px 0 0', fontSize:'11px', color:'rgba(255,255,255,0.35)', fontFamily:"'Montserrat', sans-serif" }}>Cliquez sur une étape pour voir les détails.</p>
+                  <p style={{ margin:0, fontWeight:'600', color:'#1a3d2b', fontSize:'14px', fontFamily:"'Montserrat', sans-serif" }}>{steps.find(s => s.status === 'current')?.label ?? 'Terminé'}</p>
+                  <p style={{ margin:'4px 0 0', fontSize:'11px', color:'#6b7280', fontFamily:"'Montserrat', sans-serif" }}>Cliquez sur une étape pour voir les détails.</p>
                 </div>
               </div>
             </div>
 
             {/* Doc summary */}
-            <div style={{ background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:'16px', padding:'18px' }}>
-              <p style={{ margin:'0 0 14px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'rgba(201,168,76,0.6)', fontFamily:"'Montserrat', sans-serif" }}>Résumé documents</p>
+            <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'16px', padding:'18px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
+              <p style={{ margin:'0 0 14px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a', fontFamily:"'Montserrat', sans-serif" }}>Résumé documents</p>
               <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
                 {[
                   { label:'Validés', value:`${validDocs} / ${REQUIRED_DOCUMENTS.length}`, color:'#10b981' },
                   { label:'En attente', value: pendingDocs, color:'#f59e0b' },
-                  { label:'Manquants', value: missingDocs, color:'rgba(255,255,255,0.4)' },
+                  { label:'Manquants', value: missingDocs, color:'#6b7280' },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', fontSize:'13px' }}>
-                    <span style={{ color:'rgba(255,255,255,0.5)', fontFamily:"'Montserrat', sans-serif" }}>{label}</span>
+                    <span style={{ color:'#4b5563', fontFamily:"'Montserrat', sans-serif" }}>{label}</span>
                     <span style={{ fontWeight:'700', color, fontFamily:"'Montserrat', sans-serif" }}>{value}</span>
                   </div>
                 ))}
-                <div style={{ paddingTop:'10px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
+                <div style={{ paddingTop:'10px', borderTop:'1px solid #f3f4f6' }}>
                   <div style={{ display:'flex', justifyContent:'space-between', marginBottom:'6px' }}>
-                    <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif" }}>Complétude</span>
-                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#c9a84c', fontFamily:"'Montserrat', sans-serif" }}>{progressPct}%</span>
+                    <span style={{ fontSize:'11px', color:'#6b7280', fontFamily:"'Montserrat', sans-serif" }}>Complétude</span>
+                    <span style={{ fontSize:'11px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>{progressPct}%</span>
                   </div>
-                  <div style={{ height:'4px', background:'rgba(255,255,255,0.06)', borderRadius:'10px', overflow:'hidden' }}>
+                  <div style={{ height:'4px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden' }}>
                     <div style={{ height:'100%', background:'linear-gradient(90deg, #c9a84c, #f0d080)', borderRadius:'10px', width:`${progressPct}%`, transition:'width 0.7s ease' }} />
                   </div>
                 </div>
