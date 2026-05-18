@@ -8,7 +8,7 @@
   }
   body {
     font-family: 'Inter', system-ui, sans-serif;
-    background-color: #f9f7f3;
+    background-color: transparent;
     color: #1a1a1a;
     -webkit-font-smoothing: antialiased;
   }
@@ -90,7 +90,7 @@
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f9f7f3;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: #c49a2a;
