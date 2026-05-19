@@ -12,7 +12,6 @@ import {
   fetchAllClients, createClient, updateDossierStep,
   fetchClientDocumentsWithDetails, updateDocumentStatusWithReason,
 } from '../../lib/api'
-import ProgressBar from '../../components/ProgressBar'
 
 // ─── Palette ──────────────────────────────────────────────────
 const C = {
