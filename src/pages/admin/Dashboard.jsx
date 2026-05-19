@@ -2,57 +2,34 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
-import {
-  LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon,
-  MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon,
-  CheckCircleIcon, ClockIcon, BookIcon,
-} from '../../components/Icons'
-import { ADMIN_CLIENTS, ADMIN_STATS, FORMATION_UNITS, REQUIRED_DOCUMENTS } from '../../data/mockData'
-import {
-  fetchAllClients, createClient, updateDossierStep,
-  fetchClientDocumentsWithDetails, updateDocumentStatusWithReason,
-} from '../../lib/api'
-
-// ─── Palette ──────────────────────────────────────────────────
-const C = {
-  green:     '#1a3d2b',
-  greenDark: '#0d2818',
-  gold:      '#c9a84c',
-  goldLight: '#f5f0e8',
-  cream:     '#f9f7f3',
-  border:    '#e8e2d6',
-  white:     '#ffffff',
-}
+import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon } from '../../components/Icons'
+import { ADMIN_CLIENTS, ADMIN_STATS, FORMATION_UNITS } from '../../data/mockData'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason } from '../../lib/api'
+import { REQUIRED_DOCUMENTS } from '../../data/mockData'
+import ProgressBar from '../../components/ProgressBar'
 
 const NAV_ITEMS = [
-  { id: 'clients',   label: 'Clients',      icon: <UsersIcon className="w-4 h-4" /> },
-  { id: 'dossiers',  label: 'Dossiers',     icon: <EyeIcon className="w-4 h-4" /> },
-  { id: 'formation', label: 'Formation',    icon: <BookIcon className="w-4 h-4" /> },
-  { id: 'notifs',    label: 'Notifications',icon: <BellIcon className="w-4 h-4" /> },
+  { id: 'clients',    label: 'Clients',         icon: <UsersIcon className="w-4 h-4" /> },
+  { id: 'dossiers',   label: 'Dossiers',         icon: <EyeIcon className="w-4 h-4" /> },
+  { id: 'formation',  label: 'Formation',        icon: <BookIcon className="w-4 h-4" /> },
+  { id: 'notifs',     label: 'Notifications',    icon: <BellIcon className="w-4 h-4" /> },
 ]
 
-// ─── Reusable card wrapper ─────────────────────────────────────
-const Card = ({ children, style = {} }) => (
-  <div style={{ background: C.white, borderRadius: 16, border: `1.5px solid ${C.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.04)', ...style }}>
-    {children}
-  </div>
-)
-
-// ─── Stat card (dark header style) ───────────────────────────
-function StatCard({ icon, label, value, sub }) {
+function StatCard({ icon, label, value, sub, color }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.07)', borderRadius: 14, border: '1px solid rgba(255,255,255,0.12)', padding: '18px 20px' }}>
-      <div style={{ width: 38, height: 38, borderRadius: 10, background: 'rgba(201,168,76,0.2)', border: '1px solid rgba(201,168,76,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 14 }}>
-        {icon}
+    <div className={`rounded-2xl p-5 border ${color}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20">
+          {icon}
+        </div>
       </div>
-      <p style={{ fontSize: 28, fontWeight: 800, color: C.white, lineHeight: 1, marginBottom: 4 }}>{value}</p>
-      <p style={{ fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.7)', marginBottom: sub ? 2 : 0 }}>{label}</p>
-      {sub && <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)' }}>{sub}</p>}
+      <p className="text-3xl font-bold text-white">{value}</p>
+      <p className="text-sm font-medium text-white/80 mt-1">{label}</p>
+      {sub && <p className="text-xs text-white/60 mt-0.5">{sub}</p>}
     </div>
   )
 }
 
-// ─── Add client modal (logic intact, inline styles) ───────────
 function AddClientModal({ onClose, onAdd }) {
   const [fullName, setFullName] = useState('')
   const [email,    setEmail]    = useState('')
@@ -61,56 +38,71 @@ function AddClientModal({ onClose, onAdd }) {
   const [error,    setError]    = useState('')
   const [success,  setSuccess]  = useState(null)
 
-  const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${C.border}`, fontSize: 14, outline: 'none', background: C.cream, color: C.green, fontFamily: 'Montserrat, sans-serif', boxSizing: 'border-box' }
-
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     const result = await createClient(fullName, email, pack)
     setLoading(false)
-    if (result.success) { setSuccess(result.tempPassword); onAdd() }
-    else setError(result.error ?? 'Erreur lors de la création du compte.')
+    if (result.success) {
+      setSuccess(result.tempPassword)
+      onAdd()
+    } else {
+      setError(result.error ?? 'Erreur lors de la création du compte.')
+    }
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={onClose}>
-      <div style={{ background: C.white, borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', width: '100%', maxWidth: 440, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-        <div style={{ background: `linear-gradient(135deg, ${C.green}, ${C.greenDark})`, padding: '20px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h3 style={{ fontWeight: 700, color: C.white, fontSize: 17, margin: 0 }}>Ajouter un client</h3>
-          <button onClick={onClose} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-            <XIcon className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.7)' }} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-orias-green px-6 py-5 flex items-center justify-between">
+          <h3 className="font-bold text-white text-lg">Ajouter un client</h3>
+          <button onClick={onClose} className="text-green-300 hover:text-white transition-colors">
+            <XIcon className="w-6 h-6" />
           </button>
         </div>
-        <div style={{ padding: 24 }}>
+        <div className="p-6">
           {success ? (
-            <div style={{ textAlign: 'center' }}>
-              <CheckCircleIcon className="w-14 h-14" style={{ color: '#10b981', margin: '0 auto 12px' }} />
-              <p style={{ fontWeight: 700, color: C.green, fontSize: 16, marginBottom: 16 }}>Compte créé avec succès !</p>
-              <div style={{ background: C.cream, borderRadius: 12, padding: 16, border: `1px solid ${C.border}`, textAlign: 'left', marginBottom: 16 }}>
-                <p style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Mot de passe temporaire</p>
-                <p style={{ fontFamily: 'monospace', fontWeight: 800, color: C.green, fontSize: 20, marginBottom: 6 }}>{success}</p>
-                <p style={{ fontSize: 11, color: '#9ca3af' }}>Transmettez ce mot de passe au client. Il pourra le changer à sa première connexion.</p>
+            <div className="text-center space-y-4">
+              <CheckCircleIcon className="w-14 h-14 text-emerald-500 mx-auto" />
+              <p className="font-bold text-orias-green text-lg">Compte créé avec succès !</p>
+              <div className="bg-orias-bg rounded-xl p-4 border border-orias-border text-left">
+                <p className="text-xs text-gray-500 font-semibold mb-1">Mot de passe temporaire</p>
+                <p className="font-mono font-bold text-orias-green text-lg">{success}</p>
+                <p className="text-xs text-gray-400 mt-1">Transmettez ce mot de passe au client. Il pourra le changer à sa première connexion.</p>
               </div>
-              <button onClick={onClose} style={{ width: '100%', background: C.green, color: C.gold, border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>Fermer</button>
+              <button onClick={onClose} className="btn-green w-full">Fermer</button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {error && <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', padding: '10px 14px', borderRadius: 10, fontSize: 13 }}>{error}</div>}
-              {[
-                { label: 'Nom complet', el: <input value={fullName} onChange={e => setFullName(e.target.value)} required style={inputStyle} placeholder="Sophie Martin" /> },
-                { label: 'Email', el: <input type="email" value={email} onChange={e => setEmail(e.target.value)} required style={inputStyle} placeholder="client@email.com" /> },
-                { label: 'Pack', el: <select value={pack} onChange={e => setPack(e.target.value)} style={inputStyle}><option>Essentiel</option><option>Starter</option><option>Premium</option></select> },
-              ].map(({ label, el }) => (
-                <div key={label}>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: C.green, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</label>
-                  {el}
-                </div>
-              ))}
-              <button type="button" onClick={handleSubmit} disabled={loading} style={{ background: loading ? '#e5e7eb' : C.green, color: loading ? '#9ca3af' : C.gold, border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 14, cursor: loading ? 'not-allowed' : 'pointer', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                {loading ? <><svg style={{ width: 16, height: 16, animation: 'spin 1s linear infinite' }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25" /><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>Création…</> : 'Créer le compte client'}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nom complet</label>
+                <input value={fullName} onChange={e => setFullName(e.target.value)} required
+                  className="input-field" placeholder="Sophie Martin" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  className="input-field" placeholder="client@email.com" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Pack</label>
+                <select value={pack} onChange={e => setPack(e.target.value)} className="input-field">
+                  <option>Essentiel</option>
+                  <option>Starter</option>
+                  <option>Premium</option>
+                </select>
+              </div>
+              <button type="submit" disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
+                {loading
+                  ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Création…</>
+                  : 'Créer le compte client'
+                }
               </button>
-            </div>
+            </form>
           )}
         </div>
       </div>
@@ -118,17 +110,19 @@ function AddClientModal({ onClose, onAdd }) {
   )
 }
 
-// ─── Clients section (logic intact) ───────────────────────────
 function ClientsSection() {
-  const [clients,        setClients]        = useState(ADMIN_CLIENTS)
+  const [clients, setClients]   = useState(ADMIN_CLIENTS)
   const [loadingClients, setLoadingClients] = useState(true)
-  const [search,         setSearch]         = useState('')
-  const [selected,       setSelected]       = useState(null)
-  const [filter,         setFilter]         = useState('all')
-  const [showAdd,        setShowAdd]        = useState(false)
+  const [search, setSearch]     = useState('')
+  const [selected, setSelected] = useState(null)
+  const [filter, setFilter]     = useState('all')
+  const [showAdd, setShowAdd]   = useState(false)
 
   const loadClients = () => fetchAllClients().then(data => setClients(data))
-  useEffect(() => { loadClients().finally(() => setLoadingClients(false)) }, [])
+
+  useEffect(() => {
+    loadClients().finally(() => setLoadingClients(false))
+  }, [])
 
   const filtered = clients.filter(c => {
     const matchSearch = `${c.nom} ${c.prenom} ${c.pack}`.toLowerCase().includes(search.toLowerCase())
@@ -136,100 +130,92 @@ function ClientsSection() {
     return matchSearch && matchFilter
   })
 
-  const statusStyle = (s) => s === 'ORIAS obtenu'
-    ? { background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' }
-    : { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }
+  const statusCls = (s) => s === 'ORIAS obtenu'
+    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : 'bg-amber-50 text-amber-700 border-amber-200'
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Filters bar */}
-      <Card style={{ padding: 16 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative', flex: 1, minWidth: 200 }}>
-            <SearchIcon className="w-4 h-4" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher un client…"
-              style={{ width: '100%', paddingLeft: 36, padding: '10px 14px 10px 36px', borderRadius: 10, border: `1.5px solid ${C.border}`, fontSize: 13, outline: 'none', background: C.cream, color: C.green, boxSizing: 'border-box' }}
-            />
-          </div>
-          <div style={{ display: 'flex', borderRadius: 10, border: `1.5px solid ${C.border}`, overflow: 'hidden' }}>
-            {[['all', 'Tous'], ['cours', 'En cours'], ['obtenu', 'ORIAS obtenu']].map(([v, l]) => (
-              <button key={v} onClick={() => setFilter(v)} style={{ padding: '8px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none', background: filter === v ? C.green : 'transparent', color: filter === v ? C.gold : '#6b7280', transition: 'all 0.15s' }}>{l}</button>
-            ))}
-          </div>
-          <span style={{ fontSize: 12, color: '#9ca3af' }}>{filtered.length} client{filtered.length > 1 ? 's' : ''}</span>
-          <button onClick={() => setShowAdd(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: C.gold, color: C.green, border: 'none', borderRadius: 10, padding: '10px 18px', fontWeight: 700, fontSize: 13, cursor: 'pointer', marginLeft: 'auto' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 15, height: 15 }}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            Ajouter un client
-          </button>
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="card p-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-48">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input-field pl-9 py-2.5 text-sm"
+            placeholder="Rechercher un client..."
+          />
         </div>
-      </Card>
+        <div className="flex rounded-xl border border-orias-border overflow-hidden">
+          {[['all','Tous'],['cours','En cours'],['obtenu','ORIAS obtenu']].map(([v, l]) => (
+            <button key={v} onClick={() => setFilter(v)} className={`px-3 py-2 text-sm font-medium transition-colors ${filter === v ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>{l}</button>
+          ))}
+        </div>
+        <span className="text-sm text-gray-500">{filtered.length} client{filtered.length > 1 ? 's' : ''}</span>
+        <button onClick={() => setShowAdd(true)} className="btn-gold flex items-center gap-2 text-sm ml-auto">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un client
+        </button>
+      </div>
 
       {/* Table */}
-      <Card style={{ overflow: 'hidden' }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr style={{ borderBottom: `1.5px solid ${C.border}`, background: C.cream }}>
-                {['Client', 'Pack', 'Progression', 'Statut', 'Activité', 'Actions'].map((h, i) => (
-                  <th key={h} style={{ textAlign: i === 5 ? 'right' : 'left', padding: '12px 16px', fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
+              <tr className="border-b border-orias-border bg-orias-bg">
+                <th className="text-left px-5 py-3.5 font-semibold text-gray-600">Client</th>
+                <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden md:table-cell">Pack</th>
+                <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Progression</th>
+                <th className="text-left px-4 py-3.5 font-semibold text-gray-600">Statut</th>
+                <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden xl:table-cell">Activité</th>
+                <th className="text-right px-5 py-3.5 font-semibold text-gray-600">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loadingClients ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>
-                  <svg style={{ width: 24, height: 24, animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={C.gold} strokeWidth="4" strokeOpacity="0.25" /><path fill={C.gold} d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  Chargement…
-                </td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', padding: 40, color: '#9ca3af' }}>Aucun client trouvé</td></tr>
-              ) : filtered.map((client, i) => (
-                <tr key={client.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? C.white : C.cream, transition: 'background 0.15s' }}
-                  onMouseEnter={e => e.currentTarget.style.background = '#f0ede8'}
-                  onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? C.white : C.cream}
-                >
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(26,61,43,0.1)', border: `1px solid rgba(26,61,43,0.2)`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, color: C.green, flexShrink: 0 }}>
+              {filtered.map((client, i) => (
+                <tr key={client.id} className={`border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors ${i % 2 === 0 ? '' : 'bg-orias-bg/20'}`}>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-orias-green/10 border border-orias-green/20 flex items-center justify-center text-sm font-bold text-orias-green flex-shrink-0">
                         {client.prenom[0]}{client.nom[0]}
                       </div>
                       <div>
-                        <p style={{ fontWeight: 600, color: '#1f2937', margin: 0 }}>{client.prenom} {client.nom}</p>
-                        <p style={{ fontSize: 11, color: '#9ca3af', margin: 0 }}>{client.email}</p>
+                        <p className="font-semibold text-gray-800">{client.prenom} {client.nom}</p>
+                        <p className="text-xs text-gray-400 hidden sm:block">{client.email}</p>
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: 'rgba(26,61,43,0.08)', color: C.green, border: `1px solid rgba(26,61,43,0.15)` }}>{client.pack}</span>
+                  <td className="px-4 py-4 hidden md:table-cell">
+                    <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orias-green/10 text-orias-green border border-orias-green/20">{client.pack}</span>
                   </td>
-                  <td style={{ padding: '14px 16px', minWidth: 140 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ flex: 1, height: 6, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: client.progression >= 80 ? '#10b981' : C.gold, borderRadius: 99, width: `${client.progression}%` }} />
+                  <td className="px-4 py-4 hidden lg:table-cell min-w-32">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs text-gray-500">{client.progression}%</span>
                       </div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#6b7280', flexShrink: 0 }}>{client.progression}%</span>
+                      <ProgressBar value={client.progression} max={100} height="h-1.5" />
                     </div>
                   </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 700, padding: '4px 10px', borderRadius: 20, ...statusStyle(client.statut) }}>
+                  <td className="px-4 py-4">
+                    <span className={`status-badge border ${statusCls(client.statut)} text-xs`}>
                       {client.statut === 'ORIAS obtenu' ? <CheckCircleIcon className="w-3 h-3" /> : <ClockIcon className="w-3 h-3" />}
-                      {client.statut}
+                      <span className="hidden sm:inline">{client.statut}</span>
                     </span>
                   </td>
-                  <td style={{ padding: '14px 16px', fontSize: 12, color: '#9ca3af' }}>{client.activite}</td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
-                      {[
-                        { icon: <EyeIcon className="w-4 h-4" />, action: () => setSelected(client), title: 'Voir', hoverColor: C.green },
-                        { icon: <EditIcon className="w-4 h-4" />, action: () => {}, title: 'Modifier', hoverColor: C.gold },
-                        { icon: <MessageIcon className="w-4 h-4" />, action: () => {}, title: 'Message', hoverColor: '#3b82f6' },
-                      ].map(({ icon, action, title }) => (
-                        <button key={title} onClick={action} title={title}
-                          style={{ padding: 6, borderRadius: 8, background: 'transparent', border: 'none', cursor: 'pointer', color: '#9ca3af', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          onMouseEnter={e => { e.currentTarget.style.background = C.cream; e.currentTarget.style.color = C.green }}
-                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#9ca3af' }}
-                        >{icon}</button>
-                      ))}
+                  <td className="px-4 py-4 hidden xl:table-cell text-xs text-gray-400">{client.activite}</td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => setSelected(client)} className="p-1.5 rounded-lg text-gray-400 hover:text-orias-green hover:bg-orias-green/10 transition-colors" title="Voir">
+                        <EyeIcon className="w-4 h-4" />
+                      </button>
+                      <button className="p-1.5 rounded-lg text-gray-400 hover:text-orias-gold hover:bg-orias-gold/10 transition-colors" title="Modifier">
+                        <EditIcon className="w-4 h-4" />
+                      </button>
+                      <button className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Message">
+                        <MessageIcon className="w-4 h-4" />
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -237,60 +223,57 @@ function ClientsSection() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </div>
 
       {showAdd && <AddClientModal onClose={() => setShowAdd(false)} onAdd={() => { loadClients(); setShowAdd(false) }} />}
 
       {/* Client detail modal */}
       {selected && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }} onClick={() => setSelected(null)}>
-          <div style={{ background: C.white, borderRadius: 20, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', width: '100%', maxWidth: 420, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
-            <div style={{ background: `linear-gradient(135deg, ${C.green}, ${C.greenDark})`, padding: '20px 24px', position: 'relative' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, ${C.gold}, #b8960a)` }} />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(201,168,76,0.2)', border: `2px solid ${C.gold}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 800, color: C.gold }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelected(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="bg-orias-green px-6 py-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-orias-gold/20 border-2 border-orias-gold flex items-center justify-center text-lg font-bold text-orias-gold">
                     {selected.prenom[0]}{selected.nom[0]}
                   </div>
                   <div>
-                    <h3 style={{ fontWeight: 700, color: C.white, fontSize: 16, margin: 0 }}>{selected.prenom} {selected.nom}</h3>
-                    <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, margin: 0 }}>{selected.email}</p>
+                    <h3 className="font-bold text-white text-lg">{selected.prenom} {selected.nom}</h3>
+                    <p className="text-green-300 text-sm">{selected.email}</p>
                   </div>
                 </div>
-                <button onClick={() => setSelected(null)} style={{ background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 8, width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                  <XIcon className="w-5 h-5" style={{ color: 'rgba(255,255,255,0.7)' }} />
+                <button onClick={() => setSelected(null)} className="text-green-300 hover:text-white transition-colors">
+                  <XIcon className="w-6 h-6" />
                 </button>
               </div>
             </div>
-            <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {[{ label: 'Pack', value: selected.pack, color: C.green }, { label: 'Statut', value: selected.statut, color: selected.statut === 'ORIAS obtenu' ? '#15803d' : '#b45309' }].map(({ label, value, color }) => (
-                  <div key={label} style={{ background: C.cream, borderRadius: 12, padding: '12px 14px', border: `1px solid ${C.border}` }}>
-                    <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{label}</p>
-                    <p style={{ fontWeight: 700, color, margin: 0, fontSize: 14 }}>{value}</p>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Progression dossier</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <div style={{ flex: 1, height: 8, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', background: selected.progression >= 80 ? '#10b981' : C.gold, borderRadius: 99, width: `${selected.progression}%` }} />
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>{selected.progression}%</span>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-orias-bg rounded-xl p-3 border border-orias-border">
+                  <p className="text-xs text-gray-500 font-medium">Pack</p>
+                  <p className="font-bold text-orias-green">{selected.pack}</p>
+                </div>
+                <div className="bg-orias-bg rounded-xl p-3 border border-orias-border">
+                  <p className="text-xs text-gray-500 font-medium">Statut</p>
+                  <p className={`font-bold ${selected.statut === 'ORIAS obtenu' ? 'text-emerald-600' : 'text-amber-600'}`}>{selected.statut}</p>
                 </div>
               </div>
-              <div style={{ background: C.cream, borderRadius: 12, padding: '12px 14px', border: `1px solid ${C.border}` }}>
-                <p style={{ fontSize: 11, color: '#9ca3af', margin: '0 0 4px', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>Dernière activité</p>
-                <p style={{ fontWeight: 600, color: '#374151', margin: 0, fontSize: 13 }}>{selected.activite}</p>
+              <div>
+                <p className="text-xs text-gray-500 font-medium mb-1.5">Progression dossier</p>
+                <ProgressBar value={selected.progression} max={100} height="h-2.5" showLabel={true} label="" />
               </div>
-              <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
-                <button style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: '#25d366', color: C.white, border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
-                  <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 16, height: 16 }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg>
-                  WhatsApp
+              <div className="bg-orias-bg rounded-xl p-3 border border-orias-border">
+                <p className="text-xs text-gray-500 font-medium">Dernière activité</p>
+                <p className="font-semibold text-gray-700 text-sm">{selected.activite}</p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button className="btn-gold flex-1 flex items-center justify-center gap-2">
+                  <MessageIcon className="w-4 h-4" />
+                  Message WhatsApp
                 </button>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent', color: C.green, border: `1.5px solid ${C.green}`, borderRadius: 10, padding: '12px 16px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-                  <EditIcon className="w-4 h-4" /> Modifier
+                <button className="btn-outline-green flex items-center gap-2 px-4">
+                  <EditIcon className="w-4 h-4" />
+                  Modifier
                 </button>
               </div>
             </div>
@@ -301,23 +284,38 @@ function ClientsSection() {
   )
 }
 
-// ─── Reason dialog (logic intact) ─────────────────────────────
+const STEP_LABELS = ['Consultation initiale','Montage dossier','Structure juridique','Soumission ORIAS','Obtention ORIAS','Lancement activité']
+
+// ── Inline reason dialog ──────────────────────────────────────
+
 function ReasonDialog({ docLabel, action, onConfirm, onCancel }) {
   const [reason, setReason] = useState('')
-  const isReject = action === 'reject'
+  const placeholder = action === 'correction'
+    ? 'Ex: La date est illisible, merci de renvoyer un document plus récent.'
+    : 'Ex: Document expiré ou illisible, veuillez envoyer la version correcte.'
+
   return (
-    <div style={{ marginTop: 8, padding: 12, borderRadius: 10, border: `1px solid ${C.border}`, background: C.white, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}>
-      <p style={{ fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 8 }}>
-        {isReject ? '❌ Raison du rejet :' : '💬 Message de correction pour le client :'}
+    <div className="mt-2 p-3 rounded-xl border bg-white shadow-sm space-y-2">
+      <p className="text-xs font-semibold text-gray-600">
+        {action === 'correction' ? '💬 Message de correction pour le client :' : '❌ Raison du rejet :'}
       </p>
-      <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} autoFocus
-        placeholder={isReject ? 'Ex: Document expiré ou illisible.' : 'Ex: La date est illisible, merci de renvoyer.'}
-        style={{ width: '100%', padding: '8px 12px', borderRadius: 8, border: `1.5px solid ${C.border}`, fontSize: 12, resize: 'none', outline: 'none', boxSizing: 'border-box', fontFamily: 'Montserrat, sans-serif' }}
+      <textarea
+        value={reason}
+        onChange={e => setReason(e.target.value)}
+        rows={2}
+        placeholder={placeholder}
+        className="input-field resize-none text-xs py-2"
+        autoFocus
       />
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 8 }}>
-        <button onClick={onCancel} style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, background: '#f3f4f6', border: 'none', color: '#6b7280', cursor: 'pointer', fontWeight: 600 }}>Annuler</button>
-        <button onClick={() => onConfirm(reason)} disabled={!reason.trim()}
-          style={{ fontSize: 12, padding: '6px 12px', borderRadius: 8, border: 'none', color: C.white, cursor: reason.trim() ? 'pointer' : 'not-allowed', fontWeight: 700, background: isReject ? '#ef4444' : '#f59e0b', opacity: reason.trim() ? 1 : 0.4 }}>
+      <div className="flex gap-2 justify-end">
+        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200">Annuler</button>
+        <button
+          onClick={() => onConfirm(reason)}
+          disabled={!reason.trim()}
+          className={`text-xs px-3 py-1.5 rounded-lg font-semibold text-white disabled:opacity-40 ${
+            action === 'correction' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
+          }`}
+        >
           Confirmer
         </button>
       </div>
@@ -325,67 +323,105 @@ function ReasonDialog({ docLabel, action, onConfirm, onCancel }) {
   )
 }
 
-// ─── Admin doc row (logic intact) ─────────────────────────────
+// ── Admin document row ────────────────────────────────────────
+
 function AdminDocRow({ doc, catLabel, onAction }) {
-  const [showDialog, setShowDialog] = useState(null)
+  const [showDialog, setShowDialog] = useState(null) // 'reject' | 'correction' | null
+
   const statusCfg = {
-    valid:      { bg: '#f0fdf4', border: '#bbf7d0', color: '#15803d', icon: '✅', label: 'Validé' },
-    pending:    { bg: '#fffbeb', border: '#fde68a', color: '#b45309', icon: '⏳', label: 'En attente' },
-    missing:    { bg: '#fef2f2', border: '#fecaca', color: '#dc2626', icon: '❌', label: 'Manquant' },
-    correction: { bg: '#fff7ed', border: '#fed7aa', color: '#c2410c', icon: '💬', label: 'Correction' },
-    none:       { bg: '#f9fafb', border: '#e5e7eb', color: '#9ca3af', icon: '➖', label: 'Non soumis' },
+    valid:      { badge: 'bg-emerald-50 border-emerald-200 text-emerald-700', icon: '✅', label: 'Validé' },
+    pending:    { badge: 'bg-amber-50 border-amber-200 text-amber-700',      icon: '⏳', label: 'En attente' },
+    missing:    { badge: 'bg-red-50 border-red-200 text-red-700',            icon: '❌', label: 'Rejeté' },
+    correction: { badge: 'bg-orange-50 border-orange-200 text-orange-700',   icon: '💬', label: 'Correction dem.' },
+    none:       { badge: 'bg-gray-50 border-gray-200 text-gray-500',         icon: '➖', label: 'Non soumis' },
   }
   const cfg = statusCfg[doc?.status ?? 'none']
 
   return (
-    <div style={{ padding: '12px 14px', borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.white }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: '#1f2937', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{catLabel}</p>
-          {doc?.fileName && <p style={{ fontSize: 11, color: '#9ca3af', margin: '2px 0 0' }}>📎 {doc.fileName}</p>}
-          {doc?.rejectionReason && <p style={{ fontSize: 11, color: '#ef4444', margin: '2px 0 0' }}>"{doc.rejectionReason}"</p>}
+    <div className="p-3 rounded-xl border border-orias-border bg-white">
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Name */}
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-800 truncate">{catLabel}</p>
+          {doc?.fileName && (
+            <p className="text-xs text-gray-400 truncate">📎 {doc.fileName}</p>
+          )}
+          {doc?.rejectionReason && (
+            <p className="text-xs text-red-500 mt-0.5 truncate">"{doc.rejectionReason}"</p>
+          )}
         </div>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: cfg.bg, border: `1px solid ${cfg.border}`, color: cfg.color, flexShrink: 0 }}>
+
+        {/* Status badge */}
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold border flex-shrink-0 ${cfg.badge}`}>
           {cfg.icon} {cfg.label}
         </span>
+
+        {/* Download */}
         {doc?.fileUrl && (
-          <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer"
-            style={{ flexShrink: 0, padding: 6, borderRadius: 8, background: C.cream, border: `1px solid ${C.border}`, color: C.green, display: 'flex', alignItems: 'center' }}
+          <a
+            href={doc.fileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex-shrink-0 p-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green hover:bg-orias-green hover:text-white transition-colors"
+            title="Voir / télécharger"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
           </a>
         )}
+
+        {/* Action buttons (only when doc submitted and not already valid) */}
         {doc && doc.status !== 'valid' && (
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-            {[
-              { label: '✅ Valider', bg: '#d1fae5', color: '#065f46', action: () => onAction(doc.id, 'valide', null) },
-              { label: '❌ Rejeter', bg: '#fee2e2', color: '#991b1b', action: () => setShowDialog(showDialog === 'reject' ? null : 'reject') },
-              { label: '💬 Corriger', bg: '#fef3c7', color: '#92400e', action: () => setShowDialog(showDialog === 'correction' ? null : 'correction') },
-            ].map(({ label, bg, color, action }) => (
-              <button key={label} onClick={action}
-                style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, background: bg, color, border: 'none', cursor: 'pointer', fontWeight: 700 }}>
-                {label}
-              </button>
-            ))}
+          <div className="flex gap-1 flex-shrink-0">
+            <button
+              onClick={() => onAction(doc.id, 'valide', null)}
+              className="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 font-semibold transition-colors"
+              title="Valider"
+            >✅ Valider</button>
+            <button
+              onClick={() => setShowDialog(showDialog === 'reject' ? null : 'reject')}
+              className="text-xs px-2.5 py-1 rounded-full bg-red-100 text-red-700 hover:bg-red-200 font-semibold transition-colors"
+              title="Rejeter"
+            >❌ Rejeter</button>
+            <button
+              onClick={() => setShowDialog(showDialog === 'correction' ? null : 'correction')}
+              className="text-xs px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 font-semibold transition-colors"
+              title="Demander correction"
+            >💬 Correction</button>
           </div>
         )}
         {doc?.status === 'valid' && (
-          <button onClick={() => onAction(doc.id, 'en_attente', null)}
-            style={{ fontSize: 11, padding: '4px 10px', borderRadius: 20, background: '#f3f4f6', color: '#6b7280', border: 'none', cursor: 'pointer', fontWeight: 600, flexShrink: 0 }}>
-            Annuler
-          </button>
+          <button
+            onClick={() => onAction(doc.id, 'en_attente', null)}
+            className="text-xs px-2.5 py-1 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 font-semibold transition-colors flex-shrink-0"
+            title="Annuler la validation"
+          >Annuler</button>
         )}
       </div>
-      {showDialog === 'reject' && <ReasonDialog docLabel={catLabel} action="reject" onConfirm={r => { onAction(doc.id, 'manquant', r); setShowDialog(null) }} onCancel={() => setShowDialog(null)} />}
-      {showDialog === 'correction' && <ReasonDialog docLabel={catLabel} action="correction" onConfirm={r => { onAction(doc.id, 'correction_demandee', r); setShowDialog(null) }} onCancel={() => setShowDialog(null)} />}
+
+      {showDialog === 'reject' && (
+        <ReasonDialog
+          docLabel={catLabel}
+          action="reject"
+          onConfirm={reason => { onAction(doc.id, 'manquant', reason); setShowDialog(null) }}
+          onCancel={() => setShowDialog(null)}
+        />
+      )}
+      {showDialog === 'correction' && (
+        <ReasonDialog
+          docLabel={catLabel}
+          action="correction"
+          onConfirm={reason => { onAction(doc.id, 'correction_demandee', reason); setShowDialog(null) }}
+          onCancel={() => setShowDialog(null)}
+        />
+      )}
     </div>
   )
 }
 
-// ─── Dossier section (logic intact) ───────────────────────────
-const STEP_LABELS = ['Consultation initiale', 'Montage dossier', 'Structure juridique', 'Soumission ORIAS', 'Obtention ORIAS', 'Lancement activité']
+// ── Dossier section ───────────────────────────────────────────
 
 function DossierSection() {
   const [clients,        setClients]        = useState(ADMIN_CLIENTS)
@@ -396,14 +432,19 @@ function DossierSection() {
   const [currentStep,    setCurrentStep]    = useState(1)
 
   useEffect(() => {
-    fetchAllClients().then(data => { setClients(data); if (data.length > 0) selectClient(data[0]) })
+    fetchAllClients().then(data => {
+      setClients(data)
+      if (data.length > 0) selectClient(data[0])
+    })
   }, [])
 
   const selectClient = (c) => {
     setSelectedClient(c)
     setCurrentStep(c.dossierStep ?? 1)
     setLoadingDocs(true)
-    fetchClientDocumentsWithDetails(c.id).then(setDocs).finally(() => setLoadingDocs(false))
+    fetchClientDocumentsWithDetails(c.id)
+      .then(setDocs)
+      .finally(() => setLoadingDocs(false))
   }
 
   const handleStepUpdate = async (step) => {
@@ -416,224 +457,276 @@ function DossierSection() {
 
   const handleDocAction = async (docId, status, reason) => {
     await updateDocumentStatusWithReason(docId, status, reason)
-    setDocs(prev => prev.map(d => d.id === docId
-      ? { ...d, status: status === 'valide' ? 'valid' : status === 'manquant' ? 'missing' : status === 'correction_demandee' ? 'correction' : 'pending', rejectionReason: reason }
-      : d
+    setDocs(prev => prev.map(d =>
+      d.id === docId
+        ? {
+            ...d,
+            status:          status === 'valide' ? 'valid' : status === 'manquant' ? 'missing' : status === 'correction_demandee' ? 'correction' : 'pending',
+            rejectionReason: reason,
+          }
+        : d
     ))
   }
 
+  // Build a map of category → doc for the 9 required categories
   const docsByCategory = {}
   docs.forEach(d => { if (d.category) docsByCategory[d.category] = d })
+
+  // Pending doc count for selected client
   const pendingCount = docs.filter(d => d.status === 'pending').length
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 16 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(220px, 300px) 1fr', gap: 16, alignItems: 'start' }}>
-        {/* Client list */}
-        <Card style={{ padding: 16 }}>
-          <h3 style={{ fontWeight: 700, color: C.green, marginBottom: 12, fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sélectionner un client</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxHeight: 400, overflowY: 'auto' }}>
-            {clients.map(c => {
-              const active = selectedClient?.id === c.id
-              return (
-                <button key={c.id} onClick={() => selectClient(c)} style={{
-                  width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, border: 'none', cursor: 'pointer', transition: 'all 0.15s',
-                  background: active ? C.green : 'transparent', color: active ? C.white : '#374151',
-                }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: active ? 'rgba(255,255,255,0.2)' : 'rgba(26,61,43,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, color: active ? C.white : C.green, flexShrink: 0 }}>
-                    {c.prenom[0]}{c.nom[0]}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontWeight: 600, fontSize: 13, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.prenom} {c.nom}</p>
-                    <p style={{ fontSize: 11, margin: 0, color: active ? 'rgba(255,255,255,0.6)' : '#9ca3af' }}>{c.pack} · Étape {c.dossierStep ?? 1}</p>
-                  </div>
-                  {(c.pendingDocCount ?? 0) > 0 && (
-                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: '#ef4444', color: C.white, fontSize: 10, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{c.pendingDocCount}</span>
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Client selector */}
+      <div className="card p-4">
+        <h3 className="font-bold text-orias-green mb-3">Sélectionner un client</h3>
+        <div className="space-y-1.5 max-h-96 overflow-y-auto">
+          {clients.map(c => (
+            <button
+              key={c.id}
+              onClick={() => selectClient(c)}
+              className={`w-full text-left flex items-center gap-3 p-3 rounded-xl transition-all duration-200 ${
+                selectedClient?.id === c.id ? 'bg-orias-green text-white' : 'hover:bg-orias-bg text-gray-700'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${selectedClient?.id === c.id ? 'bg-white/20 text-white' : 'bg-orias-green/10 text-orias-green'}`}>
+                {c.prenom[0]}{c.nom[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="font-semibold text-sm truncate">{c.prenom} {c.nom}</p>
+                <p className={`text-xs truncate ${selectedClient?.id === c.id ? 'text-green-300' : 'text-gray-400'}`}>{c.pack} · Étape {c.dossierStep ?? 1}</p>
+              </div>
+              {/* Notification badge */}
+              {(c.pendingDocCount ?? 0) > 0 && (
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex items-center justify-center">
+                  {c.pendingDocCount}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Dossier detail */}
+      <div className="lg:col-span-2 space-y-4">
+        {selectedClient ? (
+          <>
+            {/* Client header */}
+            <div className="card p-5">
+              <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
+                <div>
+                  <h3 className="font-bold text-orias-green text-lg">{selectedClient.prenom} {selectedClient.nom}</h3>
+                  <p className="text-sm text-gray-500">{selectedClient.email}</p>
+                  {selectedClient.dossierNumber && (
+                    <p className="text-xs font-semibold text-orias-gold mt-0.5">N° {selectedClient.dossierNumber}</p>
                   )}
-                </button>
-              )
-            })}
-          </div>
-        </Card>
-
-        {/* Dossier detail */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {selectedClient ? (
-            <>
-              {/* Client header */}
-              <Card style={{ padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-                  <div>
-                    <h3 style={{ fontWeight: 700, color: C.green, fontSize: 17, margin: '0 0 2px' }}>{selectedClient.prenom} {selectedClient.nom}</h3>
-                    <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>{selectedClient.email}</p>
-                    {selectedClient.dossierNumber && <p style={{ fontSize: 11, fontWeight: 700, color: C.gold, margin: '4px 0 0' }}>N° {selectedClient.dossierNumber}</p>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, ...(selectedClient.statut === 'ORIAS obtenu' ? { background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0' } : { background: '#fffbeb', color: '#b45309', border: '1px solid #fde68a' }) }}>
-                      {selectedClient.statut}
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`status-badge border ${selectedClient.statut === 'ORIAS obtenu' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                    {selectedClient.statut}
+                  </span>
+                  {pendingCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-500 text-white">
+                      🔴 {pendingCount} doc{pendingCount > 1 ? 's' : ''} à valider
                     </span>
-                    {pendingCount > 0 && (
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}>
-                        🔴 {pendingCount} doc{pendingCount > 1 ? 's' : ''} à valider
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 12, color: '#6b7280' }}>Étape actuelle</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: C.green }}>{currentStep} / 6</span>
-                </div>
-                <div style={{ height: 8, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', background: C.gold, borderRadius: 99, width: `${((currentStep - 1) / 5) * 100}%`, transition: 'width 0.4s ease' }} />
-                </div>
-              </Card>
+              </div>
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+                <span>Étape actuelle</span>
+                <span className="font-bold text-orias-green">{currentStep} / 6</span>
+              </div>
+              <ProgressBar value={currentStep - 1} max={5} height="h-2" />
+            </div>
 
-              {/* Steps */}
-              <Card style={{ padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <h4 style={{ fontWeight: 700, color: C.green, margin: 0, fontSize: 14 }}>Étapes du dossier</h4>
-                  {updatingStep && <svg style={{ width: 16, height: 16, animation: 'spin 1s linear infinite', color: C.gold }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" strokeOpacity="0.25" /><path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {STEP_LABELS.map((step, i) => {
-                    const n = i + 1, done = n < currentStep, active = n === currentStep
-                    return (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${done ? '#bbf7d0' : active ? '#fde68a' : '#e5e7eb'}`, background: done ? '#f0fdf4' : active ? '#fffbeb' : '#f9fafb' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: done ? '#10b981' : active ? C.gold : '#d1d5db', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {done ? <CheckCircleIcon className="w-4 h-4" style={{ color: C.white }} /> : <span style={{ fontSize: 11, fontWeight: 800, color: C.white }}>{n}</span>}
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: done ? '#15803d' : active ? '#b45309' : '#9ca3af' }}>{step}</span>
-                        </div>
-                        {active && (
-                          <button onClick={() => handleStepUpdate(Math.min(n + 1, 6))} disabled={updatingStep}
-                            style={{ fontSize: 11, fontWeight: 700, padding: '5px 12px', borderRadius: 20, background: 'rgba(201,168,76,0.15)', color: C.gold, border: `1px solid rgba(201,168,76,0.4)`, cursor: 'pointer', opacity: updatingStep ? 0.5 : 1 }}>
-                            Valider →
-                          </button>
-                        )}
-                        {done && <span style={{ fontSize: 11, fontWeight: 700, color: '#15803d' }}>✓ Validé</span>}
-                      </div>
-                    )
-                  })}
-                </div>
-              </Card>
-
-              {/* Documents */}
-              <Card style={{ padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                  <h4 style={{ fontWeight: 700, color: C.green, margin: 0, fontSize: 14 }}>Documents ({REQUIRED_DOCUMENTS.length} requis)</h4>
-                  <div style={{ display: 'flex', gap: 10, fontSize: 12 }}>
-                    <span style={{ fontWeight: 700, color: '#15803d' }}>{docs.filter(d => d.status === 'valid').length} validés</span>
-                    <span style={{ color: '#d1d5db' }}>|</span>
-                    <span style={{ fontWeight: 700, color: '#b45309' }}>{pendingCount} en attente</span>
-                  </div>
-                </div>
-                {loadingDocs ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 32 }}>
-                    <svg style={{ width: 24, height: 24, animation: 'spin 1s linear infinite' }} viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke={C.gold} strokeWidth="4" strokeOpacity="0.25" /><path fill={C.gold} d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {REQUIRED_DOCUMENTS.map(req => (
-                      <AdminDocRow key={req.id} doc={docsByCategory[req.id] ?? null} catLabel={req.label} onAction={handleDocAction} />
-                    ))}
-                  </div>
+            {/* Step manager */}
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-bold text-orias-green">Étapes du dossier</h4>
+                {updatingStep && (
+                  <svg className="animate-spin w-4 h-4 text-orias-gold" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
                 )}
-              </Card>
+              </div>
+              <div className="space-y-2">
+                {STEP_LABELS.map((step, i) => {
+                  const stepNum = i + 1
+                  const done    = stepNum < currentStep
+                  const active  = stepNum === currentStep
+                  return (
+                    <div key={i} className={`flex items-center justify-between p-3 rounded-xl border ${
+                      done ? 'bg-emerald-50 border-emerald-200' : active ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                          done ? 'bg-emerald-500' : active ? 'bg-orias-gold' : 'bg-gray-300'
+                        }`}>
+                          {done ? <CheckCircleIcon className="w-4 h-4 text-white" /> : <span className="text-xs font-bold text-white">{stepNum}</span>}
+                        </div>
+                        <span className={`text-sm font-medium ${done ? 'text-emerald-700' : active ? 'text-amber-700' : 'text-gray-400'}`}>{step}</span>
+                      </div>
+                      {active && (
+                        <button
+                          onClick={() => handleStepUpdate(Math.min(stepNum + 1, 6))}
+                          disabled={updatingStep}
+                          className="text-xs font-semibold px-3 py-1 rounded-full bg-orias-gold/20 text-orias-gold hover:bg-orias-gold/30 border border-orias-gold/40 disabled:opacity-40 transition-colors"
+                        >
+                          Valider →
+                        </button>
+                      )}
+                      {done && <span className="text-xs text-emerald-600 font-semibold">✓ Validé</span>}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
 
-              <a href="https://wa.me/33600000000" target="_blank" rel="noopener noreferrer"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderRadius: 10, fontWeight: 700, fontSize: 13, color: C.white, background: '#25d366', textDecoration: 'none', width: 'fit-content' }}>
-                <svg viewBox="0 0 24 24" fill="currentColor" style={{ width: 16, height: 16 }}><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z" /></svg>
-                WhatsApp
-              </a>
-            </>
-          ) : (
-            <Card style={{ padding: 48, textAlign: 'center' }}>
-              <EyeIcon className="w-10 h-10" style={{ color: '#d1d5db', margin: '0 auto 12px' }} />
-              <p style={{ color: '#9ca3af', fontSize: 14 }}>Sélectionnez un client pour gérer son dossier.</p>
-            </Card>
-          )}
+            {/* Documents */}
+            <div className="card p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="font-bold text-orias-green">Documents ({REQUIRED_DOCUMENTS.length} requis)</h4>
+                <div className="flex gap-2 text-xs">
+                  <span className="text-emerald-600 font-semibold">
+                    {docs.filter(d => d.status === 'valid').length} validés
+                  </span>
+                  <span className="text-gray-300">|</span>
+                  <span className="text-amber-600 font-semibold">
+                    {pendingCount} en attente
+                  </span>
+                </div>
+              </div>
+
+              {loadingDocs ? (
+                <div className="flex items-center justify-center py-8">
+                  <svg className="animate-spin w-5 h-5 text-orias-gold" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {REQUIRED_DOCUMENTS.map(req => (
+                    <AdminDocRow
+                      key={req.id}
+                      doc={docsByCategory[req.id] ?? null}
+                      catLabel={req.label}
+                      onAction={handleDocAction}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <a
+              href="https://wa.me/33600000000"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-[#25d366] hover:bg-[#20bd5a] transition-colors"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/>
+              </svg>
+              WhatsApp
+            </a>
+          </>
+        ) : (
+          <div className="card p-10 text-center text-gray-400">
+            <EyeIcon className="w-10 h-10 mx-auto mb-3 opacity-30" />
+            <p>Sélectionnez un client pour gérer son dossier.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function FormationTrackingSection() {
+  return (
+    <div className="space-y-4">
+      <div className="card p-6">
+        <h3 className="font-bold text-orias-green text-lg mb-5">Suivi des formations</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-orias-border bg-orias-bg">
+                <th className="text-left px-5 py-3.5 font-semibold text-gray-600">Étudiant</th>
+                {FORMATION_UNITS.map(u => (
+                  <th key={u.id} className="text-center px-3 py-3.5 font-semibold text-gray-600 hidden md:table-cell">U{u.id}</th>
+                ))}
+                <th className="text-center px-4 py-3.5 font-semibold text-gray-600">Total</th>
+                <th className="text-center px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Examen</th>
+                <th className="text-center px-4 py-3.5 font-semibold text-gray-600 hidden xl:table-cell">Certificat</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ADMIN_CLIENTS.slice(0, 8).map((c, i) => {
+                const hours = Math.floor(Math.random() * 100 + 50)
+                const examScore = c.statut === 'ORIAS obtenu' ? Math.floor(Math.random() * 30 + 65) : null
+                return (
+                  <tr key={c.id} className="border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors">
+                    <td className="px-5 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-orias-green/10 flex items-center justify-center text-xs font-bold text-orias-green flex-shrink-0">
+                          {c.prenom[0]}{c.nom[0]}
+                        </div>
+                        <span className="font-medium text-gray-700">{c.prenom} {c.nom}</span>
+                      </div>
+                    </td>
+                    {FORMATION_UNITS.map(u => (
+                      <td key={u.id} className="px-3 py-3.5 text-center hidden md:table-cell">
+                        {c.statut === 'ORIAS obtenu' ? (
+                          <CheckCircleIcon className="w-4 h-4 text-emerald-500 mx-auto" />
+                        ) : Math.random() > 0.5 ? (
+                          <CheckCircleIcon className="w-4 h-4 text-emerald-500 mx-auto" />
+                        ) : (
+                          <ClockIcon className="w-4 h-4 text-amber-400 mx-auto" />
+                        )}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3.5 text-center">
+                      <span className="font-bold text-orias-green text-sm">{hours}h</span>
+                    </td>
+                    <td className="px-4 py-3.5 text-center hidden lg:table-cell">
+                      {examScore ? (
+                        <span className="font-bold text-emerald-600 text-sm">{examScore}%</span>
+                      ) : (
+                        <span className="text-gray-300 text-sm">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3.5 text-center hidden xl:table-cell">
+                      {c.statut === 'ORIAS obtenu' ? (
+                        <button className="text-xs font-semibold text-orias-gold hover:text-orias-gold-light flex items-center gap-1 mx-auto">
+                          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                          </svg>
+                          PDF
+                        </button>
+                      ) : (
+                        <span className="text-gray-300 text-sm">—</span>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   )
 }
 
-// ─── Formation tracking (logic intact) ────────────────────────
-function FormationTrackingSection() {
-  return (
-    <Card style={{ padding: 24 }}>
-      <h3 style={{ fontWeight: 700, color: C.green, fontSize: 16, marginBottom: 20 }}>Suivi des formations</h3>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-          <thead>
-            <tr style={{ borderBottom: `1.5px solid ${C.border}`, background: C.cream }}>
-              <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Étudiant</th>
-              {FORMATION_UNITS.map(u => (
-                <th key={u.id} style={{ textAlign: 'center', padding: '12px 10px', fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>U{u.id}</th>
-              ))}
-              <th style={{ textAlign: 'center', padding: '12px 14px', fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</th>
-              <th style={{ textAlign: 'center', padding: '12px 14px', fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Examen</th>
-              <th style={{ textAlign: 'center', padding: '12px 14px', fontWeight: 700, color: '#6b7280', fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Certificat</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ADMIN_CLIENTS.slice(0, 8).map((c, i) => {
-              const hours = Math.floor(Math.random() * 100 + 50)
-              const examScore = c.statut === 'ORIAS obtenu' ? Math.floor(Math.random() * 30 + 65) : null
-              return (
-                <tr key={c.id} style={{ borderBottom: `1px solid ${C.border}`, background: i % 2 === 0 ? C.white : C.cream }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(26,61,43,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: C.green, flexShrink: 0 }}>
-                        {c.prenom[0]}{c.nom[0]}
-                      </div>
-                      <span style={{ fontWeight: 600, color: '#374151' }}>{c.prenom} {c.nom}</span>
-                    </div>
-                  </td>
-                  {FORMATION_UNITS.map(u => (
-                    <td key={u.id} style={{ padding: '12px 10px', textAlign: 'center' }}>
-                      {c.statut === 'ORIAS obtenu' || Math.random() > 0.5
-                        ? <CheckCircleIcon className="w-4 h-4" style={{ color: '#10b981', margin: '0 auto' }} />
-                        : <ClockIcon className="w-4 h-4" style={{ color: C.gold, margin: '0 auto' }} />}
-                    </td>
-                  ))}
-                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                    <span style={{ fontWeight: 700, color: C.green, fontSize: 13 }}>{hours}h</span>
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                    {examScore
-                      ? <span style={{ fontWeight: 700, color: '#15803d', fontSize: 13 }}>{examScore}%</span>
-                      : <span style={{ color: '#d1d5db' }}>—</span>}
-                  </td>
-                  <td style={{ padding: '12px 14px', textAlign: 'center' }}>
-                    {c.statut === 'ORIAS obtenu'
-                      ? <button style={{ fontSize: 11, fontWeight: 700, color: C.gold, background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, margin: '0 auto' }}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 12, height: 12 }}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-                          PDF
-                        </button>
-                      : <span style={{ color: '#d1d5db' }}>—</span>}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Card>
-  )
-}
-
-// ─── Notifications section (logic intact) ─────────────────────
 function NotificationsSection() {
-  const [tab,       setTab]       = useState('individual')
+  const [tab, setTab] = useState('individual')
   const [recipient, setRecipient] = useState('')
-  const [message,   setMessage]   = useState('')
-  const [sent,      setSent]      = useState(false)
-  const [history]   = useState([
-    { id: 1, to: 'Sophie Martin',     msg: 'Votre dossier a été validé.',                         date: 'il y a 1h', type: 'individual' },
-    { id: 2, to: 'Tous les clients',  msg: 'Nouvelle mise à jour de la plateforme disponible.',   date: 'il y a 2j', type: 'broadcast' },
-    { id: 3, to: 'Karim Benali',      msg: 'Félicitations, votre ORIAS a été obtenu !',           date: 'il y a 3j', type: 'individual' },
+  const [message, setMessage] = useState('')
+  const [sent, setSent] = useState(false)
+  const [history] = useState([
+    { id: 1, to: 'Sophie Martin', msg: 'Votre dossier a été validé.', date: 'il y a 1h', type: 'individual' },
+    { id: 2, to: 'Tous les clients', msg: 'Nouvelle mise à jour de la plateforme disponible.', date: 'il y a 2j', type: 'broadcast' },
+    { id: 3, to: 'Karim Benali', msg: 'Félicitations, votre ORIAS a été obtenu !', date: 'il y a 3j', type: 'individual' },
   ])
 
   const handleSend = (e) => {
@@ -642,85 +735,92 @@ function NotificationsSection() {
     setTimeout(() => { setSent(false); setMessage(''); setRecipient('') }, 3000)
   }
 
-  const inputStyle = { width: '100%', padding: '10px 14px', borderRadius: 10, border: `1.5px solid ${C.border}`, fontSize: 13, outline: 'none', background: C.cream, color: C.green, fontFamily: 'Montserrat, sans-serif', boxSizing: 'border-box' }
-
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      <Card style={{ padding: 24 }}>
-        <div style={{ display: 'flex', marginBottom: 20, borderRadius: 10, border: `1.5px solid ${C.border}`, overflow: 'hidden', width: 'fit-content' }}>
-          {[['individual', 'Individuel'], ['broadcast', 'Tous les clients']].map(([v, l]) => (
-            <button key={v} onClick={() => setTab(v)} style={{ padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', border: 'none', background: tab === v ? C.green : 'transparent', color: tab === v ? C.gold : '#6b7280', transition: 'all 0.15s' }}>{l}</button>
-          ))}
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="card p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <div className="flex rounded-xl border border-orias-border overflow-hidden">
+            <button onClick={() => setTab('individual')} className={`px-4 py-2 text-sm font-semibold transition-colors ${tab === 'individual' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Individuel</button>
+            <button onClick={() => setTab('broadcast')} className={`px-4 py-2 text-sm font-semibold transition-colors ${tab === 'broadcast' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Tous les clients</button>
+          </div>
         </div>
         {sent ? (
-          <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 14, padding: '32px 24px', textAlign: 'center' }}>
-            <CheckCircleIcon className="w-12 h-12" style={{ color: '#10b981', margin: '0 auto 12px' }} />
-            <p style={{ fontWeight: 700, color: '#15803d', fontSize: 15 }}>Message envoyé avec succès !</p>
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-6 text-center">
+            <CheckCircleIcon className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+            <p className="font-bold text-emerald-700">Message envoyé avec succès !</p>
           </div>
         ) : (
-          <form onSubmit={handleSend} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form onSubmit={handleSend} className="space-y-4">
             {tab === 'individual' && (
               <div>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Destinataire</label>
-                <select value={recipient} onChange={e => setRecipient(e.target.value)} required style={inputStyle}>
-                  <option value="">Sélectionner un client…</option>
-                  {ADMIN_CLIENTS.map(c => <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>)}
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Destinataire</label>
+                <select value={recipient} onChange={e => setRecipient(e.target.value)} className="input-field" required>
+                  <option value="">Sélectionner un client...</option>
+                  {ADMIN_CLIENTS.map(c => (
+                    <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
+                  ))}
                 </select>
               </div>
             )}
             {tab === 'broadcast' && (
-              <div style={{ background: 'rgba(201,168,76,0.08)', borderRadius: 10, padding: '12px 14px', border: '1px solid rgba(201,168,76,0.3)', fontSize: 13, color: '#92700a', fontWeight: 600 }}>
+              <div className="bg-orias-gold/10 rounded-xl p-3 border border-orias-gold/30 text-sm text-orias-gold font-medium">
                 Ce message sera envoyé à tous les {ADMIN_CLIENTS.length} clients actifs.
               </div>
             )}
             <div>
-              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: C.green, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Message</label>
-              <textarea value={message} onChange={e => setMessage(e.target.value)} rows={4} required
-                placeholder="Rédiger votre message…"
-                style={{ ...inputStyle, resize: 'none' }}
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
+              <textarea
+                value={message}
+                onChange={e => setMessage(e.target.value)}
+                className="input-field resize-none"
+                rows={4}
+                placeholder="Rédiger votre message..."
+                required
               />
             </div>
-            <button type="submit" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, background: C.green, color: C.gold, border: 'none', borderRadius: 10, padding: '12px', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 15, height: 15 }}><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
+            <button type="submit" className="btn-gold w-full flex items-center justify-center gap-2">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
               Envoyer le message
             </button>
           </form>
         )}
-      </Card>
+      </div>
 
-      <Card style={{ padding: 24 }}>
-        <h3 style={{ fontWeight: 700, color: C.green, marginBottom: 16, fontSize: 15 }}>Historique des messages</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="card p-6">
+        <h3 className="font-bold text-orias-green mb-4">Historique des messages</h3>
+        <div className="space-y-3">
           {history.map(h => (
-            <div key={h.id} style={{ padding: '14px 16px', borderRadius: 12, background: C.cream, border: `1.5px solid ${C.border}` }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 6 }}>
-                <p style={{ fontWeight: 700, color: '#1f2937', fontSize: 13, margin: 0 }}>{h.to}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, fontWeight: 700, ...(h.type === 'broadcast' ? { background: 'rgba(201,168,76,0.15)', color: C.gold } : { background: 'rgba(26,61,43,0.08)', color: C.green }) }}>
+            <div key={h.id} className="p-4 rounded-xl bg-orias-bg border border-orias-border">
+              <div className="flex items-start justify-between gap-2 mb-1">
+                <p className="font-semibold text-gray-800 text-sm">{h.to}</p>
+                <div className="flex items-center gap-1.5">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${h.type === 'broadcast' ? 'bg-orias-gold/20 text-orias-gold' : 'bg-orias-green/10 text-orias-green'}`}>
                     {h.type === 'broadcast' ? 'Broadcast' : 'Individuel'}
                   </span>
-                  <span style={{ fontSize: 11, color: '#9ca3af' }}>{h.date}</span>
+                  <span className="text-xs text-gray-400">{h.date}</span>
                 </div>
               </div>
-              <p style={{ fontSize: 13, color: '#6b7280', margin: 0 }}>{h.msg}</p>
+              <p className="text-sm text-gray-600">{h.msg}</p>
             </div>
           ))}
         </div>
-      </Card>
+      </div>
     </div>
   )
 }
 
-// ═════════════════════════════════════════════════════════════
-// MAIN — AdminDashboard
-// ═════════════════════════════════════════════════════════════
 export default function AdminDashboard() {
   const { user, logout } = useAuth()
-  const navigate         = useNavigate()
-  const [activeTab,       setActiveTab]       = useState('clients')
-  const [mobileMenuOpen, setMobileMenuOpen]   = useState(false)
+  const navigate = useNavigate()
+  const [activeTab, setActiveTab] = useState('clients')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
-  const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
 
   const renderSection = () => {
     switch (activeTab) {
@@ -733,89 +833,91 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: C.cream, fontFamily: 'Montserrat, sans-serif' }}>
-
-      {/* ── Header ── */}
-      <header style={{ background: `linear-gradient(135deg, ${C.green} 0%, ${C.greenDark} 100%)`, position: 'sticky', top: 0, zIndex: 40, boxShadow: '0 4px 20px rgba(13,40,24,0.3)' }}>
-        {/* Gold top line */}
-        <div style={{ height: 3, background: `linear-gradient(90deg, ${C.gold}, #b8960a)` }} />
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 60 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+    <div className="min-h-screen bg-orias-bg">
+      {/* Header */}
+      <header className="bg-orias-green sticky top-0 z-40 shadow-lg shadow-orias-green/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-4">
               <Logo size="sm" variant="dark" />
-              <div style={{ width: 1, height: 24, background: 'rgba(255,255,255,0.2)' }} />
-              <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Administration</span>
+              <div className="hidden md:block h-6 w-px bg-white/20" />
+              <span className="hidden md:block text-green-300 text-sm font-medium">Administration</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ color: C.white, fontWeight: 600, fontSize: 13 }}>{user?.name}</span>
-              <button onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'rgba(255,255,255,0.6)', background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all 0.15s' }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; e.currentTarget.style.color = C.white }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
-              >
-                <LogoutIcon className="w-4 h-4" /> Déconnexion
+            <div className="hidden md:flex items-center gap-4">
+              <span className="text-white font-semibold text-sm">{user?.name}</span>
+              <button onClick={handleLogout} className="flex items-center gap-2 text-green-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10">
+                <LogoutIcon className="w-4 h-4" />
+                Déconnexion
+              </button>
+            </div>
+            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg text-green-300 hover:text-white hover:bg-white/10">
+              {mobileMenuOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-orias-green-light bg-orias-green">
+            <div className="max-w-7xl mx-auto px-4 py-3">
+              <button onClick={handleLogout} className="flex items-center gap-2 w-full p-3 text-red-300 hover:text-white hover:bg-white/10 rounded-xl text-sm font-medium">
+                <LogoutIcon className="w-4 h-4" />Se déconnecter
               </button>
             </div>
           </div>
-        </div>
+        )}
       </header>
 
-      {/* ── Stats bar ── */}
-      <div style={{ background: `linear-gradient(135deg, ${C.green} 0%, ${C.greenDark} 100%)`, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '20px 24px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-            <StatCard icon={<UsersIcon className="w-5 h-5" style={{ color: C.gold }} />} label="Total clients" value={ADMIN_STATS.totalClients} />
-            <StatCard icon={<ClockIcon className="w-5 h-5" style={{ color: C.gold }} />} label="En cours" value={ADMIN_STATS.enCours} />
-            <StatCard icon={<AwardIcon className="w-5 h-5" style={{ color: C.gold }} />} label="ORIAS obtenus" value={ADMIN_STATS.oriasObtenus} />
-            <StatCard icon={<TrendingUpIcon className="w-5 h-5" style={{ color: C.gold }} />} label="Revenus ce mois" value={`${ADMIN_STATS.revenusMois} €`} sub="mai 2026" />
+      {/* Stats bar */}
+      <div className="bg-orias-green border-t border-orias-green-light">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <StatCard icon={<UsersIcon className="w-5 h-5 text-white" />} label="Total clients" value={ADMIN_STATS.totalClients} color="bg-orias-green-light border-white/10" />
+            <StatCard icon={<ClockIcon className="w-5 h-5 text-orias-gold" />} label="En cours" value={ADMIN_STATS.enCours} color="bg-orias-gold/20 border-orias-gold/30" />
+            <StatCard icon={<AwardIcon className="w-5 h-5 text-emerald-300" />} label="ORIAS obtenus" value={ADMIN_STATS.oriasObtenus} color="bg-emerald-600/30 border-emerald-400/30" />
+            <StatCard icon={<TrendingUpIcon className="w-5 h-5 text-orias-gold" />} label="Revenus ce mois" value={`${ADMIN_STATS.revenusMois} DHS`} sub="mai 2026" color="bg-orias-gold/15 border-orias-gold/20" />
           </div>
         </div>
       </div>
 
-      {/* ── Nav tabs ── */}
-      <div style={{ background: C.white, borderBottom: `1.5px solid ${C.border}`, position: 'sticky', top: 63, zIndex: 30, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 24px' }}>
-          <nav style={{ display: 'flex', gap: 4, padding: '8px 0', overflowX: 'auto' }}>
-            {NAV_ITEMS.map(item => {
-              const active = activeTab === item.id
-              return (
-                <button key={item.id} onClick={() => setActiveTab(item.id)} style={{
-                  display: 'flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 10, border: 'none',
-                  fontSize: 13, fontWeight: active ? 700 : 500, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s',
-                  background: active ? C.green : 'transparent',
-                  color: active ? C.gold : '#6b7280',
-                }}>
-                  {item.icon} {item.label}
-                </button>
-              )
-            })}
+      {/* Nav tabs */}
+      <div className="bg-white border-b border-orias-border sticky top-16 z-30 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <nav className="flex overflow-x-auto scrollbar-hide gap-1 py-2">
+            {NAV_ITEMS.map(item => (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                  activeTab === item.id
+                    ? 'bg-orias-green text-white shadow-sm'
+                    : 'text-gray-600 hover:text-orias-green hover:bg-orias-bg'
+                }`}
+              >
+                {item.icon}
+                {item.label}
+              </button>
+            ))}
           </nav>
         </div>
       </div>
 
-      {/* ── Main content ── */}
-      <main style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 24px' }}>
-        <div style={{ marginBottom: 20 }}>
-          <h2 style={{ fontSize: 20, fontWeight: 700, color: C.green, margin: '0 0 2px', fontFamily: 'Cormorant Garamond, serif' }}>
+      {/* Main content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
+        <div className="mb-5">
+          <h2 className="text-xl font-bold text-orias-green">
             {NAV_ITEMS.find(n => n.id === activeTab)?.label}
           </h2>
-          <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>
-            {activeTab === 'clients'   && `${ADMIN_STATS.totalClients} clients au total`}
-            {activeTab === 'dossiers'  && 'Gérez les dossiers ORIAS de vos clients'}
-            {activeTab === 'formation' && 'Suivez la progression des formations'}
-            {activeTab === 'notifs'    && 'Envoyez des messages à vos clients'}
-          </p>
         </div>
         {renderSection()}
       </main>
 
-      <footer style={{ borderTop: `1.5px solid ${C.border}`, marginTop: 48, padding: '24px', background: C.white }}>
-        <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+      <footer className="border-t border-orias-border mt-12 py-6 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4">
           <Logo size="sm" variant="light" />
-          <p style={{ fontSize: 12, color: '#9ca3af', margin: 0 }}>© 2026 Oriafen Academy — Administration</p>
+          <p className="text-xs text-gray-400">© 2026 Oriafen Academy — Administration</p>
         </div>
       </footer>
-
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
     </div>
   )
 }
