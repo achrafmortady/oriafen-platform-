@@ -4,8 +4,12 @@ import { useState, useRef, useEffect } from 'react'
 // URLs Supabase Storage
 // ─────────────────────────────────────────────────────────────
 const VIDEO_URL = 'https://cgmjjxosgnfsqupjketw.supabase.co/storage/v1/object/public/formation/oriafen_ch11_video.mp4'
-const PDF_URL   = 'https://cgmjjxosgnfsqupjketw.supabase.co/storage/v1/object/public/formation/French_Insurance_Architecture%20(1).pdf'
+const SLIDE_BASE = 'https://cgmjjxosgnfsqupjketw.supabase.co/storage/v1/object/public/formation'
 const TOTAL_SLIDES = 8
+
+const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
+  `${SLIDE_BASE}/slide_${String(i + 1).padStart(2, '0')}.jpg`
+)
 
 // ─────────────────────────────────────────────────────────────
 // Quiz questions
@@ -188,18 +192,13 @@ function VideoStep({ onComplete }) {
 function SlidesStep({ onComplete }) {
   const [currentSlide, setCurrentSlide] = useState(1)
   const [visited,      setVisited]      = useState(new Set([1]))
-  const [iframeKey,    setIframeKey]    = useState(0)
   const allVisited = visited.size >= TOTAL_SLIDES
 
   const goTo = (n) => {
     if (n < 1 || n > TOTAL_SLIDES) return
     setCurrentSlide(n)
     setVisited(prev => new Set([...prev, n]))
-    setIframeKey(k => k + 1) // force iframe reload on each slide change
   }
-
-  // Build per-page Google Docs viewer URL
-  const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(PDF_URL)}&embedded=true`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -215,29 +214,20 @@ function SlidesStep({ onComplete }) {
         </div>
       </div>
 
-      {/* Slide image — display as PNG images extracted from PDF */}
-      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#1a1a1a', position: 'relative' }}>
+      {/* Slide image */}
+      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#000', position: 'relative' }}>
         <img
-          key={`slide-${currentSlide}`}
-          src={`${PDF_URL}#page=${currentSlide}`}
-          onError={(e) => {
-            // fallback to Google Docs viewer as img doesn't work for PDF pages
-            e.target.style.display = 'none'
-          }}
-          style={{ display: 'none' }}
-        />
-        <iframe
-          key={iframeKey}
-          src={`${viewerUrl}&page=${currentSlide}`}
-          style={{ width: '100%', height: 560, border: 'none', display: 'block' }}
-          title={`Slide ${currentSlide}`}
+          key={currentSlide}
+          src={SLIDE_URLS[currentSlide - 1]}
+          alt={`Slide ${currentSlide}`}
+          style={{ width: '100%', display: 'block', objectFit: 'contain' }}
         />
         {/* Slide counter */}
         <div style={{
           position: 'absolute', top: 14, right: 14,
           background: 'rgba(26,61,43,0.9)', color: '#c9a84c',
           borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700,
-          fontFamily: 'Montserrat, sans-serif', backdropFilter: 'blur(4px)'
+          fontFamily: 'Montserrat, sans-serif'
         }}>
           {currentSlide} / {TOTAL_SLIDES}
         </div>
