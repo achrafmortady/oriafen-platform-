@@ -143,12 +143,17 @@ function VideoStep({ onComplete }) {
 function SlidesStep({ onComplete }) {
   const [currentSlide, setCurrentSlide] = useState(1)
   const [visited,      setVisited]      = useState(new Set([1]))
+  const slideRef = useRef(null)
   const allVisited = visited.size >= TOTAL_SLIDES
 
   const goTo = (n) => {
     if (n < 1 || n > TOTAL_SLIDES) return
     setCurrentSlide(n)
     setVisited(prev => new Set([...prev, n]))
+    // Scroll to slide viewer smoothly
+    setTimeout(() => {
+      slideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }
 
   return (
@@ -163,7 +168,7 @@ function SlidesStep({ onComplete }) {
         </div>
       </div>
 
-      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#000', position: 'relative' }}>
+      <div ref={slideRef} style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#000', position: 'relative' }}>
         <img key={currentSlide} src={SLIDE_URLS[currentSlide - 1]} alt={`Slide ${currentSlide}`}
           style={{ width: '100%', display: 'block', objectFit: 'contain' }}
         />

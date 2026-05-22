@@ -192,12 +192,17 @@ function VideoStep({ onComplete }) {
 function SlidesStep({ onComplete }) {
   const [currentSlide, setCurrentSlide] = useState(1)
   const [visited,      setVisited]      = useState(new Set([1]))
+  const slideRef = useRef(null)
   const allVisited = visited.size >= TOTAL_SLIDES
 
   const goTo = (n) => {
     if (n < 1 || n > TOTAL_SLIDES) return
     setCurrentSlide(n)
     setVisited(prev => new Set([...prev, n]))
+    // Scroll to slide viewer smoothly
+    setTimeout(() => {
+      slideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 50)
   }
 
   return (
