@@ -13,6 +13,7 @@ import {
   CheckCircleIcon, LockIcon, AwardIcon, ChevronRightIcon,
   ChevronDownIcon, DownloadIcon, BookIcon,
 } from '../../components/Icons'
+import Chapitre11 from './Chapitre11'
 
 // ── Certificate ───────────────────────────────────────────────
 
@@ -239,6 +240,7 @@ function ExamView({ userName, userId, onDone }) {
 function LessonView({ unit, userId, onDone, onComplete }) {
   const [marking, setMarking] = useState(false)
   const [done,    setDone]    = useState(unit.status === 'completed')
+  const [activeChapter, setActiveChapter] = useState(null)
 
   const handleComplete = async () => {
     setMarking(true)
@@ -246,6 +248,22 @@ function LessonView({ unit, userId, onDone, onComplete }) {
     setDone(true)
     setMarking(false)
     onComplete(unit.id)
+  }
+
+  // ── Unité 1 — contenu interactif Chapitre 1.1 ──
+  if (unit.id === 1 && activeChapter === '1.1') {
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <button onClick={() => setActiveChapter(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontFamily: 'Montserrat, sans-serif' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
+          Retour à l'Unité 1
+        </button>
+        <Chapitre11
+          isCompleted={done}
+          onComplete={handleComplete}
+        />
+      </div>
+    )
   }
 
   return (
@@ -279,24 +297,47 @@ function LessonView({ unit, userId, onDone, onComplete }) {
         )}
       </div>
 
-      {/* Chapters */}
+      {/* Chapters — cliquable pour Unité 1 */}
       <div className="card p-6">
         <h3 className="font-bold text-orias-green text-lg mb-4">Chapitres du module</h3>
         <div className="space-y-2">
-          {unit.chapters.map((ch, i) => (
-            <div key={i} className="flex items-center justify-between p-3.5 rounded-xl bg-orias-bg border border-orias-border hover:border-orias-gold/40 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                  done ? 'bg-emerald-100 text-emerald-600' : 'bg-orias-gold/10 text-orias-gold'
-                }`}>
-                  {done ? '✓' : i + 1}
+          {unit.chapters.map((ch, i) => {
+            const chapterId = `${unit.id}.${i + 1}`
+            const isAvailable = unit.id === 1 && i === 0 // Chapitre 1.1 disponible
+            return (
+              <div key={i}
+                onClick={() => isAvailable && setActiveChapter(chapterId)}
+                style={{ cursor: isAvailable ? 'pointer' : 'default' }}
+                className={`flex items-center justify-between p-3.5 rounded-xl border transition-colors ${
+                  isAvailable
+                    ? 'bg-orias-bg border-orias-border hover:border-orias-gold/60 hover:bg-orias-gold/5'
+                    : 'bg-gray-50 border-gray-100'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
+                    done ? 'bg-emerald-100 text-emerald-600' : isAvailable ? 'bg-orias-gold/10 text-orias-gold' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {done ? '✓' : i + 1}
+                  </div>
+                  <div>
+                    <span className={`text-sm font-medium ${isAvailable ? 'text-gray-700' : 'text-gray-400'}`}>{ch.label}</span>
+                    {isAvailable && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#c9a84c', background: 'rgba(201,168,76,0.1)', padding: '1px 6px', borderRadius: 20 }}>Disponible</span>}
+                  </div>
                 </div>
-                <span className="text-sm font-medium text-gray-700">{ch.label}</span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${isAvailable ? 'bg-orias-gold/10 text-orias-gold' : 'bg-gray-100 text-gray-400'}`}>{ch.hours}h</span>
+                  {isAvailable && <svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="9 18 15 12 9 6"/></svg>}
+                </div>
               </div>
-              <span className="text-xs font-semibold text-orias-gold bg-orias-gold/10 px-2 py-1 rounded-lg">{ch.hours}h</span>
-            </div>
-          ))}
+            )
+          })}
         </div>
+        {unit.id === 1 && (
+          <p style={{ fontSize: 11, color: '#9ca3af', marginTop: 10, fontFamily: 'Montserrat, sans-serif' }}>
+            ℹ️ Les prochains chapitres seront disponibles progressivement.
+          </p>
+        )}
       </div>
 
       {/* Objectives */}
