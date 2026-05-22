@@ -197,12 +197,14 @@ function SlidesStep({ onComplete }) {
 
   const goTo = (n) => {
     if (n < 1 || n > TOTAL_SLIDES) return
+    // Save scroll position BEFORE state change
+    const scrollY = window.scrollY
     setCurrentSlide(n)
     setVisited(prev => new Set([...prev, n]))
-    // Scroll to slide viewer smoothly
-    setTimeout(() => {
-      slideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 50)
+    // Restore scroll position after React re-render
+    requestAnimationFrame(() => {
+      window.scrollTo(0, scrollY)
+    })
   }
 
   return (
