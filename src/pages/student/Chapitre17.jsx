@@ -148,13 +148,16 @@ function SlidesStep({ onComplete }) {
 
   const goTo = (n) => {
     if (n < 1 || n > TOTAL_SLIDES) return
-    // Save scroll position BEFORE state change
-    const scrollY = window.scrollY
+    const scrollY = window.scrollY || document.documentElement.scrollTop
     setCurrentSlide(n)
     setVisited(prev => new Set([...prev, n]))
-    // Restore scroll position after React re-render
+    // Double RAF to ensure render is complete before restoring scroll
     requestAnimationFrame(() => {
-      window.scrollTo(0, scrollY)
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: 'instant' })
+        document.documentElement.scrollTop = scrollY
+        document.body.scrollTop = scrollY
+      })
     })
   }
 
@@ -170,9 +173,9 @@ function SlidesStep({ onComplete }) {
         </div>
       </div>
 
-      <div ref={slideRef} style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#000', position: 'relative' }}>
+      <div ref={slideRef} style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#000', position: 'relative', aspectRatio: '16/9' }}>
         <img key={currentSlide} src={SLIDE_URLS[currentSlide - 1]} alt={`Slide ${currentSlide}`}
-          style={{ width: '100%', display: 'block', objectFit: 'contain' }}
+          style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain', position: 'absolute', top: 0, left: 0 }}
         />
         <div style={{ position: 'absolute', top: 14, right: 14, background: 'rgba(26,61,43,0.9)', color: '#c9a84c', borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700, fontFamily: 'Montserrat, sans-serif' }}>
           {currentSlide} / {TOTAL_SLIDES}
