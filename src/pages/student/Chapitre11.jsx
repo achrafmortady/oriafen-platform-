@@ -138,7 +138,7 @@ function VideoStep({ onComplete }) {
           onContextMenu={e => e.preventDefault()}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
-          style={{ width: '100%', display: 'block', maxHeight: 480 }}
+          style={{ width: '100%', display: 'block', maxHeight: 580 }}
         />
       </div>
 
@@ -188,16 +188,18 @@ function VideoStep({ onComplete }) {
 function SlidesStep({ onComplete }) {
   const [currentSlide, setCurrentSlide] = useState(1)
   const [visited,      setVisited]      = useState(new Set([1]))
+  const [iframeKey,    setIframeKey]    = useState(0)
   const allVisited = visited.size >= TOTAL_SLIDES
 
   const goTo = (n) => {
     if (n < 1 || n > TOTAL_SLIDES) return
     setCurrentSlide(n)
     setVisited(prev => new Set([...prev, n]))
+    setIframeKey(k => k + 1) // force iframe reload on each slide change
   }
 
-  // PDF page URL via Google Docs viewer or direct with page param
-  const slideUrl = `${PDF_URL}#page=${currentSlide}`
+  // Build per-page Google Docs viewer URL
+  const viewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(PDF_URL)}&embedded=true`
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -213,19 +215,29 @@ function SlidesStep({ onComplete }) {
         </div>
       </div>
 
-      {/* Slide viewer */}
-      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.08)', background: '#f5f5f5', position: 'relative' }}>
+      {/* Slide image — display as PNG images extracted from PDF */}
+      <div style={{ borderRadius: 16, overflow: 'hidden', border: '1.5px solid #e8e2d6', boxShadow: '0 4px 20px rgba(0,0,0,0.1)', background: '#1a1a1a', position: 'relative' }}>
+        <img
+          key={`slide-${currentSlide}`}
+          src={`${PDF_URL}#page=${currentSlide}`}
+          onError={(e) => {
+            // fallback to Google Docs viewer as img doesn't work for PDF pages
+            e.target.style.display = 'none'
+          }}
+          style={{ display: 'none' }}
+        />
         <iframe
-          src={`https://docs.google.com/gview?url=${encodeURIComponent(PDF_URL)}&embedded=true#page=${currentSlide}`}
-          style={{ width: '100%', height: 500, border: 'none', display: 'block' }}
+          key={iframeKey}
+          src={`${viewerUrl}&page=${currentSlide}`}
+          style={{ width: '100%', height: 560, border: 'none', display: 'block' }}
           title={`Slide ${currentSlide}`}
         />
-        {/* Slide counter overlay */}
+        {/* Slide counter */}
         <div style={{
-          position: 'absolute', top: 12, right: 12,
-          background: 'rgba(26,61,43,0.85)', color: '#c9a84c',
-          borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 700,
-          fontFamily: 'Montserrat, sans-serif'
+          position: 'absolute', top: 14, right: 14,
+          background: 'rgba(26,61,43,0.9)', color: '#c9a84c',
+          borderRadius: 20, padding: '5px 14px', fontSize: 13, fontWeight: 700,
+          fontFamily: 'Montserrat, sans-serif', backdropFilter: 'blur(4px)'
         }}>
           {currentSlide} / {TOTAL_SLIDES}
         </div>
@@ -239,11 +251,11 @@ function SlidesStep({ onComplete }) {
             onClick={() => goTo(n)}
             title={`Slide ${n}`}
             style={{
-              width: 32, height: 32, borderRadius: '50%', border: 'none', cursor: 'pointer',
+              width: 36, height: 36, borderRadius: '50%', border: 'none', cursor: 'pointer',
               fontWeight: 700, fontSize: 11, fontFamily: 'Montserrat, sans-serif',
               background: currentSlide === n ? '#1a3d2b' : visited.has(n) ? 'rgba(16,185,129,0.15)' : '#e5e7eb',
               color: currentSlide === n ? '#c9a84c' : visited.has(n) ? '#10b981' : '#6b7280',
-              border: currentSlide === n ? '2px solid #c9a84c' : visited.has(n) ? '1.5px solid #10b981' : '1px solid #d1d5db',
+              border: `2px solid ${currentSlide === n ? '#c9a84c' : visited.has(n) ? '#10b981' : '#d1d5db'}`,
               transition: 'all 0.15s'
             }}
           >
@@ -252,25 +264,27 @@ function SlidesStep({ onComplete }) {
         ))}
       </div>
 
-      {/* Prev / Next buttons */}
+      {/* Prev / Next */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
         <button
           onClick={() => goTo(currentSlide - 1)}
           disabled={currentSlide === 1}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            background: 'transparent', color: currentSlide === 1 ? '#d1d5db' : '#1a3d2b',
+            background: 'transparent',
+            color: currentSlide === 1 ? '#d1d5db' : '#1a3d2b',
             border: `1.5px solid ${currentSlide === 1 ? '#e5e7eb' : '#1a3d2b'}`,
-            borderRadius: 10, padding: '10px 20px', fontWeight: 600, fontSize: 13,
-            cursor: currentSlide === 1 ? 'not-allowed' : 'pointer', fontFamily: 'Montserrat, sans-serif'
+            borderRadius: 10, padding: '11px 22px', fontWeight: 600, fontSize: 13,
+            cursor: currentSlide === 1 ? 'not-allowed' : 'pointer',
+            fontFamily: 'Montserrat, sans-serif', transition: 'all 0.15s'
           }}
         >
           ← Précédent
         </button>
 
-        <div style={{ fontSize: 12, color: '#9ca3af', fontFamily: 'Montserrat, sans-serif' }}>
+        <span style={{ fontSize: 12, color: '#9ca3af', fontFamily: 'Montserrat, sans-serif' }}>
           {visited.size}/{TOTAL_SLIDES} slides vues
-        </div>
+        </span>
 
         {currentSlide < TOTAL_SLIDES ? (
           <button
@@ -278,8 +292,9 @@ function SlidesStep({ onComplete }) {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               background: '#1a3d2b', color: '#c9a84c',
-              border: 'none', borderRadius: 10, padding: '10px 20px',
-              fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'Montserrat, sans-serif'
+              border: 'none', borderRadius: 10, padding: '11px 22px',
+              fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              fontFamily: 'Montserrat, sans-serif', transition: 'all 0.15s'
             }}
           >
             Suivant →
@@ -292,8 +307,9 @@ function SlidesStep({ onComplete }) {
               display: 'flex', alignItems: 'center', gap: 8,
               background: allVisited ? '#1a3d2b' : '#e5e7eb',
               color: allVisited ? '#c9a84c' : '#9ca3af',
-              border: 'none', borderRadius: 12, padding: '12px 24px',
-              fontWeight: 700, fontSize: 13, cursor: allVisited ? 'pointer' : 'not-allowed',
+              border: 'none', borderRadius: 12, padding: '11px 24px',
+              fontWeight: 700, fontSize: 13,
+              cursor: allVisited ? 'pointer' : 'not-allowed',
               fontFamily: 'Montserrat, sans-serif', transition: 'all 0.2s'
             }}
           >
