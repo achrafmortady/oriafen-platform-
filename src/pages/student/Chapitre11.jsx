@@ -457,18 +457,32 @@ function QuizStep({ onComplete }) {
 // Main — Chapitre 1.1
 // ─────────────────────────────────────────────────────────────
 export default function Chapitre11({ onComplete, isCompleted }) {
-  const [step, setStep] = useState(isCompleted ? 3 : 1)
+  const [step,      setStep]      = useState(1)
+  const [reviewing, setReviewing] = useState(false)
 
-  if (isCompleted) {
+  // Show completion screen only if completed AND not reviewing
+  if (isCompleted && !reviewing) {
     return (
-      <div style={{ background: '#fff', borderRadius: 16, border: '2px solid #c9a84c', padding: '28px 32px', textAlign: 'center', boxShadow: '0 4px 20px rgba(201,168,76,0.12)', fontFamily: 'Montserrat, sans-serif' }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🏆</div>
-        <h3 style={{ fontWeight: 800, fontSize: 20, color: '#1a3d2b', marginBottom: 6, fontFamily: 'Cormorant Garamond, serif' }}>Chapitre 1.1 complété !</h3>
-        <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>Vous avez visionné la vidéo, parcouru les slides et réussi le quiz.</p>
-        <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button onClick={() => setStep(1)} style={{ background: 'transparent', color: '#1a3d2b', border: '1.5px solid #1a3d2b', borderRadius: 10, padding: '10px 20px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-            Revoir le contenu
-          </button>
+      <div style={{ fontFamily: 'Montserrat, sans-serif', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Completion banner */}
+        <div style={{ background: '#fff', borderRadius: 16, border: '2px solid #c9a84c', padding: '28px 32px', textAlign: 'center', boxShadow: '0 4px 20px rgba(201,168,76,0.12)' }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🏆</div>
+          <h3 style={{ fontWeight: 800, fontSize: 20, color: '#1a3d2b', marginBottom: 6, fontFamily: 'Cormorant Garamond, serif' }}>Chapitre 1.1 complété !</h3>
+          <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>Vous avez visionné la vidéo, parcouru les slides et réussi le quiz.</p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button onClick={() => { setStep(1); setReviewing(true) }}
+              style={{ background: '#1a3d2b', color: '#c9a84c', border: 'none', borderRadius: 10, padding: '12px 24px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
+              🎬 Revoir la vidéo
+            </button>
+            <button onClick={() => { setStep(2); setReviewing(true) }}
+              style={{ background: 'transparent', color: '#1a3d2b', border: '1.5px solid #1a3d2b', borderRadius: 10, padding: '12px 24px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+              📊 Revoir les slides
+            </button>
+            <button onClick={() => { setStep(3); setReviewing(true) }}
+              style={{ background: 'transparent', color: '#1a3d2b', border: '1.5px solid #1a3d2b', borderRadius: 10, padding: '12px 24px', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+              ✅ Refaire le quiz
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -489,11 +503,19 @@ export default function Chapitre11({ onComplete, isCompleted }) {
       {/* Step bar */}
       <StepBar step={step} />
 
+      {/* Back to completion button when reviewing */}
+      {reviewing && (
+        <button onClick={() => setReviewing(false)} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: '#6b7280', fontSize: 13, cursor: 'pointer', fontWeight: 500, marginBottom: 8, fontFamily: 'Montserrat, sans-serif' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
+          Retour au résumé
+        </button>
+      )}
+
       {/* Step content */}
       <div style={{ background: '#fff', borderRadius: 16, border: '1.5px solid #e8e2d6', padding: '24px', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', animation: 'fadeIn 0.25s ease' }}>
         {step === 1 && <VideoStep onComplete={() => setStep(2)} />}
         {step === 2 && <SlidesStep onComplete={() => setStep(3)} />}
-        {step === 3 && <QuizStep onComplete={onComplete} />}
+        {step === 3 && <QuizStep onComplete={reviewing ? () => setReviewing(false) : onComplete} />}
       </div>
     </div>
   )
