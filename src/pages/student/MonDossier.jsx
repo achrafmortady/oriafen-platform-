@@ -6,6 +6,7 @@ import {
   fetchDocumentsByCategory,
   uploadDocumentFile,
   subscribeToDocuments,
+  fetchFormationProgress,
 } from '../../lib/api'
 import { DOSSIER_STEPS, REQUIRED_DOCUMENTS } from '../../data/mockData'
 import {
@@ -126,6 +127,8 @@ export default function MonDossier() {
   const [uploading,     setUploading]     = useState({})
   const [toasts,        setToasts]        = useState([])
   const toastIdRef = useRef(0)
+  const [formationUnits,    setFormationUnits]    = useState([])
+  const [loadingFormation,  setLoadingFormation]  = useState(true)
 
   const pushToast = useCallback((message, type = 'info', duration = 5000) => {
     const id = ++toastIdRef.current
@@ -153,11 +156,15 @@ export default function MonDossier() {
   useEffect(() => {
     if (!user?.id) { setLoadingData(false); return }
     createDossierIfNeeded(user.id).then(() =>
-      Promise.all([fetchDossier(user.id), fetchDocumentsByCategory(user.id)])
-        .then(([dossierData, docsData]) => {
+      Promise.all([
+        fetchDossier(user.id),
+        fetchDocumentsByCategory(user.id),
+        fetchFormationProgress(user.id),
+      ]).then(([dossierData, docsData, formationData]) => {
           setSteps(dossierData.steps); setDossierNumber(dossierData.dossierNumber)
           setStatus(dossierData.status); setCurrentStep(dossierData.currentStep); setDocs(docsData)
-        }).finally(() => setLoadingData(false))
+          setFormationUnits(formationData)
+        }).finally(() => { setLoadingData(false); setLoadingFormation(false) })
     )
     const unsub = subscribeToDocuments(user.id, handleDocChange)
     return unsub
@@ -302,31 +309,44 @@ export default function MonDossier() {
               </div>
             </div>
 
-            {/* Formation IAS1 progression */}
+            {/* Formation IAS1 progression — données réelles */}
             <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'16px', padding:'20px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
               <p style={{ margin:'0 0 14px', fontSize:'10px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a', fontFamily:"'Montserrat', sans-serif" }}>🎓 Formation IAS1</p>
-              <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
-                <span style={{ fontSize:'13px', color:'#4b5563', fontFamily:"'Montserrat', sans-serif" }}>Progression globale</span>
-                <span style={{ fontSize:'13px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>20 / 150h</span>
-              </div>
-              <div style={{ height:'8px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden', marginBottom:'12px' }}>
-                <div style={{ height:'100%', background:'linear-gradient(90deg, #1a3d2b, #2d6b45)', borderRadius:'10px', width:'13%', transition:'width 0.7s ease' }} />
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
-                {[
-                  { label:'Unité 1 — Savoirs généraux', status:'completed', hours:'20/20h' },
-                  { label:'Unité 2 — Produits assurance', status:'in_progress', hours:'0/30h' },
-                  { label:'Unité 3 — Réglementation', status:'locked', hours:'0/25h' },
-                ].map(({ label, status, hours }) => (
-                  <div key={label} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:'8px', background: status==='completed' ? '#f0fdf4' : status==='in_progress' ? '#fefce8' : '#f9fafb' }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-                      <span style={{ fontSize:'12px' }}>{status==='completed' ? '✅' : status==='in_progress' ? '⏳' : '🔒'}</span>
-                      <span style={{ fontSize:'12px', color: status==='locked' ? '#9ca3af' : '#1a3d2b', fontFamily:"'Montserrat', sans-serif", fontWeight:'500' }}>{label}</span>
+              {loadingFormation ? (
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'20px 0' }}>
+                  <svg style={{ animation:'spin 1s linear infinite', width:'20px', height:'20px', color:'#c9a84c' }} viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25"/>
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" opacity="0.75"/>
+                  </svg>
+                </div>
+              ) : (() => {
+                const totalH     = formationUnits.reduce((s, u) => s + u.totalHours, 0)
+                const doneH      = formationUnits.reduce((s, u) => s + u.completedHours, 0)
+                const pct        = totalH > 0 ? Math.round((doneH / totalH) * 100) : 0
+                const displayUnits = formationUnits.slice(0, 3)
+                return (
+                  <>
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'8px' }}>
+                      <span style={{ fontSize:'13px', color:'#4b5563', fontFamily:"'Montserrat', sans-serif" }}>Progression globale</span>
+                      <span style={{ fontSize:'13px', fontWeight:'700', color:'#1a3d2b', fontFamily:"'Montserrat', sans-serif" }}>{doneH} / {totalH}h</span>
                     </div>
-                    <span style={{ fontSize:'11px', fontWeight:'600', color: status==='completed' ? '#10b981' : status==='in_progress' ? '#d97706' : '#9ca3af', fontFamily:"'Montserrat', sans-serif" }}>{hours}</span>
-                  </div>
-                ))}
-              </div>
+                    <div style={{ height:'8px', background:'#e5e7eb', borderRadius:'10px', overflow:'hidden', marginBottom:'12px' }}>
+                      <div style={{ height:'100%', background:'linear-gradient(90deg, #1a3d2b, #2d6b45)', borderRadius:'10px', width:`${pct}%`, transition:'width 0.7s ease' }} />
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                      {displayUnits.map(u => (
+                        <div key={u.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'8px 10px', borderRadius:'8px', background: u.status==='completed' ? '#f0fdf4' : u.status==='in_progress' ? '#fefce8' : '#f9fafb' }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+                            <span style={{ fontSize:'12px' }}>{u.status==='completed' ? '✅' : u.status==='in_progress' ? '⏳' : '🔒'}</span>
+                            <span style={{ fontSize:'12px', color: u.status==='locked' ? '#9ca3af' : '#1a3d2b', fontFamily:"'Montserrat', sans-serif", fontWeight:'500' }}>{u.title}</span>
+                          </div>
+                          <span style={{ fontSize:'11px', fontWeight:'600', color: u.status==='completed' ? '#10b981' : u.status==='in_progress' ? '#d97706' : '#9ca3af', fontFamily:"'Montserrat', sans-serif" }}>{u.completedHours}/{u.totalHours}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )
+              })()}
             </div>
 
             {/* Prochaine étape */}
