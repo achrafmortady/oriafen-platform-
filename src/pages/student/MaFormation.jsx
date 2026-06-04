@@ -30,6 +30,7 @@ import Chapitre41 from './Chapitre41'
 import Chapitre42 from './Chapitre42'
 import Chapitre51 from './Chapitre51'
 import Chapitre52 from './Chapitre52'
+import Chapitre53 from './Chapitre53'
 
 // ── Certificate ───────────────────────────────────────────────
 
@@ -474,6 +475,19 @@ function LessonView({ unit, userId, onDone, onComplete }) {
     )
   }
 
+  // ── Unité 5 — contenu interactif Chapitre 5.3 ──
+  if (unit.id === 5 && activeChapter === '5.3') {
+    return (
+      <div className="max-w-5xl mx-auto space-y-6">
+        <button onClick={() => setActiveChapter(null)} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#6b7280', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 500, fontFamily: 'Montserrat, sans-serif' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
+          Retour à l'Unité 5
+        </button>
+        <Chapitre53 isCompleted={done} onComplete={handleComplete} />
+      </div>
+    )
+  }
+
   // ── Unité 1 — contenu interactif Chapitre 1.2 ──
   if (unit.id === 1 && activeChapter === '1.2') {
     return (
@@ -524,7 +538,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
         <div className="space-y-2">
           {unit.chapters.map((ch, i) => {
             const chapterId = `${unit.id}.${i + 1}`
-            const isAvailable = (unit.id === 1 && i <= 6) || (unit.id === 2 && i <= 2) || (unit.id === 3 && i <= 2) || (unit.id === 4 && i <= 1) || (unit.id === 5 && i <= 1) // U1+U2+U3+U4+U5 ch5.1-5.2
+            const isAvailable = (unit.id === 1 && i <= 6) || (unit.id === 2 && i <= 2) || (unit.id === 3 && i <= 2) || (unit.id === 4 && i <= 1) || (unit.id === 5 && i <= 2) // U1+U2+U3+U4+U5 ch5.1-5.3
             return (
               <div key={i}
                 onClick={() => isAvailable && setActiveChapter(chapterId)}
