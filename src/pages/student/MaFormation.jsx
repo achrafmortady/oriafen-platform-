@@ -122,11 +122,11 @@ function ExamView({ userName, userId, onDone }) {
             <ProgressBar value={result.score} max={total} height="h-3" />
           </div>
 
-          <div className="flex flex-wrap gap-3 justify-center">
-            {result.passed && (
-              <div style={{background:'linear-gradient(135deg,#f5f0e8,#fff)',border:'1px solid #c9a84c',borderRadius:16,padding:'20px 24px',marginTop:16,textAlign:'center'}}>
+          <div className="flex flex-col gap-3 items-center w-full">
+            {result.passed ? (
+              <div style={{background:'linear-gradient(135deg,#f5f0e8,#fff)',border:'1px solid #c9a84c',borderRadius:16,padding:'20px 24px',textAlign:'center',width:'100%'}}>
                 <div style={{fontSize:28,marginBottom:8}}>📋</div>
-                <p style={{fontWeight:700,color:'#1a3d2b',fontSize:15,marginBottom:6}}>Félicitations ! Votre livret de stage va être généré.</p>
+                <p style={{fontWeight:700,color:'#1a3d2b',fontSize:15,marginBottom:6}}>Votre livret de stage va être généré.</p>
                 <p style={{fontSize:13,color:'#666',lineHeight:1.6}}>
                   Votre <strong>Livret de Stage IAS Niveau 1</strong> officiel sera envoyé<br/>
                   par email sous <strong>5 jours ouvrés</strong>.<br/>
@@ -135,6 +135,28 @@ function ExamView({ userName, userId, onDone }) {
                 <div style={{marginTop:12,display:'inline-flex',alignItems:'center',gap:6,background:'#1a3d2b',color:'#c9a84c',padding:'6px 16px',borderRadius:20,fontSize:12,fontWeight:700}}>
                   ✅ Dossier en cours de traitement
                 </div>
+              </div>
+            ) : (
+              <div style={{background:'#fff5f5',border:'1px solid #fca5a5',borderRadius:16,padding:'16px 20px',textAlign:'center',width:'100%'}}>
+                <p style={{fontWeight:700,color:'#dc2626',fontSize:14,marginBottom:8}}>
+                  ❌ Score insuffisant — {result.score}/20 (minimum requis : {EXAM_PASS}/20)
+                </p>
+                <p style={{fontSize:12,color:'#666',marginBottom:14,lineHeight:1.6}}>
+                  Révisez les unités concernées et retentez l'examen.<br/>
+                  Les 20 questions seront différentes à chaque tentative.
+                </p>
+                <button
+                  onClick={() => {
+                    setResult(null)
+                    setAnswers({})
+                    setSelected(null)
+                    setCurrent(0)
+                    setQuestions(drawQuestions())
+                  }}
+                  className="btn-gold flex items-center gap-2 mx-auto"
+                >
+                  🔄 Repasser l'examen
+                </button>
               </div>
             )}
             <button onClick={onDone} className="btn-outline-green">
