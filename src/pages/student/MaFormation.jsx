@@ -100,15 +100,24 @@ function openCertificate(userName, score) {
 
 // ── Exam view ─────────────────────────────────────────────────
 
+const EXAM_DRAW = 20
+const EXAM_PASS = 15
+
+function drawQuestions() {
+  const shuffled = [...IAS1_QUESTIONS].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, EXAM_DRAW)
+}
+
 function ExamView({ userName, userId, onDone }) {
+  const [questions, setQuestions] = useState(() => drawQuestions())
   const [current,  setCurrent]  = useState(0)
   const [answers,  setAnswers]  = useState({})
   const [selected, setSelected] = useState(null)
   const [saving,   setSaving]   = useState(false)
   const [result,   setResult]   = useState(null)
 
-  const q    = IAS1_QUESTIONS[current]
-  const total = IAS1_QUESTIONS.length
+  const q     = questions[current]
+  const total = questions.length
 
   const choose = (i) => { if (result) return; setSelected(i) }
 
@@ -121,9 +130,9 @@ function ExamView({ userName, userId, onDone }) {
       setSelected(null)
     } else {
       setSaving(true)
-      const score = IAS1_QUESTIONS.reduce((s, q) => s + (updated[q.id] === q.correct ? 1 : 0), 0)
+      const score = questions.reduce((s, q) => s + (updated[q.id] === q.correct ? 1 : 0), 0)
       const res   = await saveExamResult(userId, 'ias1', score, total)
-      setResult({ score, passed: res.passed })
+      setResult({ score, passed: score >= EXAM_PASS })
       setSaving(false)
     }
   }
@@ -144,7 +153,7 @@ function ExamView({ userName, userId, onDone }) {
           <p className="text-gray-500 mb-6">
             {result.passed
               ? 'Vous avez réussi l\'examen IAS Niveau 1. Vous pouvez télécharger votre certificat.'
-              : `Score minimum requis : 10/${total}. Révisez les modules et retentez l'examen.`}
+              : `Score minimum requis : ${EXAM_PASS}/${total}. Révisez les modules et retentez l'examen.`}
           </p>
 
           <div className="mb-6">
@@ -175,7 +184,7 @@ function ExamView({ userName, userId, onDone }) {
         <div className="mt-6 card p-5">
           <h3 className="font-bold text-orias-green mb-4">Révision des réponses</h3>
           <div className="space-y-3">
-            {IAS1_QUESTIONS.map((q) => {
+            {questions.map((q) => {
               const given   = answers[q.id]
               const correct = q.correct
               const ok      = given === correct
@@ -907,8 +916,8 @@ export default function MaFormation() {
                 )}
               </div>
               <div className="flex flex-wrap gap-4 mt-1.5 text-sm text-gray-500">
-                <span>20 questions QCM</span><span>·</span>
-                <span>Minimum 10/20 pour valider</span><span>·</span>
+                <span>20 questions tirées aléatoirement</span><span>·</span>
+                <span>Minimum 15/20 pour valider</span><span>·</span>
                 <span>Certificat officiel à la clé</span>
               </div>
             </div>
