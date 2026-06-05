@@ -256,15 +256,32 @@ function ExamView({ userName, userId, onDone }) {
 
 // ── Lesson view ───────────────────────────────────────────────
 
-function LessonView({ unit, userId, onDone, onComplete }) {
+function LessonView({ unit, userId, onDone, onComplete, completedChapters: initialCompleted }) {
   const [marking, setMarking] = useState(false)
-  const [done,    setDone]    = useState(unit.status === 'completed')
+  const [unitDone, setUnitDone] = useState(unit.status === 'completed')
   const [activeChapter, setActiveChapter] = useState(null)
+  const [completedChapters, setCompletedChapters] = useState(() => initialCompleted ?? new Set())
+
+  const allChapterIds = unit.chapters.map((_, i) => `${unit.id}.${i + 1}`)
+
+  const handleChapterComplete = async (chapterId) => {
+    const updated = new Set([...completedChapters, chapterId])
+    setCompletedChapters(updated)
+    setActiveChapter(null)
+    const allDone = allChapterIds.every(id => updated.has(id))
+    if (allDone && !unitDone) {
+      setMarking(true)
+      await markUnitComplete(userId, unit.id, unit.totalHours)
+      setUnitDone(true)
+      setMarking(false)
+      onComplete(unit.id)
+    }
+  }
 
   const handleComplete = async () => {
     setMarking(true)
     await markUnitComplete(userId, unit.id, unit.totalHours)
-    setDone(true)
+    setUnitDone(true)
     setMarking(false)
     onComplete(unit.id)
   }
@@ -277,7 +294,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre11 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre11 isCompleted={completedChapters.has('1.1')} onComplete={() => handleChapterComplete('1.1')} />
       </div>
     )
   }
@@ -290,7 +307,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre13 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre13 isCompleted={completedChapters.has('1.3')} onComplete={() => handleChapterComplete('1.3')} />
       </div>
     )
   }
@@ -303,7 +320,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre14 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre14 isCompleted={completedChapters.has('1.4')} onComplete={() => handleChapterComplete('1.4')} />
       </div>
     )
   }
@@ -316,7 +333,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre15 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre15 isCompleted={completedChapters.has('1.5')} onComplete={() => handleChapterComplete('1.5')} />
       </div>
     )
   }
@@ -329,7 +346,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre16 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre16 isCompleted={completedChapters.has('1.6')} onComplete={() => handleChapterComplete('1.6')} />
       </div>
     )
   }
@@ -342,7 +359,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre17 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre17 isCompleted={completedChapters.has('1.7')} onComplete={() => handleChapterComplete('1.7')} />
       </div>
     )
   }
@@ -355,7 +372,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 2
         </button>
-        <Chapitre21 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre21 isCompleted={completedChapters.has('2.1')} onComplete={() => handleChapterComplete('2.1')} />
       </div>
     )
   }
@@ -368,7 +385,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 2
         </button>
-        <Chapitre22 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre22 isCompleted={completedChapters.has('2.2')} onComplete={() => handleChapterComplete('2.2')} />
       </div>
     )
   }
@@ -381,7 +398,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 2
         </button>
-        <Chapitre23 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre23 isCompleted={completedChapters.has('2.3')} onComplete={() => handleChapterComplete('2.3')} />
       </div>
     )
   }
@@ -394,7 +411,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 3
         </button>
-        <Chapitre31 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre31 isCompleted={completedChapters.has('3.1')} onComplete={() => handleChapterComplete('3.1')} />
       </div>
     )
   }
@@ -407,7 +424,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 3
         </button>
-        <Chapitre32 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre32 isCompleted={completedChapters.has('3.2')} onComplete={() => handleChapterComplete('3.2')} />
       </div>
     )
   }
@@ -420,7 +437,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 3
         </button>
-        <Chapitre33 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre33 isCompleted={completedChapters.has('3.3')} onComplete={() => handleChapterComplete('3.3')} />
       </div>
     )
   }
@@ -433,7 +450,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 4
         </button>
-        <Chapitre41 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre41 isCompleted={completedChapters.has('4.1')} onComplete={() => handleChapterComplete('4.1')} />
       </div>
     )
   }
@@ -446,7 +463,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 4
         </button>
-        <Chapitre42 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre42 isCompleted={completedChapters.has('4.2')} onComplete={() => handleChapterComplete('4.2')} />
       </div>
     )
   }
@@ -459,7 +476,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 5
         </button>
-        <Chapitre51 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre51 isCompleted={completedChapters.has('5.1')} onComplete={() => handleChapterComplete('5.1')} />
       </div>
     )
   }
@@ -472,7 +489,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 5
         </button>
-        <Chapitre52 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre52 isCompleted={completedChapters.has('5.2')} onComplete={() => handleChapterComplete('5.2')} />
       </div>
     )
   }
@@ -485,7 +502,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 5
         </button>
-        <Chapitre53 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre53 isCompleted={completedChapters.has('5.3')} onComplete={() => handleChapterComplete('5.3')} />
       </div>
     )
   }
@@ -498,7 +515,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 5
         </button>
-        <Chapitre54 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre54 isCompleted={completedChapters.has('5.4')} onComplete={() => handleChapterComplete('5.4')} />
       </div>
     )
   }
@@ -511,7 +528,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 5
         </button>
-        <Chapitre55 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre55 isCompleted={completedChapters.has('5.5')} onComplete={() => handleChapterComplete('5.5')} />
       </div>
     )
   }
@@ -524,7 +541,7 @@ function LessonView({ unit, userId, onDone, onComplete }) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6"/></svg>
           Retour à l'Unité 1
         </button>
-        <Chapitre12 isCompleted={done} onComplete={handleComplete} />
+        <Chapitre12 isCompleted={completedChapters.has('1.2')} onComplete={() => handleChapterComplete('1.2')} />
       </div>
     )
   }
@@ -541,9 +558,9 @@ function LessonView({ unit, userId, onDone, onComplete }) {
       <div className="card p-6">
         <div className="flex items-start gap-4 mb-4">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-lg font-bold ${
-            done ? 'bg-emerald-100 text-emerald-600' : 'bg-orias-gold/10 text-orias-gold'
+            unitDone ? 'bg-emerald-100 text-emerald-600' : 'bg-orias-gold/10 text-orias-gold'
           }`}>
-            {done ? <CheckCircleIcon className="w-6 h-6 text-emerald-600" /> : unit.id}
+            {unitDone ? <CheckCircleIcon className="w-6 h-6 text-emerald-600" /> : unit.id}
           </div>
           <div>
             <p className="text-xs font-semibold text-orias-gold uppercase tracking-wider mb-1">Unité {unit.id}</p>
@@ -566,31 +583,39 @@ function LessonView({ unit, userId, onDone, onComplete }) {
         <div className="space-y-2">
           {unit.chapters.map((ch, i) => {
             const chapterId = `${unit.id}.${i + 1}`
-            const isAvailable = (unit.id === 1 && i <= 6) || (unit.id === 2 && i <= 2) || (unit.id === 3 && i <= 2) || (unit.id === 4 && i <= 1) || (unit.id === 5 && i <= 4) // U1+U2+U3+U4+U5 ch5.1-5.5
+            const prevChapterId = i === 0 ? null : `${unit.id}.${i}`
+            const isChapterDone = completedChapters.has(chapterId)
+            // Premier chapitre toujours dispo ; les suivants débloqués si le précédent est complété
+            const isAvailable = i === 0 || completedChapters.has(prevChapterId)
             return (
               <div key={i}
                 onClick={() => isAvailable && setActiveChapter(chapterId)}
                 style={{ cursor: isAvailable ? 'pointer' : 'default' }}
                 className={`flex items-center justify-between p-3.5 rounded-xl border transition-colors ${
-                  isAvailable
-                    ? 'bg-orias-bg border-orias-border hover:border-orias-gold/60 hover:bg-orias-gold/5'
-                    : 'bg-gray-50 border-gray-100'
+                  isChapterDone
+                    ? 'bg-emerald-50 border-emerald-200'
+                    : isAvailable
+                      ? 'bg-orias-bg border-orias-border hover:border-orias-gold/60 hover:bg-orias-gold/5'
+                      : 'bg-gray-50 border-gray-100'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                    done ? 'bg-emerald-100 text-emerald-600' : isAvailable ? 'bg-orias-gold/10 text-orias-gold' : 'bg-gray-100 text-gray-400'
+                    isChapterDone ? 'bg-emerald-100 text-emerald-600' : isAvailable ? 'bg-orias-gold/10 text-orias-gold' : 'bg-gray-100 text-gray-400'
                   }`}>
-                    {done ? '✓' : i + 1}
+                    {isChapterDone ? '✓' : i + 1}
                   </div>
                   <div>
-                    <span className={`text-sm font-medium ${isAvailable ? 'text-gray-700' : 'text-gray-400'}`}>{ch.label}</span>
-                    {isAvailable && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#c9a84c', background: 'rgba(201,168,76,0.1)', padding: '1px 6px', borderRadius: 20 }}>Disponible</span>}
+                    <span className={`text-sm font-medium ${isChapterDone ? 'text-emerald-700' : isAvailable ? 'text-gray-700' : 'text-gray-400'}`}>{ch.label}</span>
+                    {isChapterDone && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '1px 6px', borderRadius: 20 }}>Complété</span>}
+                    {!isChapterDone && isAvailable && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#c9a84c', background: 'rgba(201,168,76,0.1)', padding: '1px 6px', borderRadius: 20 }}>Disponible</span>}
+                    {!isAvailable && <span style={{ marginLeft: 8, fontSize: 10, fontWeight: 700, color: '#9ca3af', background: '#f3f4f6', padding: '1px 6px', borderRadius: 20 }}>🔒 Verrouillé</span>}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${isAvailable ? 'bg-orias-gold/10 text-orias-gold' : 'bg-gray-100 text-gray-400'}`}>{ch.hours}h</span>
-                  {isAvailable && <svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="9 18 15 12 9 6"/></svg>}
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-lg ${isChapterDone ? 'bg-emerald-100 text-emerald-600' : isAvailable ? 'bg-orias-gold/10 text-orias-gold' : 'bg-gray-100 text-gray-400'}`}>{ch.hours}h</span>
+                  {isChapterDone && <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5" style={{ width: 14, height: 14 }}><polyline points="20 6 9 17 4 12"/></svg>}
+                  {!isChapterDone && isAvailable && <svg viewBox="0 0 24 24" fill="none" stroke="#c9a84c" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="9 18 15 12 9 6"/></svg>}
                 </div>
               </div>
             )
@@ -617,23 +642,23 @@ function LessonView({ unit, userId, onDone, onComplete }) {
       {/* Action */}
       <div className="card p-5 flex flex-wrap items-center justify-between gap-4">
         <div>
-          {done
+          {unitDone
             ? <p className="font-semibold text-emerald-600">Module complété !</p>
             : <p className="font-semibold text-gray-700">Prêt à valider ce module ?</p>}
           <p className="text-xs text-gray-400 mt-0.5">
-            {done ? 'Votre progression a été enregistrée.' : 'Cliquez pour marquer le module comme terminé.'}
+            {unitDone ? 'Votre progression a été enregistrée.' : 'Cliquez pour marquer le module comme terminé.'}
           </p>
         </div>
         <button
           onClick={handleComplete}
-          disabled={done || marking}
-          className={done
+          disabled={unitDone || marking}
+          className={unitDone
             ? 'flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold bg-emerald-100 text-emerald-600 cursor-default'
             : 'btn-gold flex items-center gap-2 disabled:opacity-70'}
         >
           {marking
             ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Enregistrement…</>
-            : done
+            : unitDone
               ? <><CheckCircleIcon className="w-4 h-4" />Complété</>
               : <>Marquer comme terminé</>
           }
