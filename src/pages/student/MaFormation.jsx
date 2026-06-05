@@ -34,332 +34,27 @@ import Chapitre53 from './Chapitre53'
 import Chapitre54 from './Chapitre54'
 import Chapitre55 from './Chapitre55'
 
-// ── Certificate ───────────────────────────────────────────────
+// ── Livret message (after exam passed) ────────────────────────
 
-function openCertificate(userName, score) {
-  const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
-  const pct = Math.round((score / 20) * 100)
-  const certNum = 'OA-IAS1-' + new Date().getFullYear() + '-' + String(Date.now()).slice(-5)
-
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8"/>
-  <title>Attestation IAS Niveau 1 — Oriafen Academy</title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
-  <style>
-    *{margin:0;padding:0;box-sizing:border-box;}
-    html,body{width:100%;min-height:100vh;background:#e8e2d4;}
-    body{font-family:'Montserrat',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px 60px;}
-
-    /* ── BUTTONS ── */
-    .actions{display:flex;gap:12px;margin-bottom:28px;no-print:true;}
-    .btn{padding:10px 24px;border-radius:6px;font-family:'Montserrat',sans-serif;font-size:13px;font-weight:600;cursor:pointer;letter-spacing:.5px;border:none;transition:all .2s;}
-    .btn-print{background:#1a3d2b;color:#fff;}
-    .btn-print:hover{background:#0f2419;}
-    .btn-close{background:#fff;color:#1a3d2b;border:2px solid #1a3d2b;}
-
-    /* ── PAGE ── */
-    .page{background:#fff;width:794px;min-height:1123px;position:relative;overflow:hidden;box-shadow:0 20px 80px rgba(0,0,0,.25);}
-
-    /* ── HEADER BAND ── */
-    .header-band{background:#1a3d2b;width:100%;padding:32px 60px 28px;display:flex;align-items:center;justify-content:space-between;}
-    .logo-block{display:flex;align-items:center;gap:16px;}
-    .logo-shield{width:52px;height:52px;}
-    .logo-text{display:flex;flex-direction:column;}
-    .logo-main{font-family:'Cormorant Garamond',serif;font-size:26px;font-weight:700;color:#f5f0e8;letter-spacing:3px;line-height:1;}
-    .logo-sub{font-family:'Montserrat',sans-serif;font-size:7.5px;font-weight:500;color:#c9a84c;letter-spacing:4px;text-transform:uppercase;margin-top:3px;}
-    .header-right{text-align:right;}
-    .header-label{font-size:9px;font-weight:500;color:#c9a84c;letter-spacing:3px;text-transform:uppercase;}
-    .header-ref{font-size:11px;font-weight:600;color:#f5f0e8;margin-top:3px;letter-spacing:.5px;}
-
-    /* ── GOLD LINE ── */
-    .gold-line{height:4px;background:linear-gradient(90deg,#c9a84c 0%,#e8d48a 50%,#c9a84c 100%);}
-
-    /* ── BODY ── */
-    .body{padding:50px 60px 40px;}
-
-    /* ── DECREE SECTION ── */
-    .decree-wrap{text-align:center;margin-bottom:36px;}
-    .decree-top{font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:5px;text-transform:uppercase;margin-bottom:10px;}
-    .decree-title{font-family:'Cormorant Garamond',serif;font-size:38px;font-weight:700;color:#1a3d2b;line-height:1.15;margin-bottom:6px;}
-    .decree-sub{font-family:'Cormorant Garamond',serif;font-size:20px;font-style:italic;color:#4a6d5a;margin-bottom:18px;}
-    .decree-rule{height:1px;background:linear-gradient(90deg,transparent,#c9a84c,transparent);margin:0 auto;width:320px;}
-
-    /* ── LEGAL BLOCK ── */
-    .legal-box{background:#f9f7f2;border-left:3px solid #c9a84c;padding:14px 20px;margin-bottom:32px;border-radius:0 6px 6px 0;}
-    .legal-box p{font-size:10.5px;color:#555;line-height:1.75;}
-    .legal-box strong{color:#1a3d2b;font-weight:600;}
-
-    /* ── CERTIFIE ── */
-    .certifie-label{font-size:10px;font-weight:700;color:#888;letter-spacing:3px;text-transform:uppercase;text-align:center;margin-bottom:8px;}
-    .name-wrap{text-align:center;margin-bottom:28px;}
-    .candidate-name{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:700;font-style:italic;color:#1a3d2b;display:inline-block;border-bottom:2px solid #c9a84c;padding-bottom:6px;line-height:1.2;}
-
-    /* ── ATTESTATION TEXT ── */
-    .attest-text{font-size:12px;color:#444;line-height:2;text-align:center;margin-bottom:32px;}
-    .attest-text .highlight{color:#1a3d2b;font-weight:700;}
-    .attest-text .score-chip{background:#1a3d2b;color:#c9a84c;padding:2px 12px;border-radius:20px;font-weight:700;font-size:14px;}
-
-    /* ── 5 UNITS ── */
-    .units-title{font-size:9px;font-weight:700;color:#c9a84c;letter-spacing:4px;text-transform:uppercase;margin-bottom:12px;text-align:center;}
-    .units-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:32px;}
-    .unit-item{background:#f5f0e8;border:1px solid #e8dfc8;border-radius:6px;padding:10px 14px;display:flex;align-items:center;gap:10px;}
-    .unit-num{width:28px;height:28px;background:#1a3d2b;color:#c9a84c;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;}
-    .unit-text{font-size:10px;color:#3a3a3a;line-height:1.4;font-weight:500;}
-    .unit-hours{margin-left:auto;font-size:10px;font-weight:700;color:#c9a84c;white-space:nowrap;}
-    /* 5th unit full width */
-    .unit-item.full{grid-column:1/-1;}
-
-    /* ── DIVIDER ── */
-    .divider{height:1px;background:#e8e2d6;margin:0 0 28px;}
-
-    /* ── LEGAL FOOTER ── */
-    .legal-footer{font-size:9.5px;color:#666;line-height:1.7;margin-bottom:28px;padding:12px 16px;background:#fafaf8;border:1px solid #ede8de;border-radius:6px;}
-
-    /* ── SIGNATURES ── */
-    .sig-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:0;}
-    .sig-block{text-align:center;flex:1;}
-    .sig-block.center{flex:0 0 auto;padding:0 20px;}
-    .sig-line{height:1px;background:#ccc;width:160px;margin:0 auto 8px;}
-    .sig-name{font-size:11px;font-weight:700;color:#1a3d2b;}
-    .sig-role{font-size:9.5px;color:#888;margin-top:2px;}
-    .sig-date{font-size:9px;color:#aaa;margin-top:1px;}
-
-    /* ── CACHET ── */
-    .cachet{width:100px;height:100px;border-radius:50%;border:3px double #1a3d2b;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;margin:0 auto;}
-    .cachet-main{font-family:'Cormorant Garamond',serif;font-size:11px;font-weight:700;color:#1a3d2b;letter-spacing:1px;text-align:center;line-height:1.2;}
-    .cachet-sub{font-size:7px;color:#c9a84c;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
-    .cachet-check{font-size:16px;color:#1a3d2b;}
-
-    /* ── FOOTER BAND ── */
-    .footer-band{background:#1a3d2b;padding:14px 60px;display:flex;justify-content:space-between;align-items:center;margin-top:auto;}
-    .footer-legal{font-size:8.5px;color:#a0b8aa;letter-spacing:.3px;line-height:1.5;}
-    .footer-orias{font-size:8.5px;color:#c9a84c;font-weight:600;letter-spacing:.5px;}
-
-    /* ── WATERMARK ── */
-    .watermark{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);font-family:'Cormorant Garamond',serif;font-size:96px;font-weight:700;color:rgba(26,61,43,.04);pointer-events:none;white-space:nowrap;z-index:0;}
-
-    /* ── CORNER ORNAMENTS ── */
-    .corner{position:absolute;width:40px;height:40px;}
-    .corner.tl{top:8px;left:8px;border-top:2px solid #c9a84c;border-left:2px solid #c9a84c;}
-    .corner.tr{top:8px;right:8px;border-top:2px solid #c9a84c;border-right:2px solid #c9a84c;}
-    .corner.bl{bottom:8px;left:8px;border-bottom:2px solid #c9a84c;border-left:2px solid #c9a84c;}
-    .corner.br{bottom:8px;right:8px;border-bottom:2px solid #c9a84c;border-right:2px solid #c9a84c;}
-
-    @media print{
-      html,body{background:#fff;padding:0;}
-      .actions{display:none!important;}
-      .page{box-shadow:none;width:100%;min-height:100vh;}
-    }
-  </style>
-</head>
-<body>
-  <div class="actions no-print">
-    <button class="btn btn-print" onclick="window.print()">🖨 Imprimer / Télécharger PDF</button>
-    <button class="btn btn-close" onclick="window.close()">✕ Fermer</button>
-  </div>
-
-  <div class="page">
-    <!-- Corner ornaments -->
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
-    <!-- Watermark -->
-    <div class="watermark">ORIAFEN</div>
-
-    <!-- Header -->
-    <div class="header-band">
-      <div class="logo-block">
-        <svg class="logo-shield" viewBox="0 0 52 60" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M26 2L4 12v18c0 13 9.5 24.5 22 28 12.5-3.5 22-15 22-28V12L26 2z" fill="#c9a84c" opacity=".15"/>
-          <path d="M26 2L4 12v18c0 13 9.5 24.5 22 28 12.5-3.5 22-15 22-28V12L26 2z" stroke="#c9a84c" stroke-width="1.5" fill="none"/>
-          <path d="M26 8L8 16v14c0 10 7.5 19.5 18 22.5 10.5-3 18-12.5 18-22.5V16L26 8z" fill="#c9a84c" opacity=".08"/>
-          <text x="26" y="38" text-anchor="middle" font-family="Cormorant Garamond,serif" font-size="16" font-weight="700" fill="#c9a84c" letter-spacing="1">O</text>
-        </svg>
-        <div class="logo-text">
-          <span class="logo-main">ORIAFEN</span>
-          <span class="logo-sub">Academy · Votre ORIAS, Notre Priorité</span>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="header-label">Référence du document</div>
-        <div class="header-ref">${certNum}</div>
-      </div>
-    </div>
-    <div class="gold-line"></div>
-
-    <!-- Body -->
-    <div class="body">
-
-      <!-- Decree -->
-      <div class="decree-wrap">
-        <div class="decree-top">Art. R 512-11 · Code des assurances</div>
-        <div class="decree-title">Attestation de Formation</div>
-        <div class="decree-sub">et de Contrôle des Compétences Acquises</div>
-        <div class="decree-rule"></div>
-      </div>
-
-      <!-- Legal issuer box -->
-      <div class="legal-box">
-        <p>
-          <strong>ASSURYAL CONSEIL</strong> — Société par actions simplifiée au capital de 100,00 €<br>
-          RCS Paris N° <strong>102 963 881</strong> — SIREN <strong>FR7501.102963881</strong><br>
-          Siège social : <strong>6 rue d'Armaillé, 75017 Paris</strong><br>
-          Inscrite à l'ORIAS sous le N° <strong>22001447</strong> · Qualité : <strong>Cabinet de courtage en assurance</strong>
-        </p>
-      </div>
-
-      <!-- Certifie -->
-      <div class="certifie-label">Certifie que</div>
-      <div class="name-wrap">
-        <div class="candidate-name">${userName}</div>
-      </div>
-
-      <!-- Attestation text -->
-      <div class="attest-text">
-        a suivi et validé, conformément à l'article R 512-9 (1°) du Code des assurances,<br>
-        un stage professionnel de <span class="highlight">150 heures minimum</span> — Formation IAS de <span class="highlight">Niveau 1</span><br>
-        et a réussi le contrôle final des compétences avec un score de&nbsp;
-        <span class="score-chip">${score} / 20</span>&nbsp;
-        (${pct}%)<br><br>
-        Ce contrôle a été effectué conformément au programme minimum de formation de Niveau I<br>
-        homologué par arrêté du ministre de l'Économie du 11 juillet 2008<br>
-        <em style="font-size:10.5px;color:#888">(Arrêté ECET 0816434A — modifiant l'arrêté du 23 juin 2008)</em>
-      </div>
-
-      <!-- 5 Units -->
-      <div class="units-title">Programme des 5 unités validées · Total 150 heures</div>
-      <div class="units-grid">
-        <div class="unit-item">
-          <div class="unit-num">1</div>
-          <div class="unit-text">Les savoirs généraux<br>de l'assurance</div>
-          <div class="unit-hours">20h</div>
-        </div>
-        <div class="unit-item">
-          <div class="unit-num">2</div>
-          <div class="unit-text">Assurances de personnes<br>Invalidité · Décès · Dépendance · Santé</div>
-          <div class="unit-hours">30h</div>
-        </div>
-        <div class="unit-item">
-          <div class="unit-num">3</div>
-          <div class="unit-text">Assurance-vie<br>et capitalisation</div>
-          <div class="unit-hours">45h</div>
-        </div>
-        <div class="unit-item">
-          <div class="unit-num">4</div>
-          <div class="unit-text">Assurances de personnes<br>Contrats collectifs</div>
-          <div class="unit-hours">10h</div>
-        </div>
-        <div class="unit-item full">
-          <div class="unit-num">5</div>
-          <div class="unit-text">Assurances de biens et de responsabilité</div>
-          <div class="unit-hours">45h</div>
-        </div>
-      </div>
-
-      <div class="divider"></div>
-
-      <!-- Legal footer text -->
-      <div class="legal-footer">
-        En application de l'article R 514-3 II a) du Code des assurances, cette attestation justifie de la capacité professionnelle prévue par l'article L. 512-5.
-        Elle est délivrée conformément à l'article R 514-4 dans les plus brefs délais à son titulaire et constitue une pièce justificative pour l'inscription à l'ORIAS.
-      </div>
-
-      <!-- Signatures -->
-      <div class="sig-row">
-
-        <!-- Signature Président -->
-        <div class="sig-block">
-          <svg viewBox="0 0 180 70" width="180" height="70" style="display:block;margin:0 auto 6px;">
-            <!-- Signature Achraf Mortady reconstituée -->
-            <g fill="none" stroke="#1a1a6e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
-              <!-- Grande boucle gauche -->
-              <path d="M20,52 C18,38 22,28 30,30 C38,32 36,48 28,50 C22,51 18,44 22,36 C26,28 38,22 48,26"/>
-              <!-- Trait montant -->
-              <path d="M48,26 C56,20 62,18 68,24 C72,28 70,36 64,38"/>
-              <!-- Boucle centrale -->
-              <path d="M64,38 C58,42 52,44 54,38 C56,32 66,28 72,32 C78,36 76,44 68,46"/>
-              <!-- Queue descendante avec remontée -->
-              <path d="M68,46 C78,48 90,46 96,40 C100,36 98,30 92,28 C86,26 80,30 82,38 C84,46 92,50 102,48 C112,46 118,38 116,30"/>
-              <!-- Trait final montant -->
-              <path d="M116,30 C118,22 124,18 130,20 C138,24 136,34 128,36 C120,38 114,32 118,26 C122,20 132,18 140,22 C148,26 150,36 144,40"/>
-              <!-- Petite boucle finale -->
-              <path d="M144,40 C148,44 152,44 156,40 C160,36 158,30 152,28 C146,26 142,30 146,36"/>
-            </g>
-          </svg>
-          <div class="sig-name">Achraf MORTADY</div>
-          <div class="sig-role">Président — ASSURYAL CONSEIL</div>
-          <div class="sig-date">Paris, le ${dateStr}</div>
-        </div>
-
-        <!-- Cachet officiel SVG -->
-        <div class="sig-block center">
-          <svg viewBox="0 0 160 80" width="160" height="80" style="display:block;margin:0 auto;">
-            <!-- Fond rectangle arrondi bleu transparent -->
-            <rect x="2" y="2" width="156" height="76" rx="10" ry="10"
-              fill="rgba(20,40,160,0.04)" stroke="#1a28a0" stroke-width="2.5"/>
-            <!-- Ligne intérieure -->
-            <rect x="6" y="6" width="148" height="68" rx="7" ry="7"
-              fill="none" stroke="#1a28a0" stroke-width="0.8" opacity="0.4"/>
-            <!-- ASSURYAL CONSEIL -->
-            <text x="80" y="24" text-anchor="middle"
-              font-family="Arial Black, sans-serif" font-size="11.5" font-weight="900"
-              fill="#1a28a0" letter-spacing="1">ASSURYAL CONSEIL</text>
-            <!-- Ligne séparatrice -->
-            <line x1="18" y1="30" x2="142" y2="30" stroke="#1a28a0" stroke-width="0.8" opacity="0.5"/>
-            <!-- Adresse -->
-            <text x="80" y="44" text-anchor="middle"
-              font-family="Arial, sans-serif" font-size="9.5" font-weight="600"
-              fill="#1a28a0">5, Rue d'Armaillé 75017 - Paris</text>
-            <!-- RCS -->
-            <text x="80" y="58" text-anchor="middle"
-              font-family="Arial, sans-serif" font-size="9.5" font-weight="700"
-              fill="#1a28a0">RCS N° : 849 409 313</text>
-            <!-- ORIAS -->
-            <text x="80" y="71" text-anchor="middle"
-              font-family="Arial, sans-serif" font-size="8" font-weight="500"
-              fill="#1a28a0" opacity="0.7">ORIAS N° 22001447</text>
-          </svg>
-        </div>
-
-        <!-- Signature Direction pédagogique -->
-        <div class="sig-block">
-          <svg viewBox="0 0 180 70" width="180" height="70" style="display:block;margin:0 auto 6px;">
-            <g fill="none" stroke="#1a1a6e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity="0.85">
-              <path d="M30,50 C28,38 34,26 44,28 C52,30 50,44 40,46 C32,47 28,40 34,32 C40,24 54,20 64,26"/>
-              <path d="M64,26 C72,22 80,24 82,32 C84,40 76,46 68,42 C62,38 64,30 72,28 C80,26 90,30 92,40"/>
-              <path d="M92,40 C94,48 102,52 110,46 C116,42 114,32 106,30 C98,28 92,36 96,44 C100,52 112,52 122,46"/>
-              <path d="M122,46 C130,40 134,32 128,26 C122,20 114,24 116,32 C118,40 128,44 138,40 C148,36 152,26 146,20"/>
-            </g>
-          </svg>
-          <div class="sig-name">Direction Pédagogique</div>
-          <div class="sig-role">Oriafen Academy</div>
-          <div class="sig-date">Paris, le ${dateStr}</div>
-        </div>
-
-      </div>
-
-    </div><!-- /body -->
-
-    <!-- Footer band -->
-    <div class="footer-band">
-      <div class="footer-legal">
-        ASSURYAL CONSEIL · SAS au capital de 100,00 € · RCS Paris 102 963 881<br>
-        6 rue d'Armaillé, 75017 Paris · contact@oriafen.com
-      </div>
-      <div class="footer-orias">ORIAS N° 22001447 · oriafen.com</div>
-    </div>
-
-  </div><!-- /page -->
-</body>
-</html>`
-
-  const blob = new Blob([html], { type: 'text/html' })
-  const url  = URL.createObjectURL(blob)
-  window.open(url, '_blank')
+async function notifyAdminLivret(userId, userName) {
+  // Insertion d'une notification dans Supabase pour l'admin
+  try {
+    const { createClient } = await import('@supabase/supabase-js')
+    const supabase = createClient(
+      import.meta.env.VITE_SUPABASE_URL,
+      import.meta.env.VITE_SUPABASE_ANON_KEY
+    )
+    await supabase.from('livret_requests').insert({
+      user_id: userId,
+      user_name: userName,
+      requested_at: new Date().toISOString(),
+      status: 'pending'
+    })
+  } catch(e) {
+    console.log('Livret notification:', e)
+  }
 }
+
 
 // ── Exam view ─────────────────────────────────────────────────
 
@@ -429,13 +124,18 @@ function ExamView({ userName, userId, onDone }) {
 
           <div className="flex flex-wrap gap-3 justify-center">
             {result.passed && (
-              <button
-                onClick={() => openCertificate(userName, result.score)}
-                className="btn-gold flex items-center gap-2"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                Télécharger mon certificat
-              </button>
+              <div style={{background:'linear-gradient(135deg,#f5f0e8,#fff)',border:'1px solid #c9a84c',borderRadius:16,padding:'20px 24px',marginTop:16,textAlign:'center'}}>
+                <div style={{fontSize:28,marginBottom:8}}>📋</div>
+                <p style={{fontWeight:700,color:'#1a3d2b',fontSize:15,marginBottom:6}}>Félicitations ! Votre livret de stage va être généré.</p>
+                <p style={{fontSize:13,color:'#666',lineHeight:1.6}}>
+                  Votre <strong>Livret de Stage IAS Niveau 1</strong> officiel sera envoyé<br/>
+                  par email sous <strong>5 jours ouvrés</strong>.<br/>
+                  Vous le retrouverez aussi dans vos <strong>Documents Finaux</strong>.
+                </p>
+                <div style={{marginTop:12,display:'inline-flex',alignItems:'center',gap:6,background:'#1a3d2b',color:'#c9a84c',padding:'6px 16px',borderRadius:20,fontSize:12,fontWeight:700}}>
+                  ✅ Dossier en cours de traitement
+                </div>
+              </div>
             )}
             <button onClick={onDone} className="btn-outline-green">
               Retour à la formation
