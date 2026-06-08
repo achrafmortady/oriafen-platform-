@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon } from '../../components/Icons'
-import { ADMIN_CLIENTS, ADMIN_STATS, FORMATION_UNITS } from '../../data/mockData'
+import { FORMATION_UNITS } from '../../data/mockData'
 import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
@@ -112,7 +112,7 @@ function AddClientModal({ onClose, onAdd }) {
 }
 
 function ClientsSection() {
-  const [clients, setClients]   = useState(ADMIN_CLIENTS)
+  const [clients, setClients]   = useState([])
   const [loadingClients, setLoadingClients] = useState(true)
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState(null)
@@ -474,7 +474,7 @@ function AdminDocRow({ doc, catLabel, onAction }) {
 // ── Dossier section ───────────────────────────────────────────
 
 function DossierSection() {
-  const [clients,        setClients]        = useState(ADMIN_CLIENTS)
+  const [clients,        setClients]        = useState([])
   const [selectedClient, setSelectedClient] = useState(null)
   const [docs,           setDocs]           = useState([])
   const [loadingDocs,    setLoadingDocs]    = useState(false)
@@ -840,7 +840,7 @@ function NotificationsSection() {
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Destinataire</label>
                 <select value={recipient} onChange={e => setRecipient(e.target.value)} className="input-field" required>
                   <option value="">Sélectionner un client...</option>
-                  {ADMIN_CLIENTS.map(c => (
+                  {allClients.map(c => (
                     <option key={c.id} value={c.id}>{c.prenom} {c.nom}</option>
                   ))}
                 </select>
@@ -848,7 +848,7 @@ function NotificationsSection() {
             )}
             {tab === 'broadcast' && (
               <div className="bg-orias-gold/10 rounded-xl p-3 border border-orias-gold/30 text-sm text-orias-gold font-medium">
-                Ce message sera envoyé à tous les {ADMIN_CLIENTS.length} clients actifs.
+                Ce message sera envoyé à tous les {allClients.length} clients actifs.
               </div>
             )}
             <div>
@@ -899,12 +899,17 @@ export default function AdminDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('clients')
+  const [allClients, setAllClients] = useState([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
     navigate('/login', { replace: true })
   }
+
+  useEffect(() => {
+    fetchAllClients().then(data => setAllClients(data.filter(c => c.email !== 'admin@oriafen.com')))
+  }, [])
 
   const renderSection = () => {
     switch (activeTab) {
@@ -956,10 +961,10 @@ export default function AdminDashboard() {
       <div className="bg-orias-green border-t border-orias-green-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard icon={<UsersIcon className="w-5 h-5 text-white" />} label="Total clients" value={ADMIN_STATS.totalClients} color="bg-orias-green-light border-white/10" />
-            <StatCard icon={<ClockIcon className="w-5 h-5 text-orias-gold" />} label="En cours" value={ADMIN_STATS.enCours} color="bg-orias-gold/20 border-orias-gold/30" />
-            <StatCard icon={<AwardIcon className="w-5 h-5 text-emerald-300" />} label="ORIAS obtenus" value={ADMIN_STATS.oriasObtenus} color="bg-emerald-600/30 border-emerald-400/30" />
-            <StatCard icon={<TrendingUpIcon className="w-5 h-5 text-orias-gold" />} label="Revenus ce mois" value={`${ADMIN_STATS.revenusMois} DHS`} sub="mai 2026" color="bg-orias-gold/15 border-orias-gold/20" />
+            <StatCard icon={<UsersIcon className="w-5 h-5 text-white" />} label="Total clients" value={allClients.length} color="bg-orias-green-light border-white/10" />
+            <StatCard icon={<ClockIcon className="w-5 h-5 text-orias-gold" />} label="En cours" value={allClients.filter(c => c.statut !== 'ORIAS obtenu').length} color="bg-orias-gold/20 border-orias-gold/30" />
+            <StatCard icon={<AwardIcon className="w-5 h-5 text-emerald-300" />} label="ORIAS obtenus" value={allClients.filter(c => c.statut === 'ORIAS obtenu').length} color="bg-emerald-600/30 border-emerald-400/30" />
+            <StatCard icon={<TrendingUpIcon className="w-5 h-5 text-orias-gold" />} label="Revenus ce mois" value={`${allClients.filter(c=>c.pack==='Premium').length * 497 + allClients.filter(c=>c.pack==='Essentiel').length * 297} €`} sub={new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})} color="bg-orias-gold/15 border-orias-gold/20" />
           </div>
         </div>
       </div>
