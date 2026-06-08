@@ -257,7 +257,7 @@ function ClientsSection() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500 font-medium">Progression</span>
-                  <span className="font-semibold text-orias-green">{editClient.progression}%</span>
+                  <span className="font-semibold text-orias-green">{editClient.progression ?? 0}%</span>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -733,10 +733,10 @@ function FormationTrackingSection() {
               </thead>
               <tbody>
                 {students.map((c) => {
-                  const prog = c.progression ?? 0
+                  const prog = Math.min(c.progression ?? 0, 100)
                   const examPassed = c.examPassed ?? false
                   const examScore = c.examScore ?? null
-                  const unitsCompleted = Math.floor(prog / 20)
+                  const unitsCompleted = Math.min(Math.floor(prog / 20), 5)
                   return (
                     <tr key={c.id} className="border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors">
                       <td className="px-5 py-3.5">
@@ -777,7 +777,7 @@ function FormationTrackingSection() {
                       <td className="px-4 py-3.5 text-center hidden xl:table-cell">
                         {examPassed ? (
                           <button
-                            onClick={() => openLivret(`${c.prenom} ${c.nom}`, c.enrolledAt)}
+                            onClick={() => openLivret(`${c.prenom} ${c.nom}`, c.created_at ?? c.enrolledAt)}
                             className="text-xs font-semibold text-orias-gold hover:text-orias-gold-light flex items-center gap-1 mx-auto border border-orias-gold/30 px-2 py-1 rounded-lg hover:bg-orias-gold/10 transition-colors"
                           >
                             <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
