@@ -895,8 +895,8 @@ export default function MaFormation() {
                   </span>
                 )}
                 {ias1Result && (
-                  <span className={`status-badge border text-xs ${ias1Result.passed ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                    {ias1Result.passed ? 'Réussi' : 'Échoué'} — {ias1Result.score}/20
+                  <span className={`status-badge border text-xs ${ias1Result.score >= 15 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    {ias1Result.score >= 15 ? 'Réussi' : 'Échoué'} — {ias1Result.score}/20
                   </span>
                 )}
               </div>
@@ -908,14 +908,26 @@ export default function MaFormation() {
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            {ias1Result?.passed ? (
-              <button
-                onClick={() => openCertificate(user?.name ?? 'Étudiant', ias1Result.score)}
-                className="btn-gold flex items-center gap-2"
-              >
-                <DownloadIcon className="w-4 h-4" />
-                Mon certificat
-              </button>
+            {ias1Result ? (
+              ias1Result.score >= 15 ? (
+                <div className="flex flex-col items-end gap-2">
+                  <div style={{background:'linear-gradient(135deg,#f5f0e8,#fff)',border:'1px solid #c9a84c',borderRadius:12,padding:'12px 16px',textAlign:'center'}}>
+                    <p style={{fontWeight:700,color:'#1a3d2b',fontSize:13,marginBottom:4}}>📋 Livret en cours de génération</p>
+                    <p style={{fontSize:11,color:'#666',lineHeight:1.5}}>Envoyé sous <strong>5 jours ouvrés</strong> par email<br/>et disponible dans vos Documents.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-end gap-2">
+                  <div style={{background:'#fff5f5',border:'1px solid #fca5a5',borderRadius:12,padding:'10px 14px',textAlign:'center',marginBottom:4}}>
+                    <p style={{fontWeight:700,color:'#dc2626',fontSize:12,margin:0}}>Score insuffisant — {ias1Result.score}/20</p>
+                    <p style={{fontSize:11,color:'#666',margin:'4px 0 0'}}>Minimum requis : 15/20</p>
+                  </div>
+                  <button onClick={() => setView('exam')} className="btn-gold flex items-center gap-2">
+                    <AwardIcon className="w-4 h-4" />
+                    🔄 Repasser l'examen
+                  </button>
+                </div>
+              )
             ) : examUnlocked ? (
               <button onClick={() => setView('exam')} className="btn-gold flex items-center gap-2">
                 <AwardIcon className="w-4 h-4" />

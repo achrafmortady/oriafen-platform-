@@ -423,7 +423,7 @@ export async function fetchAllClients() {
     const [{ data: users }, { data: pendingDocs }] = await Promise.all([
       supabase
         .from('users')
-        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status)')
+        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), unit_progress(unit_id, completed), exam_results(score, passed)')
         .eq('role', 'student')
         .order('created_at', { ascending: false }),
       supabase
@@ -446,14 +446,19 @@ export async function fetchAllClients() {
         nom:            u.full_name?.split(' ').slice(-1)[0] ?? '—',
         prenom:         u.full_name?.split(' ')[0] ?? '—',
         pack:           u.pack_purchased ?? 'Essentiel',
-        progression:    dossier ? Math.round(((dossier.current_step - 1) / 5) * 100) : 0,
+        progression:    u.unit_progress?.length
+                          ? Math.round((u.unit_progress.filter(p => p.completed).length / 5) * 100)
+                          : dossier ? Math.round(((dossier.current_step - 1) / 5) * 100) : 0,
         statut:         dossier?.status ?? 'En cours',
         activite:       'récemment',
         email:          u.email,
+        enrolledAt:     u.created_at,
         dossierId:      dossier?.id ?? null,
         dossierStep:    dossier?.current_step ?? 1,
         dossierNumber:  dossier?.dossier_number ?? '—',
         pendingDocCount: pendingByUser[u.id] ?? 0,
+        examScore:      u.exam_results?.[0]?.score ?? null,
+        examPassed:     u.exam_results?.some(r => r.score >= 15) ?? false,
       }
     })
   } catch (err) {
