@@ -118,6 +118,7 @@ function ClientsSection() {
   const [selected, setSelected] = useState(null)
   const [filter, setFilter]     = useState('all')
   const [showAdd, setShowAdd]   = useState(false)
+  const [editClient, setEditClient] = useState(null)
 
   const loadClients = () => fetchAllClients().then(data => setClients(data))
 
