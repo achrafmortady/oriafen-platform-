@@ -3,7 +3,6 @@ import {
   DOSSIER_STEPS,
   DOCUMENTS_CHECKLIST,
   FORMATION_UNITS,
-  ADMIN_CLIENTS,
   DEMO_DOCS_BY_CATEGORY,
 } from '../data/mockData'
 
@@ -410,14 +409,7 @@ export async function saveExamResult(userId, examType, score, totalQuestions) {
 
 export async function fetchAllClients() {
   if (!isConfigured) {
-    // Simulate a couple of clients with pending doc notifications
-    return ADMIN_CLIENTS.map((c, i) => ({
-      ...c,
-      pendingDocCount: i === 0 ? 1 : 0,
-      dossierId:       c.dossierId ?? null,
-      dossierStep:     c.dossierStep ?? Math.ceil((c.progression / 100) * 6),
-      dossierNumber:   c.dossierNumber ?? '—',
-    }))
+    return []
   }
   try {
     const [{ data: users }, { data: pendingDocs }] = await Promise.all([
@@ -437,7 +429,7 @@ export async function fetchAllClients() {
       pendingByUser[d.user_id] = (pendingByUser[d.user_id] || 0) + 1
     })
 
-    if (!users?.length) return ADMIN_CLIENTS
+    if (!users?.length) return []
 
     return users.map(u => {
       const dossier = u.dossiers?.[0]
@@ -463,9 +455,7 @@ export async function fetchAllClients() {
     })
   } catch (err) {
     console.warn('[api] fetchAllClients error:', err?.message)
-    return ADMIN_CLIENTS
-  }
-}
+    return []}
 
 export async function createClient(fullName, email, pack) {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré — activez Supabase pour créer des comptes.' }
