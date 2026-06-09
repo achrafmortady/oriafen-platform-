@@ -395,7 +395,7 @@ export async function fetchExamResults(userId) {
 }
 
 export async function saveExamResult(userId, examType, score, totalQuestions) {
-  const passed = examType === 'ias1' ? score >= 10 : (score / totalQuestions) >= 0.7
+  const passed = examType === 'ias1' ? score >= 15 : (score / totalQuestions) >= 0.7
   if (!isConfigured) return { success: true, passed }
   try {
     const { error } = await supabase.from('exam_results').insert({ user_id: userId, exam_type: examType, score, passed })
@@ -422,8 +422,8 @@ export async function fetchAllClients() {
     const [{ data: users }, { data: pendingDocs }] = await Promise.all([
       supabase
         .from('users')
-        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), formation_progress(unit_id, completed_at), exam_results(score, passed)')
-        .neq('email', 'admin@oriafen.com')
+        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), formation_progress(unit_number, completed), exam_results(score, passed)')
+        .eq('role', 'student')
         .order('created_at', { ascending: false }),
       supabase
         .from('documents')
