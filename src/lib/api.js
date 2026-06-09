@@ -422,7 +422,7 @@ export async function fetchAllClients() {
     const [{ data: users }, { data: pendingDocs }] = await Promise.all([
       supabase
         .from('users')
-        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), unit_progress(unit_id, completed), exam_results(score, passed)')
+        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), formation_progress(unit_id, completed_at), exam_results(score, passed)')
         .neq('email', 'admin@oriafen.com')
         .order('created_at', { ascending: false }),
       supabase
@@ -445,8 +445,8 @@ export async function fetchAllClients() {
         nom:            u.full_name?.split(' ').slice(-1)[0] ?? '—',
         prenom:         u.full_name?.split(' ')[0] ?? '—',
         pack:           u.pack_purchased ?? 'Essentiel',
-        progression:    u.unit_progress?.length
-                          ? Math.round((u.unit_progress.filter(p => p.completed).length / 5) * 100)
+        progression:    u.formation_progress?.filter(p => p.completed)?.length
+                          ? Math.round((u.formation_progress.filter(p => p.completed).length / 5) * 100)
                           : dossier ? Math.round(((dossier.current_step - 1) / 5) * 100) : 0,
         statut:         dossier?.status ?? 'En cours',
         activite:       'récemment',
