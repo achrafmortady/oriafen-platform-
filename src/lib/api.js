@@ -423,7 +423,7 @@ export async function fetchAllClients() {
       supabase
         .from('users')
         .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), unit_progress(unit_id, completed), exam_results(score, passed)')
-        .eq('role', 'student')
+        .neq('email', 'admin@oriafen.com')
         .order('created_at', { ascending: false }),
       supabase
         .from('documents')
