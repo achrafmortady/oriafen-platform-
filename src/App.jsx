@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Login from './pages/Login'
+import SetPassword from './pages/SetPassword'
 import StudentDashboard from './pages/student/Dashboard'
 import AdminDashboard from './pages/admin/Dashboard'
 
@@ -35,14 +36,12 @@ function ProtectedRoute({ children, requiredRole }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth()
-
-  // Show loading only while auth state is being resolved.
-  // AuthContext guarantees loading becomes false within 3 seconds.
   if (loading) return <LoadingScreen />
 
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/set-password" element={<SetPassword />} />
       <Route
         path="/dashboard"
         element={
