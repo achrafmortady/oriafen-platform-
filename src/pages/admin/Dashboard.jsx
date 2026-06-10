@@ -67,10 +67,14 @@ function AddClientModal({ onClose, onAdd }) {
             <div className="text-center space-y-4">
               <CheckCircleIcon className="w-14 h-14 text-emerald-500 mx-auto" />
               <p className="font-bold text-orias-green text-lg">Compte créé avec succès !</p>
-              <div className="bg-orias-bg rounded-xl p-4 border border-orias-border text-left">
-                <p className="text-xs text-gray-500 font-semibold mb-1">Mot de passe temporaire</p>
-                <p className="font-mono font-bold text-orias-green text-lg">{success}</p>
-                <p className="text-xs text-gray-400 mt-1">Transmettez ce mot de passe au client. Il pourra le changer à sa première connexion.</p>
+              <div className="bg-orias-bg rounded-xl p-4 border border-orias-border text-left space-y-2">
+                <p className="text-sm font-semibold text-orias-green">📧 Email envoyé automatiquement</p>
+                <p className="text-xs text-gray-500">L'étudiant a reçu un email de confirmation Oriafen Academy.</p>
+                <p className="text-xs text-gray-500">Il clique sur le lien → choisit son mot de passe → accède directement à sa formation.</p>
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-left">
+                <p className="text-xs font-semibold text-amber-700 mb-1">⚠️ Si l'email n'arrive pas</p>
+                <p className="text-xs text-amber-600">Vérifiez les spams. Vous pouvez aussi renvoyer l'invitation depuis Supabase → Auth → Users.</p>
               </div>
               <button onClick={onClose} className="btn-green w-full">Fermer</button>
             </div>
