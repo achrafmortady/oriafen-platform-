@@ -10,9 +10,21 @@ export default function Login() {
   const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [showPass, setShowPass] = useState(false)
-  const [mounted, setMounted]   = useState(false)
+  const [loading,    setLoading]    = useState(false)
+  const [showPass,   setShowPass]   = useState(false)
+  const [mounted,    setMounted]    = useState(false)
+  const [resetSent,  setResetSent]  = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+
+  const handleReset = async () => {
+    if (!resetEmail) return
+    setLoading(true)
+    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: 'https://oriafen-platform.vercel.app/set-password',
+    })
+    setLoading(false)
+    if (!resetError) setResetSent(true)
+  }
   const timerRef = useRef(null)
 
   useEffect(() => {
@@ -221,10 +233,25 @@ export default function Login() {
               )}
             </button>
 
-            <button type="button" className="forgot-login"
-              style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'rgba(255,255,255,0.3)', fontFamily:"'Montserrat', sans-serif", display:'block', margin:'14px auto 0', transition:'color 0.2s', letterSpacing:'0.5px' }}>
-              Mot de passe oublié ?
-            </button>
+            {resetSent ? (
+              <p style={{ textAlign:'center', fontSize:'12px', color:'rgba(201,168,76,0.8)', marginTop:14 }}>
+                ✅ Email envoyé ! Vérifiez votre boîte mail.
+              </p>
+            ) : (
+              <div style={{ marginTop:14 }}>
+                <input
+                  type="email"
+                  value={resetEmail}
+                  onChange={e => setResetEmail(e.target.value)}
+                  placeholder="Email pour réinitialiser"
+                  style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.08)', color:'#fff', fontSize:12, fontFamily:"'Montserrat',sans-serif", boxSizing:'border-box', marginBottom:8, outline:'none' }}
+                />
+                <button type="button" onClick={handleReset}
+                  style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif", display:'block', margin:'0 auto', letterSpacing:'0.5px' }}>
+                  {loading ? 'Envoi...' : 'Mot de passe oublié ?'}
+                </button>
+              </div>
+            )}
           </div>
 
           {!isConfigured && (
