@@ -55,10 +55,10 @@ function generateLivretHTML(studentName, startDate) {
     u5total: '45,00',
   }
 
-  const signatureSVG = `<img src="${SIG_SMALL}" style="width:110px;height:50px;display:block;margin:0 auto;object-fit:contain;" alt="sig"/>`
-  const sigBigHTML = `<img src="${SIG_BIG}" style="width:160px;height:72px;display:block;margin:0 auto;object-fit:contain;" alt="sig"/>`
+  const signatureSVG = SIG_SMALL
+  const sigBigHTML = SIG_BIG
 
-  const cachetSVG = `<img src="${CACHET}" style="width:200px;height:91px;display:block;margin:0 auto;object-fit:contain;" alt="cachet"/>`
+  const cachetSVG = CACHET
 
   const endDate = fmt(addDays(d, 34))
   const today = fmt(new Date())
@@ -180,7 +180,7 @@ function generateLivretHTML(studentName, startDate) {
         <text x="20" y="30" text-anchor="middle" font-family="serif" font-size="14" font-weight="700" fill="#c9a84c">O</text>
       </svg>
       <div>
-        <div class="logo-text-main">ORIAFEN</div>
+        <div class="logo-text-main" style="font-size:16px;letter-spacing:2px;">ASSURYAL CONSEIL</div>
         <div class="logo-text-sub">Cabinet de courtage en assurance · ORIAS N° 22001447</div>
       </div>
     </div>
@@ -287,11 +287,7 @@ function generateLivretHTML(studentName, startDate) {
     <div class="sig-col">
       ${cachetSVG}
     </div>
-    <div class="sig-col">
-      <div style="height:75px;"></div>
-      <div class="sig-name">Direction Pédagogique</div>
-      <div class="sig-role">ASSURYAL CONSEIL</div>
-    </div>
+    
   </div>
 </div>
 
