@@ -473,7 +473,10 @@ export async function createClient(fullName, email, pack) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password: tempPassword,
-      options: { data: { full_name: fullName, role: 'student', pack_purchased: pack } },
+      options: {
+        data: { full_name: fullName, role: 'student', pack_purchased: pack },
+        emailRedirectTo: 'https://oriafen-platform.vercel.app/set-password',
+      },
     })
     if (error) return { success: false, error: error.message }
     return { success: true, tempPassword, userId: data.user?.id }
