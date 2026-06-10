@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { supabase } from '../lib/supabase'
 import Logo from '../components/Logo'
 
 
@@ -19,11 +20,11 @@ export default function Login() {
   const handleReset = async () => {
     if (!resetEmail) return
     setLoading(true)
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+    await supabase.auth.resetPasswordForEmail(resetEmail, {
       redirectTo: 'https://oriafen-platform.vercel.app/set-password',
     })
     setLoading(false)
-    if (!resetError) setResetSent(true)
+    setResetSent(true)
   }
   const timerRef = useRef(null)
 
@@ -234,17 +235,17 @@ export default function Login() {
             </button>
 
             {resetSent ? (
-              <p style={{ textAlign:'center', fontSize:'12px', color:'rgba(201,168,76,0.8)', marginTop:14 }}>
+              <p style={{ textAlign:'center', fontSize:'12px', color:'rgba(201,168,76,0.9)', marginTop:14 }}>
                 ✅ Email envoyé ! Vérifiez votre boîte mail.
               </p>
             ) : (
-              <div style={{ marginTop:14 }}>
+              <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:8 }}>
                 <input
                   type="email"
                   value={resetEmail}
                   onChange={e => setResetEmail(e.target.value)}
                   placeholder="Email pour réinitialiser"
-                  style={{ width:'100%', padding:'8px 12px', borderRadius:8, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.08)', color:'#fff', fontSize:12, fontFamily:"'Montserrat',sans-serif", boxSizing:'border-box', marginBottom:8, outline:'none' }}
+                  style={{ width:'100%', padding:'10px 14px', borderRadius:10, border:'1px solid rgba(255,255,255,0.15)', background:'rgba(255,255,255,0.08)', color:'#fff', fontSize:12, fontFamily:"'Montserrat',sans-serif", boxSizing:'border-box', outline:'none' }}
                 />
                 <button type="button" onClick={handleReset}
                   style={{ background:'none', border:'none', cursor:'pointer', fontSize:'12px', color:'rgba(255,255,255,0.4)', fontFamily:"'Montserrat', sans-serif", display:'block', margin:'0 auto', letterSpacing:'0.5px' }}>
