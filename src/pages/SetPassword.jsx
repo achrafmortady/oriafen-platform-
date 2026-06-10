@@ -14,38 +14,29 @@ export default function SetPassword() {
 
   useEffect(() => {
     const verifyToken = async () => {
-      // Méthode 1 : token_hash dans l'URL (nouveau format Supabase)
+      // Méthode 1 : token_hash dans l'URL
       const tokenHash = searchParams.get('token_hash')
       const type      = searchParams.get('type') || 'signup'
-
       if (tokenHash) {
         const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type })
-        if (!error) {
-          setVerified(true)
-          setVerifying(false)
-          return
-        }
+        if (!error) { setVerified(true); setVerifying(false); return }
       }
-
-      // Méthode 2 : access_token dans le hash de l'URL (ancien format)
-      const hash   = window.location.hash
-      const params = new URLSearchParams(hash.substring(1))
-      const accessToken  = params.get('access_token')
-      const refreshToken = params.get('refresh_token')
-
+      // Méthode 2 : access_token dans le hash
+      const hash        = window.location.hash
+      const hp          = new URLSearchParams(hash.substring(1))
+      const accessToken = hp.get('access_token')
+      const refreshToken= hp.get('refresh_token')
       if (accessToken) {
         const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken || '' })
-        if (!error) {
-          setVerified(true)
-          setVerifying(false)
-          return
-        }
+        if (!error) { setVerified(true); setVerifying(false); return }
       }
+      // Méthode 3 : session déjà établie par Supabase
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) { setVerified(true); setVerifying(false); return }
 
-      setError('Lien invalide ou expiré. Demandez à votre administrateur de renvoyer l\'invitation.')
+      setError("Lien invalide ou expiré. Demandez à votre administrateur de renvoyer l'invitation.")
       setVerifying(false)
     }
-
     verifyToken()
   }, [])
 
@@ -57,7 +48,9 @@ export default function SetPassword() {
     const { error } = await supabase.auth.updateUser({ password })
     setLoading(false)
     if (error) return setError(error.message)
-    navigate('/dashboard')
+    // Déconnecter pour forcer une reconnexion propre avec le nouveau mot de passe
+    await supabase.auth.signOut()
+    navigate('/login')
   }
 
   return (
