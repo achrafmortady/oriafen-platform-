@@ -44,7 +44,7 @@ export const DEMO_DOCS_BY_CATEGORY = {
 // ── Formation units ───────────────────────────────────────────
 export const FORMATION_UNITS = [
   {
-    id: 1, title: 'Les savoirs généraux', totalHours: 20, completedHours: 20, status: 'completed',
+    id: 1, title: 'Les savoirs généraux', totalHours: 20, completedHours: 0, status: 'in_progress',
     description: "Introduction au secteur de l'assurance en France. Vous apprendrez les fondamentaux du marché, les acteurs principaux et le cadre réglementaire.",
     chapters: [
       { label: 'La présentation du secteur', hours: 3 },
@@ -57,7 +57,7 @@ export const FORMATION_UNITS = [
     ],
   },
   {
-    id: 2, title: 'Assurances personnes', totalHours: 30, completedHours: 25, status: 'in_progress',
+    id: 2, title: 'Assurances personnes', totalHours: 30, completedHours: 0, status: 'locked',
     description: "Approfondissement des contrats d'assurance de personnes : prévoyance, dépendance et complémentaire santé.",
     chapters: [
       { label: 'Invalidité/Décès/Dépendance', hours: 10 },
