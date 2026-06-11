@@ -832,7 +832,7 @@ function DossierSection() {
             <AdminSendFinalDocPanel clientId={selectedClient.id} />
 
             <a
-              href={}
+              href={`https://wa.me/?text=Bonjour+${encodeURIComponent(selectedClient.prenom)}`}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-[#25d366] hover:bg-[#20bd5a] transition-colors"
