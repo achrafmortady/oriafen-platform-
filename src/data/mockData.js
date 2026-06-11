@@ -8,37 +8,34 @@ export const DOSSIER_STEPS = [
   { id: 6, label: 'Lancement activité',     status: 'locked' },
 ]
 
-// ── Documents checklist ───────────────────────────────────────
+// ── Documents checklist (legacy demo) ────────────────────────
 export const DOCUMENTS_CHECKLIST = [
-  { id: 'id',   label: "Pièce d'identité",      status: 'valid' },
-  { id: 'cas',  label: 'Casier judiciaire B3',   status: 'valid' },
-  { id: 'ias',  label: 'Attestation IAS1',       status: 'pending' },
-  { id: 'kbis', label: 'Kbis société',           status: 'valid' },
-  { id: 'rcp',  label: 'Attestation RCP',        status: 'valid' },
-  { id: 'rib',  label: 'RIB professionnel',      status: 'missing' },
+  { id: 'cin',              label: 'CIN — Pièce d\'identité',     status: 'missing' },
+  { id: 'passeport',        label: 'Passeport',                    status: 'missing' },
+  { id: 'domicile',         label: 'Justificatif de domicile',     status: 'missing' },
+  { id: 'certificat_benef', label: 'Certificat de bénéficiaire',   status: 'missing' },
+  { id: 'selfie_olky',      label: 'Selfie avec passeport + Olky', status: 'missing' },
+  { id: 'contrat_mission',  label: 'Contrat de mission signé',     status: 'missing' },
 ]
 
-// ── Required document categories (9 official ORIAS documents) ─
+// ── Required document categories (6 documents client Oriafen) ─
 export const REQUIRED_DOCUMENTS = [
-  { id: 'identity',        label: "Pièce d'identité",          sublabel: 'Passeport ou CIN',             accept: '.pdf,.jpg,.jpeg,.png' },
-  { id: 'casier',          label: 'Casier judiciaire B3',       sublabel: 'Moins de 3 mois',              accept: '.pdf,.jpg,.jpeg,.png' },
-  { id: 'attestation_ias', label: 'Attestation IAS1',           sublabel: 'Formation certifiante',        accept: '.pdf' },
-  { id: 'kbis',            label: 'Kbis de la société',         sublabel: 'Moins de 3 mois',              accept: '.pdf,.jpg,.jpeg,.png' },
-  { id: 'rcp',             label: 'Attestation RCP',            sublabel: 'Responsabilité Civile Pro',    accept: '.pdf' },
-  { id: 'domicile',        label: 'Justificatif de domicile',   sublabel: 'Facture ou courrier officiel', accept: '.pdf,.jpg,.jpeg,.png' },
-  { id: 'statuts',         label: 'Statuts de la société',      sublabel: 'Document signé',               accept: '.pdf' },
-  { id: 'rib',             label: "Relevé d'identité bancaire", sublabel: 'RIB professionnel',            accept: '.pdf,.jpg,.jpeg,.png' },
-  { id: 'photo',           label: "Photo d'identité",           sublabel: 'Format numérique JPG/PNG',     accept: '.jpg,.jpeg,.png' },
+  { id: 'cin',               label: 'CIN — Pièce d\'identité',         sublabel: 'Recto/verso',                          accept: '.pdf,.jpg,.jpeg,.png' },
+  { id: 'passeport',         label: 'Passeport',                        sublabel: 'Pages photo et signature',             accept: '.pdf,.jpg,.jpeg,.png' },
+  { id: 'domicile',          label: 'Justificatif de domicile',         sublabel: 'Facture ou courrier officiel',         accept: '.pdf,.jpg,.jpeg,.png' },
+  { id: 'certificat_benef',  label: 'Certificat de bénéficiaire',       sublabel: 'Document signé',                      accept: '.pdf,.jpg,.jpeg,.png' },
+  { id: 'selfie_olky',       label: 'Selfie avec passeport + Olky',     sublabel: 'Photo avec passeport et document Olky', accept: '.jpg,.jpeg,.png' },
+  { id: 'contrat_mission',   label: 'Contrat de mission signé',         sublabel: 'Document signé par les deux parties', accept: '.pdf,.jpg,.jpeg,.png' },
 ]
 
 // ── Demo document state ───────────────────────────────────────
 export const DEMO_DOCS_BY_CATEGORY = {
-  identity:        { id: 'dd-1', status: 'valid',   fileName: 'passeport.pdf',       fileUrl: null, rejectionReason: null },
-  casier:          { id: 'dd-2', status: 'valid',   fileName: 'casier_b3.pdf',       fileUrl: null, rejectionReason: null },
-  attestation_ias: { id: 'dd-3', status: 'pending', fileName: 'attestation_ias.pdf', fileUrl: null, rejectionReason: null },
-  kbis:            { id: 'dd-4', status: 'valid',   fileName: 'kbis_2026.pdf',       fileUrl: null, rejectionReason: null },
-  rcp:             { id: 'dd-5', status: 'valid',   fileName: 'rcp_pro.pdf',         fileUrl: null, rejectionReason: null },
-  rib:             { id: 'dd-6', status: 'missing', fileName: null,                  fileUrl: null, rejectionReason: 'Document illisible, veuillez renvoyer une version lisible.' },
+  cin:              { id: 'dd-1', status: 'missing', fileName: null, fileUrl: null, rejectionReason: null },
+  passeport:        { id: 'dd-2', status: 'missing', fileName: null, fileUrl: null, rejectionReason: null },
+  domicile:         { id: 'dd-3', status: 'missing', fileName: null, fileUrl: null, rejectionReason: null },
+  certificat_benef: { id: 'dd-4', status: 'missing', fileName: null, fileUrl: null, rejectionReason: null },
+  selfie_olky:      { id: 'dd-5', status: 'missing', fileName: null, fileUrl: null, rejectionReason: null },
+  contrat_mission:  { id: 'dd-6', status: 'missing', fileName: null, fileUrl: null, rejectionReason: null },
 }
 
 // ── Formation units ───────────────────────────────────────────
