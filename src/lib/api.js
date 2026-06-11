@@ -340,7 +340,13 @@ export async function fetchFormationProgress(userId) {
   try {
     const { data, error } = await supabase
       .from('formation_progress').select('*').eq('user_id', userId)
-    if (error || !data?.length) return applyUnlockLogic(FORMATION_UNITS)
+    if (error) return applyUnlockLogic(FORMATION_UNITS)
+    // Nouvel étudiant sans données → U1 disponible, reste verrouillé, tout à 0h
+    if (!data?.length) return FORMATION_UNITS.map((unit, idx) => ({
+      ...unit,
+      completedHours: 0,
+      status: idx === 0 ? 'in_progress' : 'locked'
+    }))
 
     const merged = FORMATION_UNITS.map(unit => {
       const row = data.find(r => r.unit_number === unit.id)
