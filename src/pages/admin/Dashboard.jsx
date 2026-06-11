@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
@@ -8,6 +8,21 @@ import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsW
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+
+const _supabase = createSupabaseClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+)
+
+const FINAL_DOCS_CATALOGUE = [
+  { type: 'attestation_ias1', label: 'Attestation IAS1' },
+  { type: 'kbis',             label: 'Kbis de la société' },
+  { type: 'numero_orias',     label: 'Numéro ORIAS officiel' },
+  { type: 'attestation_rc',   label: 'Attestation RC Pro' },
+  { type: 'domiciliation',    label: 'Domiciliation' },
+  { type: 'statuts',          label: 'Statuts de la société' },
+]
 
 const NAV_ITEMS = [
   { id: 'clients',    label: 'Clients',         icon: <UsersIcon className="w-4 h-4" /> },
@@ -332,6 +347,143 @@ function ClientsSection() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Admin: send document to client (received docs)
+function AdminSendDocPanel({ clientId }) {
+  const inputRef = useRef(null)
+  const [label, setLabel] = useState("")
+  const [type, setType]   = useState("document")
+  const [sending, setSending] = useState(false)
+  const [sent, setSent]       = useState(false)
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !label.trim()) return
+    setSending(true)
+    try {
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase()
+      const path = `received/${clientId}/${Date.now()}.${ext}`
+      const { error: storageErr } = await _supabase.storage.from("documents").upload(path, file, { upsert: true })
+      if (storageErr) throw storageErr
+      const { data: { signedUrl } } = await _supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
+      await _supabase.from("client_received_docs").insert({
+        user_id: clientId, file_url: signedUrl, file_name: file.name, label: label.trim(), type
+      })
+      setSent(true)
+      setLabel("")
+      setTimeout(() => setSent(false), 3000)
+    } catch(err) {
+      alert("Erreur: " + err.message)
+    } finally {
+      setSending(false)
+      e.target.value = ""
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <h4 className="font-bold text-orias-green mb-3">📥 Envoyer un document au client</h4>
+      {sent ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center text-emerald-700 font-semibold text-sm">✅ Document envoyé avec succès !</div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Nom du document</label>
+            <input value={label} onChange={e => setLabel(e.target.value)} className="input-field text-sm" placeholder="Ex: Contrat de mission signé" />
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Type</label>
+            <select value={type} onChange={e => setType(e.target.value)} className="input-field text-sm">
+              <option value="document">Document</option>
+              <option value="contrat">Contrat</option>
+              <option value="convention">Convention</option>
+              <option value="guide">Guide</option>
+            </select>
+          </div>
+          <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{display:"none"}} onChange={handleFile} />
+          <button
+            onClick={() => label.trim() && inputRef.current?.click()}
+            disabled={!label.trim() || sending}
+            className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {sending ? "Envoi en cours..." : "📤 Choisir et envoyer le fichier"}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Admin: send final doc to client
+function AdminSendFinalDocPanel({ clientId }) {
+  const inputRef = useRef(null)
+  const [docType, setDocType]   = useState("attestation_ias1")
+  const [customLabel, setCustomLabel] = useState("")
+  const [sending, setSending]   = useState(false)
+  const [sent, setSent]         = useState(false)
+
+  const isCustom = docType === "autre"
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (isCustom && !customLabel.trim()) { alert("Entrez un nom de document"); return }
+    setSending(true)
+    try {
+      const ext = (file.name.split(".").pop() || "bin").toLowerCase()
+      const path = `final/${clientId}/${Date.now()}.${ext}`
+      const { error: storageErr } = await _supabase.storage.from("documents").upload(path, file, { upsert: true })
+      if (storageErr) throw storageErr
+      const { data: { signedUrl } } = await _supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
+      const finalType = isCustom ? customLabel.trim() : docType
+      await _supabase.from("client_final_docs").upsert(
+        { user_id: clientId, doc_type: finalType, file_url: signedUrl, file_name: file.name },
+        { onConflict: "user_id,doc_type" }
+      )
+      setSent(true)
+      setCustomLabel("")
+      setTimeout(() => setSent(false), 3000)
+    } catch(err) {
+      alert("Erreur: " + err.message)
+    } finally {
+      setSending(false)
+      e.target.value = ""
+    }
+  }
+
+  return (
+    <div className="card p-5">
+      <h4 className="font-bold text-orias-green mb-3">🏆 Envoyer un document final</h4>
+      {sent ? (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center text-emerald-700 font-semibold text-sm">✅ Document final envoyé — déverrouillé chez le client !</div>
+      ) : (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-gray-600 mb-1">Type de document</label>
+            <select value={docType} onChange={e => setDocType(e.target.value)} className="input-field text-sm">
+              {FINAL_DOCS_CATALOGUE.map(c => <option key={c.type} value={c.type}>{c.label}</option>)}
+              <option value="autre">Autre document...</option>
+            </select>
+          </div>
+          {isCustom && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 mb-1">Nom du document</label>
+              <input value={customLabel} onChange={e => setCustomLabel(e.target.value)} className="input-field text-sm" placeholder="Ex: Attestation de domiciliation" />
+            </div>
+          )}
+          <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{display:"none"}} onChange={handleFile} />
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={sending || (isCustom && !customLabel.trim())}
+            className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            {sending ? "Envoi en cours..." : "📤 Choisir et envoyer le fichier"}
+          </button>
         </div>
       )}
     </div>
@@ -673,8 +825,14 @@ function DossierSection() {
               )}
             </div>
 
+            {/* Send received doc to client */}
+            <AdminSendDocPanel clientId={selectedClient.id} type="received" />
+
+            {/* Send final doc to client */}
+            <AdminSendFinalDocPanel clientId={selectedClient.id} />
+
             <a
-              href="https://wa.me/33600000000"
+              href={}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-[#25d366] hover:bg-[#20bd5a] transition-colors"
