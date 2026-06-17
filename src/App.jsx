@@ -28,8 +28,10 @@ function ProtectedRoute({ children, requiredRole }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
-  if (requiredRole && user.role !== requiredRole) {
-    return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
+  const isAdminLike = user.role === 'admin' || user.role === 'super_admin'
+  const hasAccess = requiredRole === 'admin' ? isAdminLike : user.role === requiredRole
+  if (requiredRole && !hasAccess) {
+    return <Navigate to={isAdminLike ? '/admin' : '/dashboard'} replace />
   }
   return children
 }
@@ -37,6 +39,7 @@ function ProtectedRoute({ children, requiredRole }) {
 function AppRoutes() {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
+  const isAdminLike = user && (user.role === 'admin' || user.role === 'super_admin')
 
   return (
     <Routes>
@@ -62,7 +65,7 @@ function AppRoutes() {
         path="/"
         element={
           user
-            ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
+            ? <Navigate to={isAdminLike ? '/admin' : '/dashboard'} replace />
             : <Navigate to="/login" replace />
         }
       />
