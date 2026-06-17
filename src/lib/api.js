@@ -479,9 +479,7 @@ export async function fetchAllClients() {
         nom:            u.full_name?.split(' ').slice(-1)[0] ?? '—',
         prenom:         u.full_name?.split(' ')[0] ?? '—',
         pack:           u.pack_purchased ?? 'Essentiel',
-        progression:    u.formation_progress?.filter(p => p.completed)?.length
-                          ? Math.round((u.formation_progress.filter(p => p.completed).length / 5) * 100)
-                          : dossier ? Math.round(((dossier.current_step - 1) / 5) * 100) : 0,
+        progression:    Math.round(((u.formation_progress?.filter(p => p.completed)?.length ?? 0) / 5) * 100),
         statut:         dossier?.status ?? 'En cours',
         activite:       'récemment',
         email:          u.email,
