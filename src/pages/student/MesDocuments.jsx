@@ -172,6 +172,24 @@ function AutreDocRow({ onUpload, uploading }) {
 }
 
 // Main component
+// Opens a doc properly: HTML files render as a page (via Blob), other files just open/download normally
+async function openOrDownloadDoc(fileUrl, fileName) {
+  const isHtml = fileName?.toLowerCase().endsWith('.html')
+  if (!isHtml) {
+    window.open(fileUrl, '_blank', 'noopener,noreferrer')
+    return
+  }
+  try {
+    const res = await fetch(fileUrl)
+    const text = await res.text()
+    const blob = new Blob([text], { type: 'text/html' })
+    const blobUrl = URL.createObjectURL(blob)
+    window.open(blobUrl, '_blank')
+  } catch {
+    window.open(fileUrl, '_blank', 'noopener,noreferrer')
+  }
+}
+
 export default function MesDocuments() {
   const { user } = useAuth()
   const [activeSection, setActiveSection] = useState('orias')
@@ -382,11 +400,11 @@ export default function MesDocuments() {
                       <span style={{ padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'rgba(201,168,76,0.08)', color:'#c49a2a', border:'1px solid rgba(201,168,76,0.2)', flexShrink:0 }}>
                         {tc.label}
                       </span>
-                      <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="dl-btn"
-                        style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'none', border:'1px solid #e8e2d6', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", flexShrink:0, transition:'all 0.2s', textDecoration:'none' }}>
+                      <button onClick={() => openOrDownloadDoc(doc.file_url, doc.file_name)} className="dl-btn"
+                        style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'none', border:'1px solid #e8e2d6', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", flexShrink:0, transition:'all 0.2s' }}>
                         <DownloadIcon className="w-4 h-4" />
                         Télécharger
-                      </a>
+                      </button>
                     </div>
                   )
                 })}
@@ -433,11 +451,11 @@ export default function MesDocuments() {
                         </p>
                       </div>
                       {uploaded ? (
-                        <a href={uploaded.file_url} target="_blank" rel="noopener noreferrer" className="dl-btn"
-                          style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'none', border:'1px solid #e8e2d6', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", flexShrink:0, transition:'all 0.2s', textDecoration:'none' }}>
+                        <button onClick={() => openOrDownloadDoc(uploaded.file_url, uploaded.file_name)} className="dl-btn"
+                          style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'none', border:'1px solid #e8e2d6', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", flexShrink:0, transition:'all 0.2s' }}>
                           <DownloadIcon className="w-4 h-4" />
                           Télécharger
-                        </a>
+                        </button>
                       ) : (
                         <span style={{ padding:'4px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:'#f3f4f6', color:'#9ca3af', border:'1px solid #e5e7eb', flexShrink:0 }}>
                           Verrouillé
@@ -455,11 +473,11 @@ export default function MesDocuments() {
                       <p style={{ margin:0, fontWeight:'600', color:'#1a3d2b', fontSize:'13px' }}>{doc.doc_type}</p>
                       <p style={{ margin:'3px 0 0', fontSize:'11px', color:'#c49a2a' }}>📎 {doc.file_name}</p>
                     </div>
-                    <a href={doc.file_url} target="_blank" rel="noopener noreferrer" className="dl-btn"
-                      style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'none', border:'1px solid #e8e2d6', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", flexShrink:0, transition:'all 0.2s', textDecoration:'none' }}>
+                    <button onClick={() => openOrDownloadDoc(doc.file_url, doc.file_name)} className="dl-btn"
+                      style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'none', border:'1px solid #e8e2d6', cursor:'pointer', color:'#6b7280', fontSize:'12px', fontWeight:'600', fontFamily:"'Montserrat', sans-serif", flexShrink:0, transition:'all 0.2s' }}>
                       <DownloadIcon className="w-4 h-4" />
                       Télécharger
-                    </a>
+                    </button>
                   </div>
                 ))}
               </div>
