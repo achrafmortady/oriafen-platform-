@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { id: 'formation',  label: 'Formation',        icon: <BookIcon className="w-4 h-4" /> },
   { id: 'notifs',     label: 'Notifications',    icon: <BellIcon className="w-4 h-4" /> },
 ]
+const FINANCE_NAV_ITEM = { id: 'finance', label: 'Finance', icon: <TrendingUpIcon className="w-4 h-4" /> }
 
 function StatCard({ icon, label, value, sub, color }) {
   return (
@@ -41,19 +42,41 @@ function StatCard({ icon, label, value, sub, color }) {
   )
 }
 
+const PACK_CATEGORY_LABELS = {
+  conseil:   '📋 Conseil ORIAS',
+  marketing: '🌐 Marketing',
+  academy:   '🎓 Academy',
+  combine:   '⭐ Packs Combinés',
+}
+
 function AddClientModal({ onClose, onAdd }) {
   const [fullName, setFullName] = useState('')
   const [email,    setEmail]    = useState('')
-  const [pack,     setPack]     = useState('Essentiel')
+  const [packId,   setPackId]   = useState('')
+  const [packs,    setPacks]    = useState([])
+  const [loadingPacks, setLoadingPacks] = useState(true)
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [success,  setSuccess]  = useState(null)
+
+  useEffect(() => {
+    fetchPacks().then(data => {
+      setPacks(data)
+      if (data.length) setPackId(data[0].id)
+      setLoadingPacks(false)
+    })
+  }, [])
+
+  const packsByCategory = packs.reduce((acc, p) => {
+    (acc[p.category] = acc[p.category] || []).push(p)
+    return acc
+  }, {})
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const result = await createClient(fullName, email, pack)
+    const result = await createClient(fullName, email, packId)
     setLoading(false)
     if (result.success) {
       setSuccess(result.tempPassword)
@@ -105,13 +128,23 @@ function AddClientModal({ onClose, onAdd }) {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Pack</label>
-                <select value={pack} onChange={e => setPack(e.target.value)} className="input-field">
-                  <option>Essentiel</option>
-                  <option>Starter</option>
-                  <option>Premium</option>
-                </select>
+                {loadingPacks ? (
+                  <div className="input-field text-sm text-gray-400">Chargement des packs…</div>
+                ) : (
+                  <select value={packId} onChange={e => setPackId(e.target.value)} className="input-field">
+                    {Object.entries(packsByCategory).map(([cat, list]) => (
+                      <optgroup key={cat} label={PACK_CATEGORY_LABELS[cat] ?? cat}>
+                        {list.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} — {p.price_ttc.toLocaleString('fr-FR')} DHS TTC
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                )}
               </div>
-              <button type="submit" disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
+              <button type="submit" disabled={loading || loadingPacks} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
                 {loading
                   ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Création…</>
                   : 'Créer le compte client'
@@ -1089,12 +1122,122 @@ function NotificationsSection() {
   )
 }
 
+const MILESTONE_LABELS = {
+  souscription:   'Souscription (50%)',
+  kbis_formation: 'Kbis + Formation (25%)',
+  orias:          'ORIAS obtenu (25%)',
+  full:           'Paiement unique (100%)',
+}
+
+function FinanceSection() {
+  const [summary, setSummary] = useState({ totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] })
+  const [loading, setLoading] = useState(true)
+  const [marking, setMarking] = useState({})
+
+  const load = () => {
+    setLoading(true)
+    fetchFinanceSummary().then(data => { setSummary(data); setLoading(false) })
+  }
+
+  useEffect(() => { load() }, [])
+
+  const handleMarkPaid = async (paymentId) => {
+    setMarking(prev => ({ ...prev, [paymentId]: true }))
+    await markPaymentPaid(paymentId)
+    await load()
+    setMarking(prev => ({ ...prev, [paymentId]: false }))
+  }
+
+  const fmt = (n) => Math.round(n).toLocaleString('fr-FR') + ' DHS'
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <svg className="animate-spin w-8 h-8 text-orias-gold" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      </div>
+    )
+  }
+
+  const pendingPayments = summary.payments.filter(p => p.status === 'pending')
+  const paidPayments     = summary.payments.filter(p => p.status === 'paid')
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="card p-5 bg-emerald-50 border-emerald-200">
+          <p className="text-xs font-semibold text-emerald-700 mb-1">CA encaissé (total)</p>
+          <p className="text-2xl font-bold text-emerald-800">{fmt(summary.totalRevenuePaid)}</p>
+        </div>
+        <div className="card p-5 bg-orias-gold/10 border-orias-gold/30">
+          <p className="text-xs font-semibold text-orias-gold mb-1">CA ce mois-ci</p>
+          <p className="text-2xl font-bold text-orias-green">{fmt(summary.monthRevenue)}</p>
+        </div>
+        <div className="card p-5 bg-amber-50 border-amber-200">
+          <p className="text-xs font-semibold text-amber-700 mb-1">En attente de paiement</p>
+          <p className="text-2xl font-bold text-amber-800">{fmt(summary.totalPending)}</p>
+        </div>
+      </div>
+
+      <div className="card p-6">
+        <h3 className="font-bold text-orias-green mb-4">Paiements en attente ({pendingPayments.length})</h3>
+        {pendingPayments.length === 0 ? (
+          <p className="text-sm text-gray-400">Aucun paiement en attente.</p>
+        ) : (
+          <div className="space-y-2">
+            {pendingPayments.map(p => (
+              <div key={p.id} className="flex items-center justify-between gap-3 p-4 rounded-xl bg-orias-bg border border-orias-border">
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">{p.users?.full_name ?? p.users?.email ?? '—'}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{p.packs?.name ?? '—'} · {MILESTONE_LABELS[p.milestone] ?? p.milestone}</p>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="font-bold text-orias-green text-sm">{fmt(p.amount_ttc)}</span>
+                  <button
+                    onClick={() => handleMarkPaid(p.id)}
+                    disabled={marking[p.id]}
+                    className="btn-gold text-xs px-3 py-1.5 disabled:opacity-60"
+                  >
+                    {marking[p.id] ? '...' : 'Marquer payé'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card p-6">
+        <h3 className="font-bold text-orias-green mb-4">Historique des paiements reçus ({paidPayments.length})</h3>
+        {paidPayments.length === 0 ? (
+          <p className="text-sm text-gray-400">Aucun paiement reçu pour l'instant.</p>
+        ) : (
+          <div className="space-y-2">
+            {paidPayments.map(p => (
+              <div key={p.id} className="flex items-center justify-between gap-3 p-4 rounded-xl bg-emerald-50/50 border border-emerald-100">
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">{p.users?.full_name ?? p.users?.email ?? '—'}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{p.packs?.name ?? '—'} · {MILESTONE_LABELS[p.milestone] ?? p.milestone} · payé le {p.paid_at ? new Date(p.paid_at).toLocaleDateString('fr-FR') : '—'}</p>
+                </div>
+                <span className="font-bold text-emerald-700 text-sm flex-shrink-0">{fmt(p.amount_ttc)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('clients')
   const [allClients, setAllClients] = useState([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [monthRevenue, setMonthRevenue] = useState(0)
 
   const handleLogout = () => {
     logout()
@@ -1105,12 +1248,22 @@ export default function AdminDashboard() {
     fetchAllClients().then(data => setAllClients(data.filter(c => c.email !== 'admin@oriafen.com')))
   }, [])
 
+  useEffect(() => {
+    if (user?.role === 'super_admin') {
+      fetchFinanceSummary().then(s => setMonthRevenue(s.monthRevenue))
+    }
+  }, [user?.role])
+
+  const isSuperAdmin = user?.role === 'super_admin'
+  const navItems = isSuperAdmin ? [...NAV_ITEMS, FINANCE_NAV_ITEM] : NAV_ITEMS
+
   const renderSection = () => {
     switch (activeTab) {
       case 'clients':   return <ClientsSection />
       case 'dossiers':  return <DossierSection />
       case 'formation': return <FormationTrackingSection />
       case 'notifs':    return <NotificationsSection />
+      case 'finance':   return isSuperAdmin ? <FinanceSection /> : <ClientsSection />
       default:          return <ClientsSection />
     }
   }
@@ -1154,11 +1307,13 @@ export default function AdminDashboard() {
       {/* Stats bar */}
       <div className="bg-orias-green border-t border-orias-green-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className={`grid grid-cols-2 ${isSuperAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
             <StatCard icon={<UsersIcon className="w-5 h-5 text-white" />} label="Total clients" value={allClients.length} color="bg-orias-green-light border-white/10" />
             <StatCard icon={<ClockIcon className="w-5 h-5 text-orias-gold" />} label="En cours" value={allClients.filter(c => c.statut !== 'ORIAS obtenu').length} color="bg-orias-gold/20 border-orias-gold/30" />
             <StatCard icon={<AwardIcon className="w-5 h-5 text-emerald-300" />} label="ORIAS obtenus" value={allClients.filter(c => c.statut === 'ORIAS obtenu').length} color="bg-emerald-600/30 border-emerald-400/30" />
-            <StatCard icon={<TrendingUpIcon className="w-5 h-5 text-orias-gold" />} label="Revenus ce mois" value={`${allClients.filter(c=>c.pack==='Premium').length * 497 + allClients.filter(c=>c.pack==='Essentiel').length * 297} €`} sub={new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})} color="bg-orias-gold/15 border-orias-gold/20" />
+            {isSuperAdmin && (
+              <StatCard icon={<TrendingUpIcon className="w-5 h-5 text-orias-gold" />} label="Revenus ce mois" value={`${Math.round(monthRevenue).toLocaleString('fr-FR')} DHS`} sub={new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})} color="bg-orias-gold/15 border-orias-gold/20" />
+            )}
           </div>
         </div>
       </div>
@@ -1167,7 +1322,7 @@ export default function AdminDashboard() {
       <div className="bg-white border-b border-orias-border sticky top-16 z-30 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <nav className="flex overflow-x-auto scrollbar-hide gap-1 py-2">
-            {NAV_ITEMS.map(item => (
+            {navItems.map(item => (
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}

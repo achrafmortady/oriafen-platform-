@@ -439,6 +439,90 @@ export async function saveExamResult(userId, examType, score, totalQuestions) {
   }
 }
 
+// ── Packs & Payments ──────────────────────────────────────────
+
+const TVA_RATE = 1.20 // 20% TVA, prix HT -> TTC
+
+export async function fetchPacks() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase.from('packs').select('*').order('display_order')
+    if (error || !data) return []
+    return data.map(p => ({
+      ...p,
+      price_ttc: Math.round(p.price_ht * TVA_RATE),
+    }))
+  } catch (err) {
+    console.warn('[api] fetchPacks error:', err?.message)
+    return []
+  }
+}
+
+// Milestones for a 'milestone' pack: 50% souscription / 25% kbis+formation / 25% orias
+// Milestones for a 'full' pack: 100% souscription
+function buildPaymentRows(userId, pack) {
+  const ttc = Math.round(pack.price_ht * TVA_RATE)
+  if (pack.payment_type === 'full') {
+    return [
+      { user_id: userId, pack_id: pack.id, milestone: 'full', amount_ht: pack.price_ht, amount_ttc: ttc, status: 'pending' },
+    ]
+  }
+  const half  = Math.round(pack.price_ht * 0.5)
+  const quart = Math.round(pack.price_ht * 0.25)
+  const halfTtc  = Math.round(half * TVA_RATE)
+  const quartTtc = Math.round(quart * TVA_RATE)
+  return [
+    { user_id: userId, pack_id: pack.id, milestone: 'souscription',   amount_ht: half,  amount_ttc: halfTtc,  status: 'pending' },
+    { user_id: userId, pack_id: pack.id, milestone: 'kbis_formation', amount_ht: quart, amount_ttc: quartTtc, status: 'pending' },
+    { user_id: userId, pack_id: pack.id, milestone: 'orias',          amount_ht: quart, amount_ttc: quartTtc, status: 'pending' },
+  ]
+}
+
+export async function markPaymentPaid(paymentId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('payments')
+      .update({ status: 'paid', paid_at: new Date().toISOString() })
+      .eq('id', paymentId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function fetchClientPayments(userId) {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase.from('payments').select('*').eq('user_id', userId).order('created_at')
+    if (error || !data) return []
+    return data
+  } catch { return [] }
+}
+
+// Super-admin only: full financial dashboard
+export async function fetchFinanceSummary() {
+  if (!isConfigured) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
+  try {
+    const { data, error } = await supabase
+      .from('payments')
+      .select('*, users(full_name, email), packs(name, category)')
+      .order('created_at', { ascending: false })
+    if (error || !data) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
+
+    const now = new Date()
+    const totalRevenuePaid = data.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount_ttc), 0)
+    const totalPending     = data.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount_ttc), 0)
+    const monthRevenue     = data
+      .filter(p => p.status === 'paid' && p.paid_at && new Date(p.paid_at).getMonth() === now.getMonth() && new Date(p.paid_at).getFullYear() === now.getFullYear())
+      .reduce((s, p) => s + Number(p.amount_ttc), 0)
+
+    return { totalRevenuePaid, totalPending, monthRevenue, payments: data }
+  } catch (err) {
+    console.warn('[api] fetchFinanceSummary error:', err?.message)
+    return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
+  }
+}
+
 // ── Admin: clients ────────────────────────────────────────────
 
 export async function fetchAllClients() {
@@ -456,7 +540,7 @@ export async function fetchAllClients() {
     const [{ data: users }, { data: pendingDocs }] = await Promise.all([
       supabase
         .from('users')
-        .select('id, email, full_name, role, pack_purchased, created_at, dossiers(id, dossier_number, current_step, status), formation_progress(unit_number, completed), exam_results(score, passed)')
+        .select('id, email, full_name, role, pack_id, created_at, dossiers(id, dossier_number, current_step, status), formation_progress(unit_number, completed), exam_results(score, passed), packs(name, category, price_ht, payment_type)')
         .eq('role', 'student')
         .order('created_at', { ascending: false }),
       supabase
@@ -478,7 +562,8 @@ export async function fetchAllClients() {
         id:             u.id,
         nom:            u.full_name?.split(' ').slice(-1)[0] ?? '—',
         prenom:         u.full_name?.split(' ')[0] ?? '—',
-        pack:           u.pack_purchased ?? 'Essentiel',
+        pack:           u.packs?.name ?? 'Essentiel',
+        packId:         u.pack_id ?? null,
         progression:    Math.round(((u.formation_progress?.filter(p => p.completed)?.length ?? 0) / 5) * 100),
         statut:         dossier?.status ?? 'En cours',
         activite:       'récemment',
@@ -498,20 +583,33 @@ export async function fetchAllClients() {
   }
 }
 
-export async function createClient(fullName, email, pack) {
+export async function createClient(fullName, email, packId) {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré — activez Supabase pour créer des comptes.' }
   try {
+    const { data: pack } = await supabase.from('packs').select('*').eq('id', packId).single()
+    if (!pack) return { success: false, error: 'Pack introuvable.' }
+
     const tempPassword = `Oriafen${Math.floor(Math.random() * 9000) + 1000}!`
     const { data, error } = await supabase.auth.signUp({
       email,
       password: tempPassword,
       options: {
-        data: { full_name: fullName, role: 'student', pack_purchased: pack },
+        data: { full_name: fullName, role: 'student', pack_id: packId },
         emailRedirectTo: 'https://oriafen-platform.vercel.app/set-password',
       },
     })
     if (error) return { success: false, error: error.message }
-    return { success: true, tempPassword, userId: data.user?.id }
+
+    const userId = data.user?.id
+    if (userId) {
+      // Make sure pack_id is set on the users row (signUp metadata may not sync immediately)
+      await supabase.from('users').update({ pack_id: packId }).eq('id', userId)
+      // Create the payment milestone rows for this client
+      const rows = buildPaymentRows(userId, pack)
+      await supabase.from('payments').insert(rows)
+    }
+
+    return { success: true, tempPassword, userId }
   } catch (err) {
     return { success: false, error: err?.message }
   }
