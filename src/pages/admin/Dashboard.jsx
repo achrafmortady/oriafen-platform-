@@ -1129,6 +1129,8 @@ const MILESTONE_LABELS = {
   full:           'Paiement unique (100%)',
 }
 
+const MILESTONE_ORDER = { souscription: 0, kbis_formation: 1, orias: 2, full: 0 }
+
 function FinanceSection() {
   const [summary, setSummary] = useState({ totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] })
   const [loading, setLoading] = useState(true)
@@ -1161,8 +1163,19 @@ function FinanceSection() {
     )
   }
 
-  const pendingPayments = summary.payments.filter(p => p.status === 'pending')
-  const paidPayments     = summary.payments.filter(p => p.status === 'paid')
+  // Group all payments by client
+  const byClient = {}
+  summary.payments.forEach(p => {
+    const key = p.user_id
+    if (!byClient[key]) byClient[key] = { client: p.users, pack: p.packs, payments: [] }
+    byClient[key].payments.push(p)
+  })
+  const clientGroups = Object.values(byClient).map(g => ({
+    ...g,
+    payments: [...g.payments].sort((a, b) => (MILESTONE_ORDER[a.milestone] ?? 0) - (MILESTONE_ORDER[b.milestone] ?? 0)),
+  }))
+
+  const allPaid = summary.payments.filter(p => p.status === 'paid')
 
   return (
     <div className="space-y-6">
@@ -1182,40 +1195,79 @@ function FinanceSection() {
       </div>
 
       <div className="card p-6">
-        <h3 className="font-bold text-orias-green mb-4">Paiements en attente ({pendingPayments.length})</h3>
-        {pendingPayments.length === 0 ? (
-          <p className="text-sm text-gray-400">Aucun paiement en attente.</p>
+        <h3 className="font-bold text-orias-green mb-4">Paiements par client ({clientGroups.length})</h3>
+        {clientGroups.length === 0 ? (
+          <p className="text-sm text-gray-400">Aucun client avec un pack assigné.</p>
         ) : (
-          <div className="space-y-2">
-            {pendingPayments.map(p => (
-              <div key={p.id} className="flex items-center justify-between gap-3 p-4 rounded-xl bg-orias-bg border border-orias-border">
-                <div>
-                  <p className="font-semibold text-gray-800 text-sm">{p.users?.full_name ?? p.users?.email ?? '—'}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{p.packs?.name ?? '—'} · {MILESTONE_LABELS[p.milestone] ?? p.milestone}</p>
+          <div className="space-y-4">
+            {clientGroups.map(group => {
+              // Find index of the first non-paid payment — that's the only one currently actionable
+              const firstPendingIdx = group.payments.findIndex(p => p.status === 'pending')
+              return (
+                <div key={group.client?.email ?? Math.random()} className="rounded-xl border border-orias-border overflow-hidden">
+                  <div className="bg-orias-bg px-4 py-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-semibold text-gray-800 text-sm">{group.client?.full_name ?? group.client?.email ?? '—'}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{group.pack?.name ?? '—'}</p>
+                    </div>
+                  </div>
+                  <div className="divide-y divide-orias-border">
+                    {group.payments.map((p, idx) => {
+                      const isPaid = p.status === 'paid'
+                      const isActionable = !isPaid && idx === firstPendingIdx
+                      const isLocked = !isPaid && idx !== firstPendingIdx
+                      return (
+                        <div
+                          key={p.id}
+                          className={`flex items-center justify-between gap-3 px-4 py-3 ${isLocked ? 'opacity-40 bg-gray-50' : isPaid ? 'bg-emerald-50/40' : 'bg-white'}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isPaid ? (
+                              <CheckCircleIcon className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                            ) : (
+                              <ClockIcon className={`w-4 h-4 flex-shrink-0 ${isActionable ? 'text-orias-gold' : 'text-gray-300'}`} />
+                            )}
+                            <div>
+                              <p className="text-sm text-gray-700">{MILESTONE_LABELS[p.milestone] ?? p.milestone}</p>
+                              {isPaid && p.paid_at && (
+                                <p className="text-xs text-emerald-600">payé le {new Date(p.paid_at).toLocaleDateString('fr-FR')}</p>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3 flex-shrink-0">
+                            <span className={`font-bold text-sm ${isPaid ? 'text-emerald-700' : isActionable ? 'text-orias-green' : 'text-gray-400'}`}>{fmt(p.amount_ttc)}</span>
+                            {isPaid ? (
+                              <span className="text-xs font-semibold text-emerald-600 px-2 py-1 rounded-full bg-emerald-100">Payé</span>
+                            ) : isActionable ? (
+                              <button
+                                onClick={() => handleMarkPaid(p.id)}
+                                disabled={marking[p.id]}
+                                className="btn-gold text-xs px-3 py-1.5 disabled:opacity-60"
+                              >
+                                {marking[p.id] ? '...' : 'Valider'}
+                              </button>
+                            ) : (
+                              <span className="text-xs font-medium text-gray-400 px-2 py-1 rounded-full bg-gray-100">En attente</span>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <span className="font-bold text-orias-green text-sm">{fmt(p.amount_ttc)}</span>
-                  <button
-                    onClick={() => handleMarkPaid(p.id)}
-                    disabled={marking[p.id]}
-                    className="btn-gold text-xs px-3 py-1.5 disabled:opacity-60"
-                  >
-                    {marking[p.id] ? '...' : 'Marquer payé'}
-                  </button>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
 
       <div className="card p-6">
-        <h3 className="font-bold text-orias-green mb-4">Historique des paiements reçus ({paidPayments.length})</h3>
-        {paidPayments.length === 0 ? (
+        <h3 className="font-bold text-orias-green mb-4">Historique des paiements reçus ({allPaid.length})</h3>
+        {allPaid.length === 0 ? (
           <p className="text-sm text-gray-400">Aucun paiement reçu pour l'instant.</p>
         ) : (
           <div className="space-y-2">
-            {paidPayments.map(p => (
+            {allPaid.map(p => (
               <div key={p.id} className="flex items-center justify-between gap-3 p-4 rounded-xl bg-emerald-50/50 border border-emerald-100">
                 <div>
                   <p className="font-semibold text-gray-800 text-sm">{p.users?.full_name ?? p.users?.email ?? '—'}</p>
