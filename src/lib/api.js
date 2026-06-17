@@ -389,6 +389,34 @@ export async function startUnit(userId, unitNumber) {
   }
 }
 
+// ── Chapter-level progress (persists across logout/login) ────
+
+export async function fetchChapterProgress(userId) {
+  if (!isConfigured || !userId) return new Set()
+  try {
+    const { data, error } = await supabase
+      .from('chapter_progress').select('chapter_id').eq('user_id', userId)
+    if (error || !data) return new Set()
+    return new Set(data.map(r => r.chapter_id))
+  } catch (err) {
+    console.warn('[api] fetchChapterProgress error:', err?.message)
+    return new Set()
+  }
+}
+
+export async function saveChapterProgress(userId, chapterId) {
+  if (!isConfigured || !userId) return { success: true }
+  try {
+    const { error } = await supabase.from('chapter_progress').upsert(
+      { user_id: userId, chapter_id: chapterId },
+      { onConflict: 'user_id,chapter_id' }
+    )
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
 // ── Exam results ──────────────────────────────────────────────
 
 export async function fetchExamResults(userId) {

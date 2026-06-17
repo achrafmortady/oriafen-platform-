@@ -6,6 +6,8 @@ import {
   saveExamResult,
   markUnitComplete,
   startUnit,
+  fetchChapterProgress,
+  saveChapterProgress,
 } from '../../lib/api'
 import { FORMATION_UNITS, IAS1_QUESTIONS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -255,13 +257,25 @@ function LessonView({ unit, userId, onDone, onComplete, completedChapters: initi
   const [unitDone, setUnitDone] = useState(unit.status === 'completed')
   const [activeChapter, setActiveChapter] = useState(null)
   const [completedChapters, setCompletedChapters] = useState(() => initialCompleted ?? new Set())
+  const [loadingChapters, setLoadingChapters] = useState(true)
 
   const allChapterIds = unit.chapters.map((_, i) => `${unit.id}.${i + 1}`)
+
+  // Load real chapter progress from Supabase on mount (persists across logout/login)
+  useEffect(() => {
+    if (!userId) { setLoadingChapters(false); return }
+    fetchChapterProgress(userId).then(savedChapters => {
+      setCompletedChapters(prev => new Set([...prev, ...savedChapters]))
+      setLoadingChapters(false)
+    })
+  }, [userId])
 
   const handleChapterComplete = async (chapterId) => {
     const updated = new Set([...completedChapters, chapterId])
     setCompletedChapters(updated)
     setActiveChapter(null)
+    // Persist this chapter immediately so it survives logout/login
+    if (userId) saveChapterProgress(userId, chapterId)
     const allDone = allChapterIds.every(id => updated.has(id))
     if (allDone && !unitDone) {
       setMarking(true)
@@ -536,6 +550,17 @@ function LessonView({ unit, userId, onDone, onComplete, completedChapters: initi
           Retour à l'Unité 1
         </button>
         <Chapitre12 isCompleted={completedChapters.has('1.2')} onComplete={() => handleChapterComplete('1.2')} />
+      </div>
+    )
+  }
+
+  if (loadingChapters) {
+    return (
+      <div className="max-w-3xl mx-auto flex items-center justify-center" style={{ padding: '80px 0' }}>
+        <svg className="animate-spin w-8 h-8 text-orias-gold" viewBox="0 0 24 24" fill="none">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
       </div>
     )
   }
