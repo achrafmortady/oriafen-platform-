@@ -8,12 +8,7 @@ import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsW
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
-
-const _supabase = createSupabaseClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
+import { supabase as _supabase } from '../../lib/supabase'
 
 const FINAL_DOCS_CATALOGUE = [
   { type: 'attestation_ias1', label: 'Attestation IAS1' },
@@ -456,6 +451,33 @@ function AdminSendFinalDocPanel({ clientId }) {
     }
   }
 
+  const handleAutoLivret = async () => {
+    setSending(true)
+    try {
+      const { data: userData } = await _supabase.from("users").select("full_name, created_at").eq("id", clientId).single()
+      const studentName = userData?.full_name || "Étudiant"
+      const enrolledAt  = userData?.created_at || new Date().toISOString()
+      const { generateLivretHTML } = await import("../../lib/livret")
+      const html = generateLivretHTML(studentName, enrolledAt)
+      const blob = new Blob([html], { type: "text/html" })
+      const fileName = `Livret_IAS1_${studentName.replace(/\s+/g,"_")}.html`
+      const path = `final/${clientId}/${Date.now()}_livret.html`
+      const { error: storageErr } = await _supabase.storage.from("documents").upload(path, blob, { upsert: true, contentType: "text/html" })
+      if (storageErr) throw storageErr
+      const { data: { signedUrl } } = await _supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
+      await _supabase.from("client_final_docs").upsert(
+        { user_id: clientId, doc_type: "attestation_ias1", file_url: signedUrl, file_name: fileName },
+        { onConflict: "user_id,doc_type" }
+      )
+      setSent(true)
+      setTimeout(() => setSent(false), 3000)
+    } catch(err) {
+      alert("Erreur génération livret: " + err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
   return (
     <div className="card p-5">
       <h4 className="font-bold text-orias-green mb-3">🏆 Envoyer un document final</h4>
@@ -477,13 +499,23 @@ function AdminSendFinalDocPanel({ clientId }) {
             </div>
           )}
           <input ref={inputRef} type="file" accept=".pdf,.jpg,.jpeg,.png" style={{display:"none"}} onChange={handleFile} />
-          <button
-            onClick={() => inputRef.current?.click()}
-            disabled={sending || (isCustom && !customLabel.trim())}
-            className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-50"
-          >
-            {sending ? "Envoi en cours..." : "📤 Choisir et envoyer le fichier"}
-          </button>
+          {docType === "attestation_ias1" && !isCustom ? (
+            <button
+              onClick={handleAutoLivret}
+              disabled={sending}
+              className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {sending ? "Génération en cours..." : "✨ Générer automatiquement le livret IAS1"}
+            </button>
+          ) : (
+            <button
+              onClick={() => inputRef.current?.click()}
+              disabled={sending || (isCustom && !customLabel.trim())}
+              className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {sending ? "Envoi en cours..." : "📤 Choisir et envoyer le fichier"}
+            </button>
+          )}
         </div>
       )}
     </div>

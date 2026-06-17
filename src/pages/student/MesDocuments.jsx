@@ -7,12 +7,8 @@ import {
 } from '../../lib/api'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import { CheckCircleIcon, ClockIcon, XCircleIcon, DownloadIcon } from '../../components/Icons'
-import { createClient } from '@supabase/supabase-js'
+import { supabase as _supabase } from '../../lib/supabase'
 
-const _supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-)
 
 // Final docs catalogue - always shown, locked until admin uploads
 const FINAL_DOCS_CATALOGUE = [
