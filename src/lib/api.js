@@ -460,21 +460,23 @@ export async function fetchPacks() {
 
 // Milestones for a 'milestone' pack: 50% souscription / 25% kbis+formation / 25% orias
 // Milestones for a 'full' pack: 100% souscription
-function buildPaymentRows(userId, pack) {
-  const ttc = Math.round(pack.price_ht * TVA_RATE)
+function buildPaymentRows(userId, pack, discountPercent = 0) {
+  const discountFactor = 1 - (Number(discountPercent) || 0) / 100
+  const effectiveHt = pack.price_ht * discountFactor
+  const ttc = Math.round(effectiveHt * TVA_RATE)
   if (pack.payment_type === 'full') {
     return [
-      { user_id: userId, pack_id: pack.id, milestone: 'full', amount_ht: pack.price_ht, amount_ttc: ttc, status: 'pending' },
+      { user_id: userId, pack_id: pack.id, milestone: 'full', amount_ht: effectiveHt, amount_ttc: ttc, status: 'pending', discount_percent: discountPercent },
     ]
   }
-  const half  = Math.round(pack.price_ht * 0.5)
-  const quart = Math.round(pack.price_ht * 0.25)
+  const half  = Math.round(effectiveHt * 0.5)
+  const quart = Math.round(effectiveHt * 0.25)
   const halfTtc  = Math.round(half * TVA_RATE)
   const quartTtc = Math.round(quart * TVA_RATE)
   return [
-    { user_id: userId, pack_id: pack.id, milestone: 'souscription',   amount_ht: half,  amount_ttc: halfTtc,  status: 'pending' },
-    { user_id: userId, pack_id: pack.id, milestone: 'kbis_formation', amount_ht: quart, amount_ttc: quartTtc, status: 'pending' },
-    { user_id: userId, pack_id: pack.id, milestone: 'orias',          amount_ht: quart, amount_ttc: quartTtc, status: 'pending' },
+    { user_id: userId, pack_id: pack.id, milestone: 'souscription',   amount_ht: half,  amount_ttc: halfTtc,  status: 'pending', discount_percent: discountPercent },
+    { user_id: userId, pack_id: pack.id, milestone: 'kbis_formation', amount_ht: quart, amount_ttc: quartTtc, status: 'pending', discount_percent: discountPercent },
+    { user_id: userId, pack_id: pack.id, milestone: 'orias',          amount_ht: quart, amount_ttc: quartTtc, status: 'pending', discount_percent: discountPercent },
   ]
 }
 
@@ -584,7 +586,7 @@ export async function fetchAllClients() {
   }
 }
 
-export async function createClient(fullName, email, packId) {
+export async function createClient(fullName, email, packId, discountPercent = 0) {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré — activez Supabase pour créer des comptes.' }
   try {
     const { data: pack } = await supabase.from('packs').select('*').eq('id', packId).single()
@@ -605,8 +607,8 @@ export async function createClient(fullName, email, packId) {
     if (userId) {
       // Make sure pack_id is set on the users row (signUp metadata may not sync immediately)
       await supabase.from('users').update({ pack_id: packId }).eq('id', userId)
-      // Create the payment milestone rows for this client
-      const rows = buildPaymentRows(userId, pack)
+      // Create the payment milestone rows for this client (with discount applied if any)
+      const rows = buildPaymentRows(userId, pack, discountPercent)
       await supabase.from('payments').insert(rows)
     }
 

@@ -53,6 +53,7 @@ function AddClientModal({ onClose, onAdd }) {
   const [fullName, setFullName] = useState('')
   const [email,    setEmail]    = useState('')
   const [packId,   setPackId]   = useState('')
+  const [discount, setDiscount] = useState(0)
   const [packs,    setPacks]    = useState([])
   const [loadingPacks, setLoadingPacks] = useState(true)
   const [loading,  setLoading]  = useState(false)
@@ -72,11 +73,14 @@ function AddClientModal({ onClose, onAdd }) {
     return acc
   }, {})
 
+  const selectedPack = packs.find(p => p.id === packId)
+  const discountedTtc = selectedPack ? Math.round(selectedPack.price_ttc * (1 - discount / 100)) : 0
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const result = await createClient(fullName, email, packId)
+    const result = await createClient(fullName, email, packId, discount)
     setLoading(false)
     if (result.success) {
       setSuccess(result.tempPassword)
@@ -142,6 +146,21 @@ function AddClientModal({ onClose, onAdd }) {
                       </optgroup>
                     ))}
                   </select>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Discount (%)</label>
+                <input
+                  type="number" min="0" max="100" step="1"
+                  value={discount}
+                  onChange={e => setDiscount(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                  className="input-field" placeholder="0"
+                />
+                {selectedPack && discount > 0 && (
+                  <p className="text-xs text-gray-500 mt-2">
+                    Prix après discount : <span className="font-semibold text-orias-green">{discountedTtc.toLocaleString('fr-FR')} DHS TTC</span>
+                    {' '}<span className="line-through text-gray-400">{selectedPack.price_ttc.toLocaleString('fr-FR')} DHS</span>
+                  </p>
                 )}
               </div>
               <button type="submit" disabled={loading || loadingPacks} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
@@ -1135,10 +1154,16 @@ function FinanceSection() {
   const [summary, setSummary] = useState({ totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] })
   const [loading, setLoading] = useState(true)
   const [marking, setMarking] = useState({})
+  const [allClientsList, setAllClientsList] = useState([])
+  const [selectedClientId, setSelectedClientId] = useState('all')
 
   const load = () => {
     setLoading(true)
-    fetchFinanceSummary().then(data => { setSummary(data); setLoading(false) })
+    Promise.all([fetchFinanceSummary(), fetchAllClients()]).then(([financeData, clients]) => {
+      setSummary(financeData)
+      setAllClientsList(clients.filter(c => c.email !== 'admin@oriafen.com'))
+      setLoading(false)
+    })
   }
 
   useEffect(() => { load() }, [])
@@ -1167,13 +1192,22 @@ function FinanceSection() {
   const byClient = {}
   summary.payments.forEach(p => {
     const key = p.user_id
-    if (!byClient[key]) byClient[key] = { client: p.users, pack: p.packs, payments: [] }
+    if (!byClient[key]) byClient[key] = { clientId: key, client: p.users, pack: p.packs, payments: [] }
     byClient[key].payments.push(p)
   })
-  const clientGroups = Object.values(byClient).map(g => ({
+  // Add clients who have no payments at all yet (e.g. no pack assigned), so they're still selectable
+  allClientsList.forEach(c => {
+    if (!byClient[c.id]) {
+      byClient[c.id] = { clientId: c.id, client: { full_name: `${c.prenom} ${c.nom}`, email: c.email }, pack: c.packId ? { name: c.pack } : null, payments: [] }
+    }
+  })
+  let clientGroups = Object.values(byClient).map(g => ({
     ...g,
     payments: [...g.payments].sort((a, b) => (MILESTONE_ORDER[a.milestone] ?? 0) - (MILESTONE_ORDER[b.milestone] ?? 0)),
   }))
+  if (selectedClientId !== 'all') {
+    clientGroups = clientGroups.filter(g => g.clientId === selectedClientId)
+  }
 
   const allPaid = summary.payments.filter(p => p.status === 'paid')
 
@@ -1195,7 +1229,21 @@ function FinanceSection() {
       </div>
 
       <div className="card p-6">
-        <h3 className="font-bold text-orias-green mb-4">Paiements par client ({clientGroups.length})</h3>
+        <div className="flex items-center justify-between gap-4 mb-4 flex-wrap">
+          <h3 className="font-bold text-orias-green">Paiements par client ({clientGroups.length})</h3>
+          <select
+            value={selectedClientId}
+            onChange={e => setSelectedClientId(e.target.value)}
+            className="input-field text-sm max-w-xs"
+          >
+            <option value="all">Tous les clients</option>
+            {Object.values(byClient).map(g => (
+              <option key={g.clientId} value={g.clientId}>
+                {g.client?.full_name ?? g.client?.email ?? '—'}
+              </option>
+            ))}
+          </select>
+        </div>
         {clientGroups.length === 0 ? (
           <p className="text-sm text-gray-400">Aucun client avec un pack assigné.</p>
         ) : (
@@ -1204,13 +1252,16 @@ function FinanceSection() {
               // Find index of the first non-paid payment — that's the only one currently actionable
               const firstPendingIdx = group.payments.findIndex(p => p.status === 'pending')
               return (
-                <div key={group.client?.email ?? Math.random()} className="rounded-xl border border-orias-border overflow-hidden">
+                <div key={group.clientId ?? Math.random()} className="rounded-xl border border-orias-border overflow-hidden">
                   <div className="bg-orias-bg px-4 py-3 flex items-center justify-between">
                     <div>
                       <p className="font-semibold text-gray-800 text-sm">{group.client?.full_name ?? group.client?.email ?? '—'}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{group.pack?.name ?? '—'}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{group.pack?.name ?? 'Aucun pack assigné'}</p>
                     </div>
                   </div>
+                  {group.payments.length === 0 ? (
+                    <div className="px-4 py-4 text-sm text-gray-400">Aucun paiement enregistré pour ce client.</div>
+                  ) : (
                   <div className="divide-y divide-orias-border">
                     {group.payments.map((p, idx) => {
                       const isPaid = p.status === 'paid'
@@ -1231,6 +1282,9 @@ function FinanceSection() {
                               <p className="text-sm text-gray-700">{MILESTONE_LABELS[p.milestone] ?? p.milestone}</p>
                               {isPaid && p.paid_at && (
                                 <p className="text-xs text-emerald-600">payé le {new Date(p.paid_at).toLocaleDateString('fr-FR')}</p>
+                              )}
+                              {p.discount_percent > 0 && (
+                                <p className="text-xs text-orias-gold">-{p.discount_percent}% discount appliqué</p>
                               )}
                             </div>
                           </div>
@@ -1254,6 +1308,7 @@ function FinanceSection() {
                       )
                     })}
                   </div>
+                  )}
                 </div>
               )
             })}
