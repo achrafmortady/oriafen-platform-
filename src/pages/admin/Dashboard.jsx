@@ -1213,7 +1213,7 @@ function FinanceSection() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="card p-5 bg-emerald-50 border-emerald-200">
           <p className="text-xs font-semibold text-emerald-700 mb-1">CA encaissé (total)</p>
           <p className="text-2xl font-bold text-emerald-800">{fmt(summary.totalRevenuePaid)}</p>
@@ -1222,8 +1222,12 @@ function FinanceSection() {
           <p className="text-xs font-semibold text-orias-gold mb-1">CA ce mois-ci</p>
           <p className="text-2xl font-bold text-orias-green">{fmt(summary.monthRevenue)}</p>
         </div>
+        <div className="card p-5 bg-emerald-50/60 border-emerald-200">
+          <p className="text-xs font-semibold text-emerald-700 mb-1">CA année {new Date().getFullYear()}</p>
+          <p className="text-2xl font-bold text-emerald-800">{fmt(summary.yearRevenue)}</p>
+        </div>
         <div className="card p-5 bg-amber-50 border-amber-200">
-          <p className="text-xs font-semibold text-amber-700 mb-1">En attente de paiement</p>
+          <p className="text-xs font-semibold text-amber-700 mb-1">En attente ({summary.pendingCount} paiement{summary.pendingCount > 1 ? 's' : ''})</p>
           <p className="text-2xl font-bold text-amber-800">{fmt(summary.totalPending)}</p>
         </div>
       </div>
@@ -1251,6 +1255,7 @@ function FinanceSection() {
             {clientGroups.map(group => {
               // Find index of the first non-paid payment — that's the only one currently actionable
               const firstPendingIdx = group.payments.findIndex(p => p.status === 'pending')
+              const totalDue = group.payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount_ttc), 0)
               return (
                 <div key={group.clientId ?? Math.random()} className="rounded-xl border border-orias-border overflow-hidden">
                   <div className="bg-orias-bg px-4 py-3 flex items-center justify-between">
@@ -1258,6 +1263,12 @@ function FinanceSection() {
                       <p className="font-semibold text-gray-800 text-sm">{group.client?.full_name ?? group.client?.email ?? '—'}</p>
                       <p className="text-xs text-gray-500 mt-0.5">{group.pack?.name ?? 'Aucun pack assigné'}</p>
                     </div>
+                    {totalDue > 0 && (
+                      <div className="text-right">
+                        <p className="text-xs text-amber-600 font-medium">Reste à payer</p>
+                        <p className="text-sm font-bold text-amber-700">{fmt(totalDue)}</p>
+                      </div>
+                    )}
                   </div>
                   {group.payments.length === 0 ? (
                     <div className="px-4 py-4 text-sm text-gray-400">Aucun paiement enregistré pour ce client.</div>

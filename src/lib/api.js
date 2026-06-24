@@ -503,26 +503,30 @@ export async function fetchClientPayments(userId) {
 
 // Super-admin only: full financial dashboard
 export async function fetchFinanceSummary() {
-  if (!isConfigured) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
+  if (!isConfigured) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, yearRevenue: 0, pendingCount: 0, payments: [] }
   try {
     const { data, error } = await supabase
       .from('payments')
       .select('*, users:payments_user_id_public_users_fkey(full_name, email), packs(name, category)')
       .order('created_at', { ascending: false })
     if (error) console.warn('[api] fetchFinanceSummary query error:', error.message)
-    if (error || !data) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
+    if (error || !data) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, yearRevenue: 0, pendingCount: 0, payments: [] }
 
     const now = new Date()
     const totalRevenuePaid = data.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount_ttc), 0)
     const totalPending     = data.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount_ttc), 0)
+    const pendingCount     = data.filter(p => p.status === 'pending').length
     const monthRevenue     = data
       .filter(p => p.status === 'paid' && p.paid_at && new Date(p.paid_at).getMonth() === now.getMonth() && new Date(p.paid_at).getFullYear() === now.getFullYear())
       .reduce((s, p) => s + Number(p.amount_ttc), 0)
+    const yearRevenue      = data
+      .filter(p => p.status === 'paid' && p.paid_at && new Date(p.paid_at).getFullYear() === now.getFullYear())
+      .reduce((s, p) => s + Number(p.amount_ttc), 0)
 
-    return { totalRevenuePaid, totalPending, monthRevenue, payments: data }
+    return { totalRevenuePaid, totalPending, monthRevenue, yearRevenue, pendingCount, payments: data }
   } catch (err) {
     console.warn('[api] fetchFinanceSummary error:', err?.message)
-    return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
+    return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, yearRevenue: 0, pendingCount: 0, payments: [] }
   }
 }
 

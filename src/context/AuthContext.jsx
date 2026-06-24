@@ -8,9 +8,11 @@ const DEMO_ACCOUNTS = {
   'admin@oriafen.com':   { password: 'admin123', role: 'admin',  name: 'Admin Oriafen', pack: null },
 }
 
-// Derive role from email as a reliable fallback
+// Derive role from email as a reliable fallback (used only if DB profile fetch times out)
 function roleFromEmail(email) {
-  return email.toLowerCase().includes('admin') ? 'admin' : 'student'
+  const lower = email.toLowerCase()
+  if (lower === 'admin@oriafen.com') return 'super_admin'
+  return lower.includes('admin') ? 'admin' : 'student'
 }
 
 // Build a minimal profile from auth data alone (no DB required)
@@ -140,6 +142,8 @@ export function AuthProvider({ children }) {
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
         }
+        // TOKEN_REFRESHED, USER_UPDATED, INITIAL_SESSION (handled above) are intentionally
+        // no-ops here — they must never clear or downgrade an already-set user/role.
       }
     )
 
