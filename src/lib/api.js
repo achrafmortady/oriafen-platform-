@@ -505,8 +505,9 @@ export async function fetchFinanceSummary() {
   try {
     const { data, error } = await supabase
       .from('payments')
-      .select('*, users(full_name, email), packs(name, category)')
+      .select('*, users:payments_user_id_public_users_fkey(full_name, email), packs(name, category)')
       .order('created_at', { ascending: false })
+    if (error) console.warn('[api] fetchFinanceSummary query error:', error.message)
     if (error || !data) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, payments: [] }
 
     const now = new Date()
