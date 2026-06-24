@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -47,6 +47,79 @@ const PACK_CATEGORY_LABELS = {
   marketing: '🌐 Marketing',
   academy:   '🎓 Academy',
   combine:   '⭐ Packs Combinés',
+}
+
+function AddAdminModal({ onClose, onAdd }) {
+  const [fullName, setFullName] = useState('')
+  const [email,    setEmail]    = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
+  const [success,  setSuccess]  = useState(null)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const result = await createAdminAccount(fullName, email)
+    setLoading(false)
+    if (result.success) {
+      setSuccess(true)
+      onAdd()
+    } else {
+      setError(result.error ?? 'Erreur lors de la création du compte.')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-orias-green px-6 py-5 flex items-center justify-between">
+          <h3 className="font-bold text-white text-lg">Ajouter un collaborateur admin</h3>
+          <button onClick={onClose} className="text-green-300 hover:text-white transition-colors">
+            <XIcon className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-6">
+          {success ? (
+            <div className="text-center space-y-4">
+              <CheckCircleIcon className="w-14 h-14 text-emerald-500 mx-auto" />
+              <p className="font-bold text-orias-green text-lg">Compte admin créé !</p>
+              <div className="bg-orias-bg rounded-xl p-4 border border-orias-border text-left space-y-2">
+                <p className="text-sm font-semibold text-orias-green">📧 Email envoyé automatiquement</p>
+                <p className="text-xs text-gray-500">Le collaborateur reçoit un lien pour créer son mot de passe et accéder au dashboard admin (sans la section Finance).</p>
+              </div>
+              <button onClick={onClose} className="btn-green w-full">Fermer</button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+              )}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Nom complet</label>
+                <input value={fullName} onChange={e => setFullName(e.target.value)} required
+                  className="input-field" placeholder="Wahiba Alami" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
+                  className="input-field" placeholder="collegue@oriafen.com" />
+              </div>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
+                Ce compte aura accès à Clients, Dossiers, Formation et Notifications — mais pas à la section Finance.
+              </div>
+              <button type="submit" disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
+                {loading
+                  ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Création…</>
+                  : 'Créer le compte admin'
+                }
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function AddClientModal({ onClose, onAdd }) {
@@ -177,14 +250,17 @@ function AddClientModal({ onClose, onAdd }) {
   )
 }
 
-function ClientsSection() {
+function ClientsSection({ isSuperAdmin }) {
   const [clients, setClients]   = useState([])
   const [loadingClients, setLoadingClients] = useState(true)
   const [search, setSearch]     = useState('')
   const [selected, setSelected] = useState(null)
   const [filter, setFilter]     = useState('all')
   const [showAdd, setShowAdd]   = useState(false)
+  const [showAddAdmin, setShowAddAdmin] = useState(false)
   const [editClient, setEditClient] = useState(null)
+  const [cancelTarget, setCancelTarget] = useState(null)
+  const [busyDossier, setBusyDossier] = useState(false)
 
   const loadClients = () => fetchAllClients().then(data => setClients(data))
 
@@ -194,13 +270,33 @@ function ClientsSection() {
 
   const filtered = clients.filter(c => {
     const matchSearch = `${c.nom} ${c.prenom} ${c.pack}`.toLowerCase().includes(search.toLowerCase())
-    const matchFilter = filter === 'all' || (filter === 'cours' && c.statut === 'En cours') || (filter === 'obtenu' && c.statut === 'ORIAS obtenu')
+    const matchFilter = filter === 'all'
+      ? true
+      : filter === 'cours' ? c.statut === 'En cours'
+      : filter === 'obtenu' ? c.statut === 'ORIAS obtenu'
+      : filter === 'annule' ? c.statut === 'Annulé'
+      : true
     return matchSearch && matchFilter
   })
 
   const statusCls = (s) => s === 'ORIAS obtenu'
     ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : s === 'Annulé'
+    ? 'bg-red-50 text-red-700 border-red-200'
     : 'bg-amber-50 text-amber-700 border-amber-200'
+
+  const handleConfirmCancel = async () => {
+    if (!cancelTarget?.dossierId) { setCancelTarget(null); return }
+    setBusyDossier(true)
+    if (cancelTarget.statut === 'Annulé') {
+      await reactivateClientDossier(cancelTarget.dossierId)
+    } else {
+      await cancelClientDossier(cancelTarget.dossierId)
+    }
+    await loadClients()
+    setBusyDossier(false)
+    setCancelTarget(null)
+  }
 
   return (
     <div className="space-y-4">
@@ -216,15 +312,23 @@ function ClientsSection() {
           />
         </div>
         <div className="flex rounded-xl border border-orias-border overflow-hidden">
-          {[['all','Tous'],['cours','En cours'],['obtenu','ORIAS obtenu']].map(([v, l]) => (
+          {[['all','Tous'],['cours','En cours'],['obtenu','ORIAS obtenu'],['annule','Annulé']].map(([v, l]) => (
             <button key={v} onClick={() => setFilter(v)} className={`px-3 py-2 text-sm font-medium transition-colors ${filter === v ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>{l}</button>
           ))}
         </div>
         <span className="text-sm text-gray-500">{filtered.length} client{filtered.length > 1 ? 's' : ''}</span>
-        <button onClick={() => setShowAdd(true)} className="btn-gold flex items-center gap-2 text-sm ml-auto">
-          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Ajouter un client
-        </button>
+        <div className="flex items-center gap-2 ml-auto">
+          {isSuperAdmin && (
+            <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl font-semibold border border-orias-green text-orias-green hover:bg-orias-green/5 transition-colors">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+              Ajouter un admin
+            </button>
+          )}
+          <button onClick={() => setShowAdd(true)} className="btn-gold flex items-center gap-2 text-sm">
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ajouter un client
+          </button>
+        </div>
       </div>
 
       {/* Table */}
@@ -243,7 +347,7 @@ function ClientsSection() {
             </thead>
             <tbody>
               {filtered.map((client, i) => (
-                <tr key={client.id} className={`border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors ${i % 2 === 0 ? '' : 'bg-orias-bg/20'}`}>
+                <tr key={client.id} className={`border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors ${i % 2 === 0 ? '' : 'bg-orias-bg/20'} ${client.statut === 'Annulé' ? 'opacity-60' : ''}`}>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-orias-green/10 border border-orias-green/20 flex items-center justify-center text-sm font-bold text-orias-green flex-shrink-0">
@@ -268,7 +372,7 @@ function ClientsSection() {
                   </td>
                   <td className="px-4 py-4">
                     <span className={`status-badge border ${statusCls(client.statut)} text-xs`}>
-                      {client.statut === 'ORIAS obtenu' ? <CheckCircleIcon className="w-3 h-3" /> : <ClockIcon className="w-3 h-3" />}
+                      {client.statut === 'ORIAS obtenu' ? <CheckCircleIcon className="w-3 h-3" /> : client.statut === 'Annulé' ? <XIcon className="w-3 h-3" /> : <ClockIcon className="w-3 h-3" />}
                       <span className="hidden sm:inline">{client.statut}</span>
                     </span>
                   </td>
@@ -290,6 +394,16 @@ function ClientsSection() {
                       >
                         <MessageIcon className="w-4 h-4" />
                       </button>
+                      <button
+                        onClick={() => setCancelTarget(client)}
+                        className={`p-1.5 rounded-lg transition-colors ${client.statut === 'Annulé' ? 'text-emerald-500 hover:bg-emerald-50' : 'text-gray-400 hover:text-red-600 hover:bg-red-50'}`}
+                        title={client.statut === 'Annulé' ? 'Réactiver' : 'Annuler'}
+                      >
+                        {client.statut === 'Annulé'
+                          ? <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                          : <XIcon className="w-4 h-4" />
+                        }
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -300,6 +414,33 @@ function ClientsSection() {
       </div>
 
       {showAdd && <AddClientModal onClose={() => setShowAdd(false)} onAdd={() => { loadClients(); setShowAdd(false) }} />}
+      {showAddAdmin && <AddAdminModal onClose={() => setShowAddAdmin(false)} onAdd={() => setShowAddAdmin(false)} />}
+
+      {cancelTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCancelTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 text-center space-y-4">
+              <div className={`w-14 h-14 rounded-full mx-auto flex items-center justify-center ${cancelTarget.statut === 'Annulé' ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                <XIcon className={`w-7 h-7 ${cancelTarget.statut === 'Annulé' ? 'text-emerald-500' : 'text-red-500'}`} />
+              </div>
+              <p className="font-bold text-gray-800">
+                {cancelTarget.statut === 'Annulé' ? 'Réactiver' : 'Annuler'} le dossier de {cancelTarget.prenom} {cancelTarget.nom} ?
+              </p>
+              <p className="text-sm text-gray-500">
+                {cancelTarget.statut === 'Annulé'
+                  ? 'Le dossier repassera en statut "En cours".'
+                  : 'Le client gardera son historique de paiements et ses données, avec un badge "Annulé" visible dans Clients et Finance.'}
+              </p>
+              <div className="flex gap-3">
+                <button onClick={() => setCancelTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm border border-orias-border text-gray-600 hover:bg-orias-bg transition-colors">Annuler</button>
+                <button onClick={handleConfirmCancel} disabled={busyDossier} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm text-white transition-colors disabled:opacity-60 ${cancelTarget.statut === 'Annulé' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'}`}>
+                  {busyDossier ? '...' : 'Confirmer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {editClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setEditClient(null)}>
@@ -1201,6 +1342,8 @@ function FinanceSection() {
       byClient[c.id] = { clientId: c.id, client: { full_name: `${c.prenom} ${c.nom}`, email: c.email }, pack: c.packId ? { name: c.pack } : null, payments: [] }
     }
   })
+  const statusByClientId = {}
+  allClientsList.forEach(c => { statusByClientId[c.id] = c.statut })
   let clientGroups = Object.values(byClient).map(g => ({
     ...g,
     payments: [...g.payments].sort((a, b) => (MILESTONE_ORDER[a.milestone] ?? 0) - (MILESTONE_ORDER[b.milestone] ?? 0)),
@@ -1256,11 +1399,17 @@ function FinanceSection() {
               // Find index of the first non-paid payment — that's the only one currently actionable
               const firstPendingIdx = group.payments.findIndex(p => p.status === 'pending')
               const totalDue = group.payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount_ttc), 0)
+              const isCancelled = statusByClientId[group.clientId] === 'Annulé'
               return (
-                <div key={group.clientId ?? Math.random()} className="rounded-xl border border-orias-border overflow-hidden">
+                <div key={group.clientId ?? Math.random()} className={`rounded-xl border overflow-hidden ${isCancelled ? 'border-red-200 opacity-70' : 'border-orias-border'}`}>
                   <div className="bg-orias-bg px-4 py-3 flex items-center justify-between">
                     <div>
-                      <p className="font-semibold text-gray-800 text-sm">{group.client?.full_name ?? group.client?.email ?? '—'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-gray-800 text-sm">{group.client?.full_name ?? group.client?.email ?? '—'}</p>
+                        {isCancelled && (
+                          <span className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded-full">Annulé</span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-500 mt-0.5">{group.pack?.name ?? 'Aucun pack assigné'}</p>
                     </div>
                     {totalDue > 0 && (
@@ -1377,7 +1526,7 @@ export default function AdminDashboard() {
 
   const renderSection = () => {
     switch (activeTab) {
-      case 'clients':   return <ClientsSection />
+      case 'clients':   return <ClientsSection isSuperAdmin={isSuperAdmin} />
       case 'dossiers':  return <DossierSection />
       case 'formation': return <FormationTrackingSection />
       case 'notifs':    return <NotificationsSection />

@@ -622,6 +622,54 @@ export async function createClient(fullName, email, packId, discountPercent = 0)
   }
 }
 
+// Super-admin only: create a colleague admin account (no finance access)
+export async function createAdminAccount(fullName, email) {
+  if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
+  try {
+    const tempPassword = `Oriafen${Math.floor(Math.random() * 9000) + 1000}!`
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: tempPassword,
+      options: {
+        data: { full_name: fullName, role: 'admin' },
+        emailRedirectTo: 'https://oriafen-platform.vercel.app/set-password',
+      },
+    })
+    if (error) return { success: false, error: error.message }
+
+    const userId = data.user?.id
+    if (userId) {
+      // Make sure role is set on the users row (signUp metadata may not sync immediately)
+      await supabase.from('users').update({ role: 'admin' }).eq('id', userId)
+    }
+
+    return { success: true, tempPassword, userId }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+// Mark a client's dossier as cancelled — keeps all data, just flips status for visibility everywhere
+export async function cancelClientDossier(dossierId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('dossiers').update({ status: 'Annulé' }).eq('id', dossierId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function reactivateClientDossier(dossierId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('dossiers').update({ status: 'En cours' }).eq('id', dossierId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
 // Legacy — kept for backward compat with old DossierSection calls
 export async function fetchClientDocuments(userId) {
   return fetchClientDocumentsWithDetails(userId)
