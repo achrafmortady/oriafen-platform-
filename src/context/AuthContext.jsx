@@ -118,6 +118,21 @@ export function AuthProvider({ children }) {
             2500,
             profileFromAuth(session.user)
           )
+          if (profile.role === 'student') {
+            try {
+              const { data: dossier } = await supabase
+                .from('dossiers')
+                .select('status')
+                .eq('user_id', session.user.id)
+                .single()
+              if (dossier?.status === 'Annulé') {
+                console.warn('[Auth] Cancelled account session detected — signing out')
+                await supabase.auth.signOut()
+                setUser(null)
+                return
+              }
+            } catch { /* don't block on check failure */ }
+          }
           setUser(profile)
         } else {
           console.log('[Auth] No active session')
@@ -189,6 +204,23 @@ export function AuthProvider({ children }) {
             3000,
             profileFromAuth(data.user)
           )
+
+          // Block login for students whose dossier was cancelled
+          if (profile.role === 'student') {
+            try {
+              const { data: dossier } = await supabase
+                .from('dossiers')
+                .select('status')
+                .eq('user_id', data.user.id)
+                .single()
+              if (dossier?.status === 'Annulé') {
+                await supabase.auth.signOut()
+                return { success: false, error: 'Compte suspendu, contactez votre conseiller.' }
+              }
+            } catch {
+              // If the dossier check itself fails, don't block legitimate logins
+            }
+          }
 
           setUser(profile)
           console.log('[Auth] Login complete, role:', profile.role)

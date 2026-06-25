@@ -505,24 +505,31 @@ export async function fetchClientPayments(userId) {
 export async function fetchFinanceSummary() {
   if (!isConfigured) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, yearRevenue: 0, pendingCount: 0, payments: [] }
   try {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('*, users:payments_user_id_public_users_fkey(full_name, email), packs(name, category)')
-      .order('created_at', { ascending: false })
+    const [{ data, error }, { data: dossiers }] = await Promise.all([
+      supabase
+        .from('payments')
+        .select('*, users:payments_user_id_public_users_fkey(full_name, email), packs(name, category)')
+        .order('created_at', { ascending: false }),
+      supabase.from('dossiers').select('user_id, status'),
+    ])
     if (error) console.warn('[api] fetchFinanceSummary query error:', error.message)
     if (error || !data) return { totalRevenuePaid: 0, totalPending: 0, monthRevenue: 0, yearRevenue: 0, pendingCount: 0, payments: [] }
 
+    const cancelledUserIds = new Set((dossiers || []).filter(d => d.status === 'Annulé').map(d => d.user_id))
+    const activeData = data.filter(p => !cancelledUserIds.has(p.user_id))
+
     const now = new Date()
-    const totalRevenuePaid = data.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount_ttc), 0)
-    const totalPending     = data.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount_ttc), 0)
-    const pendingCount     = data.filter(p => p.status === 'pending').length
-    const monthRevenue     = data
+    const totalRevenuePaid = activeData.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount_ttc), 0)
+    const totalPending     = activeData.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount_ttc), 0)
+    const pendingCount     = activeData.filter(p => p.status === 'pending').length
+    const monthRevenue     = activeData
       .filter(p => p.status === 'paid' && p.paid_at && new Date(p.paid_at).getMonth() === now.getMonth() && new Date(p.paid_at).getFullYear() === now.getFullYear())
       .reduce((s, p) => s + Number(p.amount_ttc), 0)
-    const yearRevenue      = data
+    const yearRevenue      = activeData
       .filter(p => p.status === 'paid' && p.paid_at && new Date(p.paid_at).getFullYear() === now.getFullYear())
       .reduce((s, p) => s + Number(p.amount_ttc), 0)
 
+    // payments returned still include cancelled clients' rows so the UI can show them with the "Annulé" badge
     return { totalRevenuePaid, totalPending, monthRevenue, yearRevenue, pendingCount, payments: data }
   } catch (err) {
     console.warn('[api] fetchFinanceSummary error:', err?.message)
@@ -532,7 +539,7 @@ export async function fetchFinanceSummary() {
 
 // ── Admin: clients ────────────────────────────────────────────
 
-export async function fetchAllClients() {
+export async function fetchAllClients(includeCancelled = true) {
   if (!isConfigured) {
     // Simulate a couple of clients with pending doc notifications
     return [].map((c, i) => ({
@@ -563,7 +570,7 @@ export async function fetchAllClients() {
 
     if (!users?.length) return []
 
-    return users.map(u => {
+    const mapped = users.map(u => {
       const dossier = u.dossiers?.[0]
       return {
         id:             u.id,
@@ -584,6 +591,8 @@ export async function fetchAllClients() {
         examPassed:     u.exam_results?.some(r => r.score >= 15) ?? false,
       }
     })
+
+    return includeCancelled ? mapped : mapped.filter(c => c.statut !== 'Annulé')
   } catch (err) {
     console.warn('[api] fetchAllClients error:', err?.message)
     return []

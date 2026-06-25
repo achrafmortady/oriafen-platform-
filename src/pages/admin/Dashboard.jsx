@@ -863,7 +863,7 @@ function DossierSection() {
   const [currentStep,    setCurrentStep]    = useState(1)
 
   useEffect(() => {
-    fetchAllClients().then(data => {
+    fetchAllClients(false).then(data => {
       setClients(data)
       if (data.length > 0) selectClient(data[0])
     })
