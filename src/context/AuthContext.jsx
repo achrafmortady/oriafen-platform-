@@ -153,6 +153,24 @@ export function AuthProvider({ children }) {
             2500,
             profileFromAuth(session.user)
           )
+          // Block cancelled students right here too — this listener fires immediately
+          // on signInWithPassword, before login()'s own check can complete, which is
+          // what was causing the dashboard to flash open before being kicked back out.
+          if (profile.role === 'student') {
+            try {
+              const { data: dossier } = await supabase
+                .from('dossiers')
+                .select('status')
+                .eq('user_id', session.user.id)
+                .single()
+              if (dossier?.status === 'Annulé') {
+                console.warn('[Auth] Cancelled account signed in — blocking immediately')
+                await supabase.auth.signOut()
+                setUser(null)
+                return
+              }
+            } catch { /* don't block on check failure */ }
+          }
           setUser(profile)
         } else if (event === 'SIGNED_OUT') {
           setUser(null)
@@ -233,8 +251,26 @@ export function AuthProvider({ children }) {
 
       if (loginResult.timedOut) {
         console.warn('[Auth] Login timed out — forcing redirect by email')
+        const fallbackRole = roleFromEmail(email)
+        // Even on timeout, never let a cancelled student through
+        if (fallbackRole === 'student') {
+          try {
+            const { data: { user: currentUser } } = await supabase.auth.getUser()
+            if (currentUser) {
+              const { data: dossier } = await supabase
+                .from('dossiers')
+                .select('status')
+                .eq('user_id', currentUser.id)
+                .single()
+              if (dossier?.status === 'Annulé') {
+                await supabase.auth.signOut()
+                return { success: false, error: 'Compte suspendu, contactez votre conseiller.' }
+              }
+            }
+          } catch { /* don't block on check failure */ }
+        }
         // Set a minimal user so ProtectedRoute lets them through
-        setUser({ email, role: roleFromEmail(email), name: email.split('@')[0], pack: 'Essentiel' })
+        setUser({ email, role: fallbackRole, name: email.split('@')[0], pack: 'Essentiel' })
       }
 
       return loginResult
