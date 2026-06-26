@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
-import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon } from '../../components/Icons'
+import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -21,6 +21,7 @@ const FINAL_DOCS_CATALOGUE = [
 
 const NAV_ITEMS = [
   { id: 'clients',    label: 'Clients',         icon: <UsersIcon className="w-4 h-4" /> },
+  { id: 'leads',      label: 'Leads',           icon: <TargetIcon className="w-4 h-4" /> },
   { id: 'dossiers',   label: 'Dossiers',         icon: <EyeIcon className="w-4 h-4" /> },
   { id: 'formation',  label: 'Formation',        icon: <BookIcon className="w-4 h-4" /> },
   { id: 'notifs',     label: 'Notifications',    icon: <BellIcon className="w-4 h-4" /> },
@@ -1189,6 +1190,252 @@ function FormationTrackingSection() {
   )
 }
 
+const STATUS_BADGE_STYLES = {
+  nouveau:  'bg-blue-100 text-blue-700 border-blue-200',
+  qualifie: 'bg-amber-100 text-amber-700 border-amber-200',
+  rdv_pris: 'bg-purple-100 text-purple-700 border-purple-200',
+  client:   'bg-emerald-100 text-emerald-700 border-emerald-200',
+  perdu:    'bg-gray-100 text-gray-500 border-gray-200',
+}
+
+const SOURCE_BADGE_STYLES = {
+  site_web:  'bg-orias-green/10 text-orias-green',
+  whatsapp:  'bg-green-100 text-green-700',
+  instagram: 'bg-pink-100 text-pink-700',
+  facebook:  'bg-blue-100 text-blue-700',
+  autre:     'bg-gray-100 text-gray-600',
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return ''
+  const diffMs = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diffMs / 60000)
+  if (mins < 1) return "à l'instant"
+  if (mins < 60) return `il y a ${mins} min`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `il y a ${hrs}h`
+  const days = Math.floor(hrs / 24)
+  return `il y a ${days}j`
+}
+
+function LeadCard({ lead, onStatusChange, onSaveNotes }) {
+  const [expanded, setExpanded] = useState(false)
+  const [notes, setNotes] = useState(lead.notes || '')
+  const [savingNotes, setSavingNotes] = useState(false)
+
+  const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—'
+
+  const handleSaveNotes = async () => {
+    setSavingNotes(true)
+    await onSaveNotes(lead.id, notes)
+    setSavingNotes(false)
+  }
+
+  return (
+    <div className={`card p-4 transition-all ${lead._isNew ? 'ring-2 ring-orias-gold shadow-lg' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <span className="font-bold text-gray-900">{fullName}</span>
+            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_BADGE_STYLES[lead.source] || SOURCE_BADGE_STYLES.autre}`}>
+              {LEAD_SOURCE_LABELS[lead.source] || lead.source}
+            </span>
+          </div>
+          <div className="text-sm text-gray-500 flex items-center gap-3 flex-wrap">
+            {lead.email && <span>{lead.email}</span>}
+            {lead.phone && <span className="flex items-center gap-1"><PhoneIcon className="w-3 h-3" />{lead.phone}</span>}
+            {lead.city && <span>{lead.city}</span>}
+          </div>
+          {lead.pack_interest && (
+            <div className="text-xs text-orias-green font-medium mt-1">Intéressé par : {lead.pack_interest}</div>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          <select
+            value={lead.status}
+            onChange={e => onStatusChange(lead.id, e.target.value)}
+            className={`text-xs font-semibold rounded-full px-3 py-1.5 border cursor-pointer ${STATUS_BADGE_STYLES[lead.status]}`}
+          >
+            {LEAD_STATUSES.map(s => (
+              <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+            ))}
+          </select>
+          <span className="text-[11px] text-gray-400">{timeAgo(lead.created_at)}</span>
+        </div>
+      </div>
+
+      {expanded && (
+        <div className="mt-3 pt-3 border-t border-orias-border">
+          {lead.message && (
+            <div className="bg-orias-bg rounded-lg p-3 text-sm text-gray-700 mb-3 whitespace-pre-wrap">{lead.message}</div>
+          )}
+          <label className="block text-xs font-semibold text-gray-500 mb-1">Notes internes</label>
+          <textarea
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+            rows={2}
+            placeholder="Ajouter une note sur ce lead..."
+            className="input-field text-sm resize-none mb-2"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); handleSaveNotes() }}
+            disabled={savingNotes}
+            className="text-xs font-semibold text-orias-green hover:underline disabled:opacity-50"
+          >
+            {savingNotes ? 'Enregistrement...' : 'Enregistrer la note'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LeadsSection() {
+  const [leads, setLeads] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [sourceFilter, setSourceFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [toast, setToast] = useState(null)
+
+  useEffect(() => {
+    fetchLeads().then(data => { setLeads(data); setLoading(false) })
+
+    const unsubscribe = subscribeToLeads(({ event, lead }) => {
+      if (!lead) return
+      if (event === 'INSERT') {
+        setLeads(prev => [{ ...lead, _isNew: true }, ...prev])
+        setToast(`Nouveau lead reçu — ${lead.first_name || lead.email || 'Inconnu'} (${LEAD_SOURCE_LABELS[lead.source] || lead.source})`)
+        setTimeout(() => {
+          setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, _isNew: false } : l))
+        }, 6000)
+      } else if (event === 'UPDATE') {
+        setLeads(prev => prev.map(l => l.id === lead.id ? { ...l, ...lead } : l))
+      } else if (event === 'DELETE') {
+        setLeads(prev => prev.filter(l => l.id !== lead.id))
+      }
+    })
+
+    return unsubscribe
+  }, [])
+
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 6000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const handleStatusChange = async (leadId, status) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status } : l))
+    await updateLeadStatus(leadId, status)
+  }
+
+  const handleSaveNotes = async (leadId, notes) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, notes } : l))
+    await updateLeadNotes(leadId, notes)
+  }
+
+  const filtered = leads.filter(l => {
+    if (sourceFilter !== 'all' && l.source !== sourceFilter) return false
+    if (statusFilter !== 'all' && l.status !== statusFilter) return false
+    if (search) {
+      const hay = `${l.first_name || ''} ${l.last_name || ''} ${l.email || ''} ${l.phone || ''}`.toLowerCase()
+      if (!hay.includes(search.toLowerCase())) return false
+    }
+    return true
+  })
+
+  const total = leads.length
+  const clientsCount = leads.filter(l => l.status === 'client').length
+  const conversionRate = total > 0 ? Math.round((clientsCount / total) * 100) : 0
+
+  const countsBySource = leads.reduce((acc, l) => {
+    acc[l.source] = (acc[l.source] || 0) + 1
+    return acc
+  }, {})
+
+  if (loading) {
+    return <div className="text-center py-12 text-gray-400">Chargement des leads...</div>
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-20 right-6 z-50 bg-orias-green text-white px-5 py-3 rounded-xl shadow-2xl shadow-black/20 flex items-center gap-3 animate-pulse">
+          <BellIcon className="w-5 h-5 text-orias-gold flex-shrink-0" />
+          <span className="text-sm font-semibold">{toast}</span>
+          <button onClick={() => setToast(null)} className="text-white/60 hover:text-white"><XIcon className="w-4 h-4" /></button>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        <StatCard icon={<TargetIcon className="w-5 h-5 text-white" />} label="Total leads" value={total} color="bg-orias-green-light border-white/10" />
+        {LEAD_STATUSES.map(s => (
+          <StatCard
+            key={s}
+            icon={<CheckCircleIcon className="w-5 h-5 text-orias-gold" />}
+            label={LEAD_STATUS_LABELS[s]}
+            value={leads.filter(l => l.status === s).length}
+            color="bg-orias-gold/15 border-orias-gold/20"
+          />
+        ))}
+      </div>
+
+      <div className="card p-4 flex items-center justify-between flex-wrap gap-3">
+        <div className="text-sm text-gray-600">
+          Taux de conversion (Client / Total) : <span className="font-bold text-orias-green">{conversionRate}%</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+          {Object.entries(countsBySource).map(([src, count]) => (
+            <span key={src} className={`px-2 py-1 rounded-full font-semibold ${SOURCE_BADGE_STYLES[src] || SOURCE_BADGE_STYLES.autre}`}>
+              {LEAD_SOURCE_LABELS[src] || src}: {count}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="card p-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[180px]">
+          <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher un lead..."
+            className="input-field pl-9 text-sm"
+          />
+        </div>
+        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className="input-field text-sm w-auto">
+          <option value="all">Toutes les sources</option>
+          {Object.entries(LEAD_SOURCE_LABELS).map(([k, label]) => (
+            <option key={k} value={k}>{label}</option>
+          ))}
+        </select>
+        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-field text-sm w-auto">
+          <option value="all">Tous les statuts</option>
+          {LEAD_STATUSES.map(s => (
+            <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* List */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">Aucun lead pour le moment.</div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map(lead => (
+            <LeadCard key={lead.id} lead={lead} onStatusChange={handleStatusChange} onSaveNotes={handleSaveNotes} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NotificationsSection() {
   const [tab, setTab] = useState('individual')
   const [recipient, setRecipient] = useState('')
@@ -1505,6 +1752,7 @@ export default function AdminDashboard() {
   const [allClients, setAllClients] = useState([])
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [monthRevenue, setMonthRevenue] = useState(0)
+  const [newLeadsBadge, setNewLeadsBadge] = useState(0)
 
   const handleLogout = () => {
     logout()
@@ -1521,12 +1769,29 @@ export default function AdminDashboard() {
     }
   }, [user?.role])
 
+  // Live badge on the Leads nav tab — increments whenever a new lead arrives,
+  // regardless of which tab the admin currently has open. Resets when they open Leads.
+  useEffect(() => {
+    const unsubscribe = subscribeToLeads(({ event }) => {
+      if (event === 'INSERT') {
+        setNewLeadsBadge(prev => prev + 1)
+      }
+    })
+    return unsubscribe
+  }, [])
+
+  const handleTabClick = (id) => {
+    setActiveTab(id)
+    if (id === 'leads') setNewLeadsBadge(0)
+  }
+
   const isSuperAdmin = user?.role === 'super_admin'
   const navItems = isSuperAdmin ? [...NAV_ITEMS, FINANCE_NAV_ITEM] : NAV_ITEMS
 
   const renderSection = () => {
     switch (activeTab) {
       case 'clients':   return <ClientsSection isSuperAdmin={isSuperAdmin} />
+      case 'leads':     return <LeadsSection />
       case 'dossiers':  return <DossierSection />
       case 'formation': return <FormationTrackingSection />
       case 'notifs':    return <NotificationsSection />
@@ -1592,8 +1857,8 @@ export default function AdminDashboard() {
             {navItems.map(item => (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                onClick={() => handleTabClick(item.id)}
+                className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                   activeTab === item.id
                     ? 'bg-orias-green text-white shadow-sm'
                     : 'text-gray-600 hover:text-orias-green hover:bg-orias-bg'
@@ -1601,6 +1866,11 @@ export default function AdminDashboard() {
               >
                 {item.icon}
                 {item.label}
+                {item.id === 'leads' && newLeadsBadge > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orias-gold text-orias-green text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                    {newLeadsBadge > 9 ? '9+' : newLeadsBadge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>

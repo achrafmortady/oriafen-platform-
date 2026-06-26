@@ -683,3 +683,91 @@ export async function reactivateClientDossier(dossierId) {
 export async function fetchClientDocuments(userId) {
   return fetchClientDocumentsWithDetails(userId)
 }
+
+// ── Leads CRM ─────────────────────────────────────────────────
+
+export const LEAD_STATUSES = ['nouveau', 'qualifie', 'rdv_pris', 'client', 'perdu']
+
+export const LEAD_STATUS_LABELS = {
+  nouveau:   'Nouveau',
+  qualifie:  'Qualifié',
+  rdv_pris:  'RDV pris',
+  client:    'Client',
+  perdu:     'Perdu',
+}
+
+export const LEAD_SOURCE_LABELS = {
+  site_web:  'Site web',
+  whatsapp:  'WhatsApp',
+  instagram: 'Instagram',
+  facebook:  'Facebook',
+  autre:     'Autre',
+}
+
+export async function fetchLeads() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchLeads error:', err?.message)
+    return []
+  }
+}
+
+export async function updateLeadStatus(leadId, status) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('leads').update({ status }).eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function updateLeadNotes(leadId, notes) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('leads').update({ notes }).eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function assignLead(leadId, userId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('leads').update({ assigned_to: userId }).eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+/**
+ * Subscribe to realtime changes on the leads table (new lead inserted, status updated, etc.)
+ * callback receives { event: 'INSERT'|'UPDATE'|'DELETE', lead: {...} }
+ */
+export function subscribeToLeads(callback) {
+  if (!isConfigured) return () => {}
+  const channel = supabase
+    .channel('leads-realtime')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'leads' },
+      payload => {
+        callback({
+          event: payload.eventType,
+          lead: payload.new ?? payload.old ?? null,
+        })
+      }
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
