@@ -756,7 +756,7 @@ export async function assignLead(leadId, userId) {
 export function subscribeToLeads(callback) {
   if (!isConfigured) return () => {}
   const channel = supabase
-    .channel('leads-realtime')
+    .channel(`leads-realtime-${Math.random().toString(36).slice(2)}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'leads' },
