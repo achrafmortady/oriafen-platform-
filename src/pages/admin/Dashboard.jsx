@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
-import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon } from '../../components/Icons'
+import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, setLeadAppointment, fetchLeadActivity, addLeadNote, APPOINTMENT_TYPE_LABELS } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -21,7 +21,7 @@ const FINAL_DOCS_CATALOGUE = [
 
 const NAV_ITEMS = [
   { id: 'clients',    label: 'Clients',         icon: <UsersIcon className="w-4 h-4" /> },
-  { id: 'leads',      label: 'Leads',           icon: <TargetIcon className="w-4 h-4" /> },
+  { id: 'leads',      label: 'CRM',             icon: <TargetIcon className="w-4 h-4" /> },
   { id: 'dossiers',   label: 'Dossiers',         icon: <EyeIcon className="w-4 h-4" /> },
   { id: 'formation',  label: 'Formation',        icon: <BookIcon className="w-4 h-4" /> },
   { id: 'notifs',     label: 'Notifications',    icon: <BellIcon className="w-4 h-4" /> },
@@ -1218,23 +1218,273 @@ function timeAgo(dateStr) {
   return `il y a ${days}j`
 }
 
-function LeadCard({ lead, onStatusChange, onSaveNotes }) {
-  const [expanded, setExpanded] = useState(false)
+const ACTIVITY_META = {
+  creation:    { icon: <TargetIcon className="w-3.5 h-3.5" />,       color: 'text-orias-green bg-orias-green/10' },
+  statut:      { icon: <CheckCircleIcon className="w-3.5 h-3.5" />,  color: 'text-amber-600 bg-amber-100' },
+  rdv:         { icon: <CalendarIcon className="w-3.5 h-3.5" />,     color: 'text-purple-600 bg-purple-100' },
+  note:        { icon: <MessageIcon className="w-3.5 h-3.5" />,      color: 'text-blue-600 bg-blue-100' },
+  assignation: { icon: <UsersIcon className="w-3.5 h-3.5" />,        color: 'text-gray-600 bg-gray-100' },
+}
+
+function formatDateTimeFR(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+// Slide-over detail panel for a single lead — contact info, pipeline status,
+// rendez-vous scheduling, notes, and full activity timeline (HubSpot-style).
+function LeadDetailPanel({ lead, onClose, onStatusChange, onSaveNotes, onSetAppointment, onAddNote }) {
   const [notes, setNotes] = useState(lead.notes || '')
   const [savingNotes, setSavingNotes] = useState(false)
+  const [activity, setActivity] = useState([])
+  const [loadingActivity, setLoadingActivity] = useState(true)
+  const [apptDate, setApptDate] = useState(lead.appointment_at ? lead.appointment_at.slice(0, 16) : '')
+  const [apptType, setApptType] = useState(lead.appointment_type || 'appel')
+  const [savingAppt, setSavingAppt] = useState(false)
+  const [newNote, setNewNote] = useState('')
+  const [addingNote, setAddingNote] = useState(false)
 
   const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—'
 
-  const handleSaveNotes = async () => {
+  const loadActivity = () => {
+    setLoadingActivity(true)
+    fetchLeadActivity(lead.id).then(data => { setActivity(data); setLoadingActivity(false) })
+  }
+
+  useEffect(() => {
+    setNotes(lead.notes || '')
+    setApptDate(lead.appointment_at ? lead.appointment_at.slice(0, 16) : '')
+    setApptType(lead.appointment_type || 'appel')
+    loadActivity()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id])
+
+  const handleSaveAppointment = async () => {
+    if (!apptDate) return
+    setSavingAppt(true)
+    await onSetAppointment(lead.id, { appointmentAt: new Date(apptDate).toISOString(), appointmentType: apptType })
+    setSavingAppt(false)
+    loadActivity()
+  }
+
+  const handleSaveNotesClick = async () => {
     setSavingNotes(true)
     await onSaveNotes(lead.id, notes)
     setSavingNotes(false)
   }
 
+  const handleAddNoteClick = async () => {
+    if (!newNote.trim()) return
+    setAddingNote(true)
+    await onAddNote(lead.id, newNote.trim())
+    setNewNote('')
+    setAddingNote(false)
+    loadActivity()
+  }
+
+  const handleStatusSelect = async (newStatus) => {
+    await onStatusChange(lead.id, newStatus)
+  }
+
   return (
-    <div className={`card p-4 transition-all ${lead._isNew ? 'ring-2 ring-orias-gold shadow-lg' : ''}`}>
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
+      <div className="relative w-full sm:w-[460px] bg-white h-full overflow-y-auto shadow-2xl">
+        <div className="sticky top-0 bg-orias-green text-white px-6 py-5 flex items-center justify-between z-10">
+          <div>
+            <h3 className="font-bold text-lg">{fullName}</h3>
+            <span className={`inline-block mt-1 text-[11px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_BADGE_STYLES[lead.source] || SOURCE_BADGE_STYLES.autre}`}>
+              {LEAD_SOURCE_LABELS[lead.source] || lead.source}
+            </span>
+          </div>
+          <button onClick={onClose} className="text-white/70 hover:text-white p-1"><XIcon className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Statut / pipeline */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-2">Statut</label>
+            <select
+              value={lead.status}
+              onChange={e => handleStatusSelect(e.target.value)}
+              className={`text-sm font-semibold rounded-full px-3 py-1.5 border cursor-pointer ${STATUS_BADGE_STYLES[lead.status]}`}
+            >
+              {LEAD_STATUSES.map(s => (
+                <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Contact info */}
+          <div className="space-y-1.5 text-sm">
+            {lead.email && <div className="text-gray-700">{lead.email}</div>}
+            {lead.phone && <div className="text-gray-700 flex items-center gap-1.5"><PhoneIcon className="w-3.5 h-3.5 text-gray-400" />{lead.phone}</div>}
+            {lead.city && <div className="text-gray-700">{lead.city}</div>}
+            {lead.pack_interest && <div className="text-orias-green font-medium">Intéressé par : {lead.pack_interest}</div>}
+          </div>
+
+          {lead.message && (
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Message du lead</label>
+              <div className="bg-orias-bg rounded-lg p-3 text-sm text-gray-700 whitespace-pre-wrap">{lead.message}</div>
+            </div>
+          )}
+
+          {/* Rendez-vous */}
+          <div className="border border-orias-gold/30 bg-orias-gold/5 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CalendarIcon className="w-4 h-4 text-orias-gold" />
+              <span className="text-sm font-bold text-orias-green">Rendez-vous</span>
+              {lead.appointment_at && (
+                <span className="text-xs text-gray-500 ml-auto">{formatDateTimeFR(lead.appointment_at)}</span>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <input
+                type="datetime-local"
+                value={apptDate}
+                onChange={e => setApptDate(e.target.value)}
+                className="input-field text-sm py-2"
+              />
+              <select value={apptType} onChange={e => setApptType(e.target.value)} className="input-field text-sm py-2">
+                {Object.entries(APPOINTMENT_TYPE_LABELS).map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              onClick={handleSaveAppointment}
+              disabled={savingAppt || !apptDate}
+              className="text-xs font-semibold text-orias-green hover:underline disabled:opacity-50"
+            >
+              {savingAppt ? 'Enregistrement...' : lead.appointment_at ? 'Modifier le RDV' : 'Programmer le RDV'}
+            </button>
+          </div>
+
+          {/* Notes internes (persistantes sur la fiche) */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1">Notes internes</label>
+            <textarea
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              rows={3}
+              placeholder="Notes générales sur ce lead..."
+              className="input-field text-sm resize-none mb-2"
+            />
+            <button
+              onClick={handleSaveNotesClick}
+              disabled={savingNotes}
+              className="text-xs font-semibold text-orias-green hover:underline disabled:opacity-50"
+            >
+              {savingNotes ? 'Enregistrement...' : 'Enregistrer les notes'}
+            </button>
+          </div>
+
+          {/* Historique d'activité */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-3">Historique d'activité</label>
+
+            <div className="flex gap-2 mb-4">
+              <input
+                value={newNote}
+                onChange={e => setNewNote(e.target.value)}
+                placeholder="Ajouter un commentaire à l'historique..."
+                className="input-field text-sm py-2 flex-1"
+                onKeyDown={e => { if (e.key === 'Enter') handleAddNoteClick() }}
+              />
+              <button
+                onClick={handleAddNoteClick}
+                disabled={addingNote || !newNote.trim()}
+                className="btn-green text-sm px-4 py-2 disabled:opacity-50"
+              >
+                Ajouter
+              </button>
+            </div>
+
+            {loadingActivity ? (
+              <div className="text-sm text-gray-400">Chargement...</div>
+            ) : activity.length === 0 ? (
+              <div className="text-sm text-gray-400">Aucune activité.</div>
+            ) : (
+              <div className="space-y-3">
+                {activity.map(a => (
+                  <div key={a.id} className="flex gap-3">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${ACTIVITY_META[a.type]?.color || 'bg-gray-100 text-gray-500'}`}>
+                      {ACTIVITY_META[a.type]?.icon || <ClockIcon className="w-3.5 h-3.5" />}
+                    </div>
+                    <div className="flex-1 pb-3 border-b border-orias-border last:border-0">
+                      <p className="text-sm text-gray-700">{a.description}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{timeAgo(a.created_at)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function KanbanCard({ lead, onOpen, onDragStart }) {
+  const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—'
+  return (
+    <div
+      draggable
+      onDragStart={e => onDragStart(e, lead.id)}
+      onClick={() => onOpen(lead.id)}
+      className="bg-white rounded-xl border border-orias-border p-3 cursor-pointer hover:shadow-md transition-shadow active:cursor-grabbing"
+    >
+      <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className="font-semibold text-sm text-gray-900 truncate">{fullName}</span>
+        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${SOURCE_BADGE_STYLES[lead.source] || SOURCE_BADGE_STYLES.autre}`}>
+          {LEAD_SOURCE_LABELS[lead.source] || lead.source}
+        </span>
+      </div>
+      {lead.email && <div className="text-xs text-gray-500 truncate">{lead.email}</div>}
+      {lead.phone && <div className="text-xs text-gray-500">{lead.phone}</div>}
+      {lead.appointment_at && (
+        <div className="flex items-center gap-1 text-xs text-purple-600 font-medium mt-1.5">
+          <CalendarIcon className="w-3 h-3" />
+          {formatDateTimeFR(lead.appointment_at)}
+        </div>
+      )}
+      <div className="text-[11px] text-gray-400 mt-1.5">{timeAgo(lead.created_at)}</div>
+    </div>
+  )
+}
+
+function KanbanColumn({ status, leads, onOpen, onDragStart, onDrop }) {
+  const [isOver, setIsOver] = useState(false)
+  return (
+    <div
+      onDragOver={e => { e.preventDefault(); setIsOver(true) }}
+      onDragLeave={() => setIsOver(false)}
+      onDrop={e => { e.preventDefault(); setIsOver(false); onDrop(status) }}
+      className={`flex-shrink-0 w-[260px] rounded-xl transition-colors ${isOver ? 'bg-orias-gold/10 ring-2 ring-orias-gold/40' : 'bg-orias-bg'} p-3`}
+    >
+      <div className="flex items-center justify-between mb-3 px-1">
+        <span className="text-sm font-bold text-orias-green">{LEAD_STATUS_LABELS[status]}</span>
+        <span className="text-xs font-semibold text-gray-400 bg-white rounded-full px-2 py-0.5">{leads.length}</span>
+      </div>
+      <div className="space-y-2 min-h-[80px]">
+        {leads.map(lead => (
+          <KanbanCard key={lead.id} lead={lead} onOpen={onOpen} onDragStart={onDragStart} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function LeadCard({ lead, onStatusChange, onSaveNotes, onOpen }) {
+  const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—'
+
+  return (
+    <div className="card p-4 hover:shadow-md transition-all">
       <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setExpanded(e => !e)}>
+        <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onOpen(lead.id)}>
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="font-bold text-gray-900">{fullName}</span>
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_BADGE_STYLES[lead.source] || SOURCE_BADGE_STYLES.autre}`}>
@@ -1248,6 +1498,11 @@ function LeadCard({ lead, onStatusChange, onSaveNotes }) {
           </div>
           {lead.pack_interest && (
             <div className="text-xs text-orias-green font-medium mt-1">Intéressé par : {lead.pack_interest}</div>
+          )}
+          {lead.appointment_at && (
+            <div className="flex items-center gap-1 text-xs text-purple-600 font-medium mt-1">
+              <CalendarIcon className="w-3 h-3" />{formatDateTimeFR(lead.appointment_at)}
+            </div>
           )}
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
@@ -1263,41 +1518,18 @@ function LeadCard({ lead, onStatusChange, onSaveNotes }) {
           <span className="text-[11px] text-gray-400">{timeAgo(lead.created_at)}</span>
         </div>
       </div>
-
-      {expanded && (
-        <div className="mt-3 pt-3 border-t border-orias-border">
-          {lead.message && (
-            <div className="bg-orias-bg rounded-lg p-3 text-sm text-gray-700 mb-3 whitespace-pre-wrap">{lead.message}</div>
-          )}
-          <label className="block text-xs font-semibold text-gray-500 mb-1">Notes internes</label>
-          <textarea
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-            rows={2}
-            placeholder="Ajouter une note sur ce lead..."
-            className="input-field text-sm resize-none mb-2"
-            onClick={e => e.stopPropagation()}
-          />
-          <button
-            onClick={(e) => { e.stopPropagation(); handleSaveNotes() }}
-            disabled={savingNotes}
-            className="text-xs font-semibold text-orias-green hover:underline disabled:opacity-50"
-          >
-            {savingNotes ? 'Enregistrement...' : 'Enregistrer la note'}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
 
-function LeadsSection() {
+function CRMSection() {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
+  const [view, setView] = useState('kanban')
   const [sourceFilter, setSourceFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState(null)
+  const [selectedLeadId, setSelectedLeadId] = useState(null)
 
   useEffect(() => {
     fetchLeads().then(data => { setLeads(data); setLoading(false) })
@@ -1329,6 +1561,10 @@ function LeadsSection() {
   const handleStatusChange = async (leadId, status) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status } : l))
     await updateLeadStatus(leadId, status)
+    if (status === 'rdv_pris') {
+      const lead = leads.find(l => l.id === leadId)
+      if (lead && !lead.appointment_at) setSelectedLeadId(leadId)
+    }
   }
 
   const handleSaveNotes = async (leadId, notes) => {
@@ -1336,9 +1572,27 @@ function LeadsSection() {
     await updateLeadNotes(leadId, notes)
   }
 
+  const handleSetAppointment = async (leadId, { appointmentAt, appointmentType }) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, appointment_at: appointmentAt, appointment_type: appointmentType } : l))
+    await setLeadAppointment(leadId, { appointmentAt, appointmentType })
+  }
+
+  const handleAddNote = async (leadId, note) => {
+    await addLeadNote(leadId, note)
+  }
+
+  const handleDrop = (status) => {
+    const draggedId = window.__draggedLeadId
+    if (draggedId) handleStatusChange(draggedId, status)
+  }
+
+  const handleDragStart = (e, leadId) => {
+    window.__draggedLeadId = leadId
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
   const filtered = leads.filter(l => {
     if (sourceFilter !== 'all' && l.source !== sourceFilter) return false
-    if (statusFilter !== 'all' && l.status !== statusFilter) return false
     if (search) {
       const hay = `${l.first_name || ''} ${l.last_name || ''} ${l.email || ''} ${l.phone || ''}`.toLowerCase()
       if (!hay.includes(search.toLowerCase())) return false
@@ -1355,19 +1609,31 @@ function LeadsSection() {
     return acc
   }, {})
 
+  const selectedLead = selectedLeadId ? leads.find(l => l.id === selectedLeadId) : null
+
   if (loading) {
-    return <div className="text-center py-12 text-gray-400">Chargement des leads...</div>
+    return <div className="text-center py-12 text-gray-400">Chargement du CRM...</div>
   }
 
   return (
     <div className="space-y-5">
-      {/* Toast notification */}
       {toast && (
         <div className="fixed top-20 right-6 z-50 bg-orias-green text-white px-5 py-3 rounded-xl shadow-2xl shadow-black/20 flex items-center gap-3 animate-pulse">
           <BellIcon className="w-5 h-5 text-orias-gold flex-shrink-0" />
           <span className="text-sm font-semibold">{toast}</span>
           <button onClick={() => setToast(null)} className="text-white/60 hover:text-white"><XIcon className="w-4 h-4" /></button>
         </div>
+      )}
+
+      {selectedLead && (
+        <LeadDetailPanel
+          lead={selectedLead}
+          onClose={() => setSelectedLeadId(null)}
+          onStatusChange={handleStatusChange}
+          onSaveNotes={handleSaveNotes}
+          onSetAppointment={handleSetAppointment}
+          onAddNote={handleAddNote}
+        />
       )}
 
       {/* Stats */}
@@ -1397,8 +1663,12 @@ function LeadsSection() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters + view toggle */}
       <div className="card p-4 flex flex-wrap items-center gap-3">
+        <div className="flex rounded-xl border border-orias-border overflow-hidden flex-shrink-0">
+          <button onClick={() => setView('kanban')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'kanban' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Kanban</button>
+          <button onClick={() => setView('liste')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'liste' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Liste</button>
+        </div>
         <div className="relative flex-1 min-w-[180px]">
           <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -1414,23 +1684,35 @@ function LeadsSection() {
             <option key={k} value={k}>{label}</option>
           ))}
         </select>
-        <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="input-field text-sm w-auto">
-          <option value="all">Tous les statuts</option>
-          {LEAD_STATUSES.map(s => (
-            <option key={s} value={s}>{LEAD_STATUS_LABELS[s]}</option>
-          ))}
-        </select>
       </div>
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">Aucun lead pour le moment.</div>
-      ) : (
-        <div className="space-y-3">
-          {filtered.map(lead => (
-            <LeadCard key={lead.id} lead={lead} onStatusChange={handleStatusChange} onSaveNotes={handleSaveNotes} />
+      {/* Kanban view */}
+      {view === 'kanban' && (
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {LEAD_STATUSES.map(status => (
+            <KanbanColumn
+              key={status}
+              status={status}
+              leads={filtered.filter(l => l.status === status)}
+              onOpen={setSelectedLeadId}
+              onDragStart={handleDragStart}
+              onDrop={handleDrop}
+            />
           ))}
         </div>
+      )}
+
+      {/* List view */}
+      {view === 'liste' && (
+        filtered.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">Aucun lead pour le moment.</div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(lead => (
+              <LeadCard key={lead.id} lead={lead} onStatusChange={handleStatusChange} onSaveNotes={handleSaveNotes} onOpen={setSelectedLeadId} />
+            ))}
+          </div>
+        )
       )}
     </div>
   )
@@ -1791,7 +2073,7 @@ export default function AdminDashboard() {
   const renderSection = () => {
     switch (activeTab) {
       case 'clients':   return <ClientsSection isSuperAdmin={isSuperAdmin} />
-      case 'leads':     return <LeadsSection />
+      case 'leads':     return <CRMSection />
       case 'dossiers':  return <DossierSection />
       case 'formation': return <FormationTrackingSection />
       case 'notifs':    return <NotificationsSection />

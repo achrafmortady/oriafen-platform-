@@ -771,3 +771,51 @@ export function subscribeToLeads(callback) {
   return () => supabase.removeChannel(channel)
 }
 
+export const APPOINTMENT_TYPE_LABELS = {
+  appel:       'Appel téléphonique',
+  visio:       'Visio',
+  presentiel:  'En personne',
+}
+
+export async function setLeadAppointment(leadId, { appointmentAt, appointmentType }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .update({ appointment_at: appointmentAt, appointment_type: appointmentType })
+      .eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function fetchLeadActivity(leadId) {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('lead_activity')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchLeadActivity error:', err?.message)
+    return []
+  }
+}
+
+export async function addLeadNote(leadId, note) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('lead_activity')
+      .insert({ lead_id: leadId, type: 'note', description: note })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+
