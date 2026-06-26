@@ -617,15 +617,17 @@ export async function createClient(fullName, email, packId, discountPercent = 0)
     if (error) return { success: false, error: error.message }
 
     const userId = data.user?.id
+    let createdPayments = []
     if (userId) {
       // Make sure pack_id is set on the users row (signUp metadata may not sync immediately)
       await supabase.from('users').update({ pack_id: packId }).eq('id', userId)
       // Create the payment milestone rows for this client (with discount applied if any)
       const rows = buildPaymentRows(userId, pack, discountPercent)
-      await supabase.from('payments').insert(rows)
+      const { data: inserted } = await supabase.from('payments').insert(rows).select()
+      createdPayments = inserted ?? []
     }
 
-    return { success: true, tempPassword, userId }
+    return { success: true, tempPassword, userId, payments: createdPayments }
   } catch (err) {
     return { success: false, error: err?.message }
   }
@@ -929,6 +931,59 @@ export async function setLeadPack(leadId, { packId, potentialAmount }) {
   } catch (err) {
     return { success: false, error: err?.message }
   }
+}
+
+export async function setLeadPricing(leadId, { discountPercent, amountBasis }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('leads')
+      .update({ discount_percent: discountPercent, amount_basis: amountBasis })
+      .eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+/**
+ * Convertit un lead "client" en vrai compte (users + dossier + paiements 50/25/25),
+ * marque le premier paiement comme déjà réglé, et envoie l'email de création de session
+ * (même flux que "Ajouter un client" dans l'onglet Clients).
+ */
+export async function convertLeadToClient(lead) {
+  if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
+  if (!lead.pack_id) return { success: false, error: 'Sélectionnez un pack avant de convertir ce lead.' }
+  if (!lead.email) return { success: false, error: 'Ce lead n\'a pas d\'adresse email.' }
+
+  const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || lead.email
+
+  const result = await createClient(fullName, lead.email, lead.pack_id, lead.discount_percent || 0)
+  if (!result.success) return result
+
+  // Le premier jalon (souscription ou paiement complet) est déjà réglé pour devenir client
+  const firstPayment = result.payments?.find(p => p.milestone === 'souscription' || p.milestone === 'full')
+  if (firstPayment) {
+    await markPaymentPaid(firstPayment.id)
+  }
+
+  await supabase
+    .from('leads')
+    .update({ converted_user_id: result.userId })
+    .eq('id', lead.id)
+
+  await supabase.from('lead_activity').insert({
+    lead_id: lead.id,
+    type: 'conversion',
+    description: `Converti en client — compte créé, premier paiement validé (${firstPayment ? fmtDHForLog(firstPayment.amount_ttc) : ''})`,
+  })
+
+  return { success: true, tempPassword: result.tempPassword, userId: result.userId }
+}
+
+function fmtDHForLog(n) {
+  if (n === null || n === undefined) return ''
+  return Math.round(n).toLocaleString('fr-FR') + ' DH TTC'
 }
 
 // ── Activité rapide à logger (appel passé, email envoyé...) ────

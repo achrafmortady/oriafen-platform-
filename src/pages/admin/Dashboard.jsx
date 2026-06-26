@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -1255,7 +1255,7 @@ function isOverdue(dateStr) {
 // Slide-over detail panel for a single lead — contact info, pipeline status,
 // pack & montant potentiel, rendez-vous multiples, tâches, actions rapides (appel/email),
 // notes, et historique d'activité complet (HubSpot-style).
-function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, onAddNote, onSetPack, onLogQuick }) {
+function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, onAddNote, onSetPack, onLogQuick, onConverted }) {
   const [notes, setNotes] = useState(lead.notes || '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [activity, setActivity] = useState([])
@@ -1265,7 +1265,13 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
 
   const [packId, setPackId] = useState(lead.pack_id || '')
   const [potentialAmount, setPotentialAmount] = useState(lead.potential_amount ?? '')
+  const [discountPercent, setDiscountPercent] = useState(lead.discount_percent || 0)
+  const [amountBasis, setAmountBasis] = useState(lead.amount_basis || 'ht')
   const [savingPack, setSavingPack] = useState(false)
+
+  const [converting, setConverting] = useState(false)
+  const [convertError, setConvertError] = useState('')
+  const [convertResult, setConvertResult] = useState(null)
 
   const [appointments, setAppointments] = useState([])
   const [loadingAppts, setLoadingAppts] = useState(true)
@@ -1280,6 +1286,7 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
   const [addingTask, setAddingTask] = useState(false)
 
   const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—'
+  const selectedPack = packs.find(p => p.id === packId)
 
   const loadActivity = () => {
     setLoadingActivity(true)
@@ -1298,23 +1305,57 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
     setNotes(lead.notes || '')
     setPackId(lead.pack_id || '')
     setPotentialAmount(lead.potential_amount ?? '')
+    setDiscountPercent(lead.discount_percent || 0)
+    setAmountBasis(lead.amount_basis || 'ht')
+    setConvertResult(null)
+    setConvertError('')
     loadActivity()
     loadAppointments()
     loadTasks()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id])
 
+  // Recalcule le montant affiché à chaque changement de pack / remise / base HT-TTC
+  const recomputeAmount = (pack, discount, basis) => {
+    if (!pack) return ''
+    const discounted = pack.price_ht * (1 - (Number(discount) || 0) / 100)
+    return Math.round(basis === 'ttc' ? discounted * 1.2 : discounted)
+  }
+
   const handlePackChange = (newPackId) => {
     setPackId(newPackId)
     const pack = packs.find(p => p.id === newPackId)
-    if (pack) setPotentialAmount(pack.price_ht)
+    setPotentialAmount(recomputeAmount(pack, discountPercent, amountBasis))
+  }
+
+  const handleDiscountChange = (value) => {
+    setDiscountPercent(value)
+    if (selectedPack) setPotentialAmount(recomputeAmount(selectedPack, value, amountBasis))
+  }
+
+  const handleBasisChange = (basis) => {
+    setAmountBasis(basis)
+    if (selectedPack) setPotentialAmount(recomputeAmount(selectedPack, discountPercent, basis))
   }
 
   const handleSavePack = async () => {
     setSavingPack(true)
-    await onSetPack(lead.id, { packId: packId || null, potentialAmount: potentialAmount === '' ? null : Number(potentialAmount) })
+    await onSetPack(lead.id, { packId: packId || null, potentialAmount: potentialAmount === '' ? null : Number(potentialAmount) }, { discountPercent: Number(discountPercent) || 0, amountBasis })
     setSavingPack(false)
     loadActivity()
+  }
+
+  const handleConvert = async () => {
+    setConverting(true)
+    setConvertError('')
+    const result = await convertLeadToClient({ ...lead, pack_id: packId, discount_percent: discountPercent })
+    setConverting(false)
+    if (result.success) {
+      setConvertResult(result)
+      onConverted(lead.id, result.userId)
+    } else {
+      setConvertError(result.error || 'Erreur lors de la conversion.')
+    }
   }
 
   const handleSaveNotesClick = async () => {
@@ -1437,11 +1478,27 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
               <select value={packId} onChange={e => handlePackChange(e.target.value)} className="input-field text-sm py-2 col-span-2">
                 <option value="">Sélectionner un pack...</option>
                 {packs.map(p => (
-                  <option key={p.id} value={p.id}>{p.name} — {fmtDH(p.price_ht)}</option>
+                  <option key={p.id} value={p.id}>{p.name} — {fmtDH(p.price_ht)} HT</option>
                 ))}
               </select>
+
               <div className="col-span-2 flex items-center gap-2">
-                <span className="text-xs text-gray-500 whitespace-nowrap">Potentiel (DH)</span>
+                <span className="text-xs text-gray-500 whitespace-nowrap">Remise</span>
+                <select value={discountPercent} onChange={e => handleDiscountChange(e.target.value)} className="input-field text-sm py-2">
+                  <option value="0">Aucune</option>
+                  <option value="5">5 %</option>
+                  <option value="10">10 %</option>
+                  <option value="15">15 %</option>
+                  <option value="20">20 %</option>
+                </select>
+                <div className="flex rounded-lg border border-orias-border overflow-hidden flex-shrink-0">
+                  <button type="button" onClick={() => handleBasisChange('ht')} className={`px-3 py-2 text-xs font-semibold ${amountBasis === 'ht' ? 'bg-orias-green text-white' : 'text-gray-600 bg-white'}`}>HT</button>
+                  <button type="button" onClick={() => handleBasisChange('ttc')} className={`px-3 py-2 text-xs font-semibold ${amountBasis === 'ttc' ? 'bg-orias-green text-white' : 'text-gray-600 bg-white'}`}>TTC</button>
+                </div>
+              </div>
+
+              <div className="col-span-2 flex items-center gap-2">
+                <span className="text-xs text-gray-500 whitespace-nowrap">Potentiel ({amountBasis.toUpperCase()})</span>
                 <input
                   type="number"
                   value={potentialAmount}
@@ -1460,7 +1517,38 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
             </button>
           </div>
 
-          {/* Rendez-vous (plusieurs) */}
+          {/* Validation du passage en Client : crée le compte, les paiements 50/25/25,
+              valide le premier paiement, et envoie l'email de creation de session. */}
+          {lead.status === 'client' && (
+            <div className={`rounded-xl p-4 border ${lead.converted_user_id ? 'border-emerald-300 bg-emerald-50' : 'border-orias-gold bg-orias-gold/10'}`}>
+              {lead.converted_user_id || convertResult ? (
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+                  <CheckCircleIcon className="w-5 h-5" />
+                  Compte client créé — premier paiement validé. Visible dans l'onglet Clients & Finance.
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AwardIcon className="w-4 h-4 text-orias-gold" />
+                    <span className="text-sm font-bold text-orias-green">Valider le premier paiement</span>
+                  </div>
+                  <p className="text-xs text-gray-600 mb-3">
+                    Crée le compte client (email de connexion envoyé automatiquement), génère les paiements 50% / 25% / 25%, et marque le premier comme réglé.
+                  </p>
+                  {convertError && <p className="text-xs text-red-600 mb-2">{convertError}</p>}
+                  <button
+                    onClick={handleConvert}
+                    disabled={converting || !packId}
+                    className="btn-gold w-full text-sm py-2 disabled:opacity-50"
+                  >
+                    {converting ? 'Création en cours...' : !packId ? 'Sélectionnez un pack ci-dessus' : '📌 Valider le paiement & créer le compte'}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+
+
           <div className="border border-orias-gold/30 bg-orias-gold/5 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <CalendarIcon className="w-4 h-4 text-orias-gold" />
@@ -1932,9 +2020,20 @@ function CRMSection() {
     await addLeadNote(leadId, note)
   }
 
-  const handleSetPack = async (leadId, { packId, potentialAmount }) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, pack_id: packId, potential_amount: potentialAmount } : l))
+  const handleSetPack = async (leadId, { packId, potentialAmount }, pricing) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? {
+      ...l,
+      pack_id: packId,
+      potential_amount: potentialAmount,
+      ...(pricing ? { discount_percent: pricing.discountPercent, amount_basis: pricing.amountBasis } : {}),
+    } : l))
     await setLeadPack(leadId, { packId, potentialAmount })
+    if (pricing) await setLeadPricing(leadId, pricing)
+  }
+
+  const handleConverted = (leadId, userId) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, converted_user_id: userId } : l))
+    setToast('Client créé avec succès — email de connexion envoyé.')
   }
 
   const handleLogQuick = async (leadId, type, description) => {
@@ -1996,6 +2095,7 @@ function CRMSection() {
           onAddNote={handleAddNote}
           onSetPack={handleSetPack}
           onLogQuick={handleLogQuick}
+          onConverted={handleConverted}
         />
       )}
 
