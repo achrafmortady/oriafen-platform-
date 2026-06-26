@@ -686,14 +686,26 @@ export async function fetchClientDocuments(userId) {
 
 // ── Leads CRM ─────────────────────────────────────────────────
 
-export const LEAD_STATUSES = ['nouveau', 'qualifie', 'rdv_pris', 'client', 'perdu']
+export const LEAD_STATUSES = ['nouveau', 'rdv_pris', 'qualifie', 'engage', 'client', 'perdu']
 
 export const LEAD_STATUS_LABELS = {
   nouveau:   'Nouveau',
-  qualifie:  'Qualifié',
   rdv_pris:  'RDV pris',
+  qualifie:  'Qualifié',
+  engage:    'Engagé (Commit)',
   client:    'Client',
   perdu:     'Perdu',
+}
+
+// Pondération du potentiel par étape — même logique que les pipelines HubSpot
+// (10% / 30% / 50% / 80% / 100% gagné / 0% perdu), utilisée pour le "montant pondéré".
+export const STAGE_WEIGHTS = {
+  nouveau:  0.1,
+  rdv_pris: 0.3,
+  qualifie: 0.5,
+  engage:   0.8,
+  client:   1,
+  perdu:    0,
 }
 
 export const LEAD_SOURCE_LABELS = {
@@ -777,13 +789,156 @@ export const APPOINTMENT_TYPE_LABELS = {
   presentiel:  'En personne',
 }
 
-export async function setLeadAppointment(leadId, { appointmentAt, appointmentType }) {
+export const APPOINTMENT_STATUS_LABELS = {
+  planifie: 'Planifié',
+  termine:  'Terminé',
+  annule:   'Annulé',
+}
+
+// ── Rendez-vous (plusieurs par lead) ────────────────────────────
+
+export async function fetchLeadAppointments(leadId) {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('lead_appointments')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('scheduled_at', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchLeadAppointments error:', err?.message)
+    return []
+  }
+}
+
+export async function addLeadAppointment(leadId, { scheduledAt, type }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('lead_appointments')
+      .insert({ lead_id: leadId, scheduled_at: scheduledAt, type })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function updateAppointmentStatus(appointmentId, status) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('lead_appointments')
+      .update({ status })
+      .eq('id', appointmentId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+/** Tous les rendez-vous à venir (planifiés), avec les infos du lead — pour la vue Agenda. */
+export async function fetchUpcomingAppointments() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('lead_appointments')
+      .select('*, leads(id, first_name, last_name, email, phone, status)')
+      .eq('status', 'planifie')
+      .order('scheduled_at', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchUpcomingAppointments error:', err?.message)
+    return []
+  }
+}
+
+// ── Tâches (rappels / actions à faire) ──────────────────────────
+
+export async function fetchLeadTasks(leadId) {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('lead_tasks')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('done', { ascending: true })
+      .order('due_at', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchLeadTasks error:', err?.message)
+    return []
+  }
+}
+
+export async function addLeadTask(leadId, { title, dueAt }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('lead_tasks')
+      .insert({ lead_id: leadId, title, due_at: dueAt || null })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function toggleTaskDone(taskId, done) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('lead_tasks')
+      .update({ done })
+      .eq('id', taskId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+/** Toutes les tâches non terminées, avec les infos du lead — pour la vue Agenda. */
+export async function fetchUpcomingTasks() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('lead_tasks')
+      .select('*, leads(id, first_name, last_name, email, phone, status)')
+      .eq('done', false)
+      .order('due_at', { ascending: true, nullsFirst: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchUpcomingTasks error:', err?.message)
+    return []
+  }
+}
+
+// ── Pack & montant potentiel (valeur du deal, comme HubSpot) ────
+
+export async function setLeadPack(leadId, { packId, potentialAmount }) {
   if (!isConfigured) return { success: true }
   try {
     const { error } = await supabase
       .from('leads')
-      .update({ appointment_at: appointmentAt, appointment_type: appointmentType })
+      .update({ pack_id: packId, potential_amount: potentialAmount })
       .eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+// ── Activité rapide à logger (appel passé, email envoyé...) ────
+
+export async function logQuickActivity(leadId, type, description) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('lead_activity')
+      .insert({ lead_id: leadId, type, description })
     return { success: !error, error: error?.message }
   } catch (err) {
     return { success: false, error: err?.message }

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, setLeadAppointment, fetchLeadActivity, addLeadNote, APPOINTMENT_TYPE_LABELS } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -1192,8 +1192,9 @@ function FormationTrackingSection() {
 
 const STATUS_BADGE_STYLES = {
   nouveau:  'bg-blue-100 text-blue-700 border-blue-200',
-  qualifie: 'bg-amber-100 text-amber-700 border-amber-200',
   rdv_pris: 'bg-purple-100 text-purple-700 border-purple-200',
+  qualifie: 'bg-amber-100 text-amber-700 border-amber-200',
+  engage:   'bg-orange-100 text-orange-700 border-orange-200',
   client:   'bg-emerald-100 text-emerald-700 border-emerald-200',
   perdu:    'bg-gray-100 text-gray-500 border-gray-200',
 }
@@ -1224,6 +1225,10 @@ const ACTIVITY_META = {
   rdv:         { icon: <CalendarIcon className="w-3.5 h-3.5" />,     color: 'text-purple-600 bg-purple-100' },
   note:        { icon: <MessageIcon className="w-3.5 h-3.5" />,      color: 'text-blue-600 bg-blue-100' },
   assignation: { icon: <UsersIcon className="w-3.5 h-3.5" />,        color: 'text-gray-600 bg-gray-100' },
+  appel:       { icon: <PhoneIcon className="w-3.5 h-3.5" />,        color: 'text-teal-600 bg-teal-100' },
+  email:       { icon: <MessageIcon className="w-3.5 h-3.5" />,      color: 'text-indigo-600 bg-indigo-100' },
+  tache:       { icon: <CheckCircleIcon className="w-3.5 h-3.5" />,  color: 'text-orias-gold bg-orias-gold/15' },
+  pack:        { icon: <TrendingUpIcon className="w-3.5 h-3.5" />,   color: 'text-emerald-600 bg-emerald-100' },
 }
 
 function formatDateTimeFR(dateStr) {
@@ -1232,18 +1237,47 @@ function formatDateTimeFR(dateStr) {
   return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function formatDateFR(dateStr) {
+  if (!dateStr) return null
+  const d = new Date(dateStr)
+  return d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function fmtDH(n) {
+  if (n === null || n === undefined || n === '') return null
+  return Math.round(Number(n)).toLocaleString('fr-FR') + ' DH'
+}
+
+function isOverdue(dateStr) {
+  return dateStr && new Date(dateStr).getTime() < Date.now()
+}
+
 // Slide-over detail panel for a single lead — contact info, pipeline status,
-// rendez-vous scheduling, notes, and full activity timeline (HubSpot-style).
-function LeadDetailPanel({ lead, onClose, onStatusChange, onSaveNotes, onSetAppointment, onAddNote }) {
+// pack & montant potentiel, rendez-vous multiples, tâches, actions rapides (appel/email),
+// notes, et historique d'activité complet (HubSpot-style).
+function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, onAddNote, onSetPack, onLogQuick }) {
   const [notes, setNotes] = useState(lead.notes || '')
   const [savingNotes, setSavingNotes] = useState(false)
   const [activity, setActivity] = useState([])
   const [loadingActivity, setLoadingActivity] = useState(true)
-  const [apptDate, setApptDate] = useState(lead.appointment_at ? lead.appointment_at.slice(0, 16) : '')
-  const [apptType, setApptType] = useState(lead.appointment_type || 'appel')
-  const [savingAppt, setSavingAppt] = useState(false)
   const [newNote, setNewNote] = useState('')
   const [addingNote, setAddingNote] = useState(false)
+
+  const [packId, setPackId] = useState(lead.pack_id || '')
+  const [potentialAmount, setPotentialAmount] = useState(lead.potential_amount ?? '')
+  const [savingPack, setSavingPack] = useState(false)
+
+  const [appointments, setAppointments] = useState([])
+  const [loadingAppts, setLoadingAppts] = useState(true)
+  const [newApptDate, setNewApptDate] = useState('')
+  const [newApptType, setNewApptType] = useState('appel')
+  const [addingAppt, setAddingAppt] = useState(false)
+
+  const [tasks, setTasks] = useState([])
+  const [loadingTasks, setLoadingTasks] = useState(true)
+  const [newTaskTitle, setNewTaskTitle] = useState('')
+  const [newTaskDue, setNewTaskDue] = useState('')
+  const [addingTask, setAddingTask] = useState(false)
 
   const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || '—'
 
@@ -1251,20 +1285,35 @@ function LeadDetailPanel({ lead, onClose, onStatusChange, onSaveNotes, onSetAppo
     setLoadingActivity(true)
     fetchLeadActivity(lead.id).then(data => { setActivity(data); setLoadingActivity(false) })
   }
+  const loadAppointments = () => {
+    setLoadingAppts(true)
+    fetchLeadAppointments(lead.id).then(data => { setAppointments(data); setLoadingAppts(false) })
+  }
+  const loadTasks = () => {
+    setLoadingTasks(true)
+    fetchLeadTasks(lead.id).then(data => { setTasks(data); setLoadingTasks(false) })
+  }
 
   useEffect(() => {
     setNotes(lead.notes || '')
-    setApptDate(lead.appointment_at ? lead.appointment_at.slice(0, 16) : '')
-    setApptType(lead.appointment_type || 'appel')
+    setPackId(lead.pack_id || '')
+    setPotentialAmount(lead.potential_amount ?? '')
     loadActivity()
+    loadAppointments()
+    loadTasks()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lead.id])
 
-  const handleSaveAppointment = async () => {
-    if (!apptDate) return
-    setSavingAppt(true)
-    await onSetAppointment(lead.id, { appointmentAt: new Date(apptDate).toISOString(), appointmentType: apptType })
-    setSavingAppt(false)
+  const handlePackChange = (newPackId) => {
+    setPackId(newPackId)
+    const pack = packs.find(p => p.id === newPackId)
+    if (pack) setPotentialAmount(pack.price_ht)
+  }
+
+  const handleSavePack = async () => {
+    setSavingPack(true)
+    await onSetPack(lead.id, { packId: packId || null, potentialAmount: potentialAmount === '' ? null : Number(potentialAmount) })
+    setSavingPack(false)
     loadActivity()
   }
 
@@ -1285,6 +1334,43 @@ function LeadDetailPanel({ lead, onClose, onStatusChange, onSaveNotes, onSetAppo
 
   const handleStatusSelect = async (newStatus) => {
     await onStatusChange(lead.id, newStatus)
+  }
+
+  const handleAddAppointment = async () => {
+    if (!newApptDate) return
+    setAddingAppt(true)
+    await addLeadAppointment(lead.id, { scheduledAt: new Date(newApptDate).toISOString(), type: newApptType })
+    setNewApptDate('')
+    setAddingAppt(false)
+    loadAppointments()
+    loadActivity()
+  }
+
+  const handleApptStatus = async (apptId, status) => {
+    await updateAppointmentStatus(apptId, status)
+    loadAppointments()
+    loadActivity()
+  }
+
+  const handleAddTask = async () => {
+    if (!newTaskTitle.trim()) return
+    setAddingTask(true)
+    await addLeadTask(lead.id, { title: newTaskTitle.trim(), dueAt: newTaskDue ? new Date(newTaskDue).toISOString() : null })
+    setNewTaskTitle('')
+    setNewTaskDue('')
+    setAddingTask(false)
+    loadTasks()
+    loadActivity()
+  }
+
+  const handleToggleTask = async (taskId, done) => {
+    await toggleTaskDone(taskId, done)
+    loadTasks()
+  }
+
+  const handleQuickLog = async (type, label) => {
+    await onLogQuick(lead.id, type, label)
+    loadActivity()
   }
 
   return (
@@ -1316,6 +1402,16 @@ function LeadDetailPanel({ lead, onClose, onStatusChange, onSaveNotes, onSetAppo
             </select>
           </div>
 
+          {/* Actions rapides */}
+          <div className="flex gap-2">
+            <button onClick={() => handleQuickLog('appel', 'Appel effectué')} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-teal-700 bg-teal-50 hover:bg-teal-100 rounded-lg px-3 py-2 transition-colors">
+              <PhoneIcon className="w-3.5 h-3.5" /> Logger un appel
+            </button>
+            <button onClick={() => handleQuickLog('email', 'Email envoyé')} className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg px-3 py-2 transition-colors">
+              <MessageIcon className="w-3.5 h-3.5" /> Logger un email
+            </button>
+          </div>
+
           {/* Contact info */}
           <div className="space-y-1.5 text-sm">
             {lead.email && <div className="text-gray-700">{lead.email}</div>}
@@ -1331,38 +1427,151 @@ function LeadDetailPanel({ lead, onClose, onStatusChange, onSaveNotes, onSetAppo
             </div>
           )}
 
-          {/* Rendez-vous */}
+          {/* Pack & montant potentiel */}
+          <div className="border border-emerald-200 bg-emerald-50/60 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <TrendingUpIcon className="w-4 h-4 text-emerald-600" />
+              <span className="text-sm font-bold text-orias-green">Pack & potentiel</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <select value={packId} onChange={e => handlePackChange(e.target.value)} className="input-field text-sm py-2 col-span-2">
+                <option value="">Sélectionner un pack...</option>
+                {packs.map(p => (
+                  <option key={p.id} value={p.id}>{p.name} — {fmtDH(p.price_ht)}</option>
+                ))}
+              </select>
+              <div className="col-span-2 flex items-center gap-2">
+                <span className="text-xs text-gray-500 whitespace-nowrap">Potentiel (DH)</span>
+                <input
+                  type="number"
+                  value={potentialAmount}
+                  onChange={e => setPotentialAmount(e.target.value)}
+                  placeholder="Montant"
+                  className="input-field text-sm py-2"
+                />
+              </div>
+            </div>
+            <button
+              onClick={handleSavePack}
+              disabled={savingPack}
+              className="text-xs font-semibold text-orias-green hover:underline disabled:opacity-50"
+            >
+              {savingPack ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+
+          {/* Rendez-vous (plusieurs) */}
           <div className="border border-orias-gold/30 bg-orias-gold/5 rounded-xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <CalendarIcon className="w-4 h-4 text-orias-gold" />
               <span className="text-sm font-bold text-orias-green">Rendez-vous</span>
-              {lead.appointment_at && (
-                <span className="text-xs text-gray-500 ml-auto">{formatDateTimeFR(lead.appointment_at)}</span>
-              )}
             </div>
+
+            {loadingAppts ? (
+              <div className="text-xs text-gray-400 mb-2">Chargement...</div>
+            ) : appointments.length === 0 ? (
+              <div className="text-xs text-gray-400 mb-2">Aucun rendez-vous programmé.</div>
+            ) : (
+              <div className="space-y-2 mb-3">
+                {appointments.map(a => (
+                  <div key={a.id} className="flex items-center justify-between bg-white rounded-lg border border-orias-border px-3 py-2">
+                    <div>
+                      <div className={`text-xs font-semibold ${a.status === 'annule' ? 'text-gray-400 line-through' : isOverdue(a.scheduled_at) && a.status === 'planifie' ? 'text-red-600' : 'text-gray-800'}`}>
+                        {formatDateTimeFR(a.scheduled_at)}
+                      </div>
+                      <div className="text-[11px] text-gray-400">
+                        {APPOINTMENT_TYPE_LABELS[a.type] || a.type} · {APPOINTMENT_STATUS_LABELS[a.status]}
+                        {isOverdue(a.scheduled_at) && a.status === 'planifie' && <span className="text-red-600 font-bold ml-1">En retard</span>}
+                      </div>
+                    </div>
+                    {a.status === 'planifie' && (
+                      <div className="flex gap-1">
+                        <button onClick={() => handleApptStatus(a.id, 'termine')} title="Marquer terminé" className="text-emerald-600 hover:bg-emerald-100 rounded p-1"><CheckCircleIcon className="w-4 h-4" /></button>
+                        <button onClick={() => handleApptStatus(a.id, 'annule')} title="Annuler" className="text-gray-400 hover:bg-gray-100 rounded p-1"><XIcon className="w-4 h-4" /></button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-2 mb-2">
               <input
                 type="datetime-local"
-                value={apptDate}
-                onChange={e => setApptDate(e.target.value)}
+                value={newApptDate}
+                onChange={e => setNewApptDate(e.target.value)}
                 className="input-field text-sm py-2"
               />
-              <select value={apptType} onChange={e => setApptType(e.target.value)} className="input-field text-sm py-2">
+              <select value={newApptType} onChange={e => setNewApptType(e.target.value)} className="input-field text-sm py-2">
                 {Object.entries(APPOINTMENT_TYPE_LABELS).map(([k, label]) => (
                   <option key={k} value={k}>{label}</option>
                 ))}
               </select>
             </div>
             <button
-              onClick={handleSaveAppointment}
-              disabled={savingAppt || !apptDate}
+              onClick={handleAddAppointment}
+              disabled={addingAppt || !newApptDate}
               className="text-xs font-semibold text-orias-green hover:underline disabled:opacity-50"
             >
-              {savingAppt ? 'Enregistrement...' : lead.appointment_at ? 'Modifier le RDV' : 'Programmer le RDV'}
+              {addingAppt ? 'Ajout...' : '+ Ajouter un rendez-vous'}
             </button>
           </div>
 
-          {/* Notes internes (persistantes sur la fiche) */}
+          {/* Tâches */}
+          <div className="border border-blue-200 bg-blue-50/50 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <CheckCircleIcon className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-bold text-orias-green">Tâches</span>
+            </div>
+
+            {loadingTasks ? (
+              <div className="text-xs text-gray-400 mb-2">Chargement...</div>
+            ) : tasks.length === 0 ? (
+              <div className="text-xs text-gray-400 mb-2">Aucune tâche.</div>
+            ) : (
+              <div className="space-y-1.5 mb-3">
+                {tasks.map(t => (
+                  <label key={t.id} className="flex items-center gap-2 bg-white rounded-lg border border-orias-border px-3 py-2 cursor-pointer">
+                    <input type="checkbox" checked={t.done} onChange={e => handleToggleTask(t.id, e.target.checked)} className="w-4 h-4 accent-orias-green" />
+                    <div className="flex-1">
+                      <div className={`text-sm ${t.done ? 'line-through text-gray-400' : 'text-gray-800'}`}>{t.title}</div>
+                      {t.due_at && (
+                        <div className={`text-[11px] ${!t.done && isOverdue(t.due_at) ? 'text-red-600 font-semibold' : 'text-gray-400'}`}>
+                          Échéance : {formatDateFR(t.due_at)} {!t.done && isOverdue(t.due_at) && '— En retard'}
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <input
+                value={newTaskTitle}
+                onChange={e => setNewTaskTitle(e.target.value)}
+                placeholder="Ex: Rappeler le client demain"
+                className="input-field text-sm py-2"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={newTaskDue}
+                  onChange={e => setNewTaskDue(e.target.value)}
+                  className="input-field text-sm py-2 flex-1"
+                />
+                <button
+                  onClick={handleAddTask}
+                  disabled={addingTask || !newTaskTitle.trim()}
+                  className="btn-green text-xs px-3 py-2 disabled:opacity-50 whitespace-nowrap"
+                >
+                  + Tâche
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Notes internes */}
           <div>
             <label className="block text-xs font-semibold text-gray-500 mb-1">Notes internes</label>
             <textarea
@@ -1445,10 +1654,14 @@ function KanbanCard({ lead, onOpen, onDragStart }) {
       </div>
       {lead.email && <div className="text-xs text-gray-500 truncate">{lead.email}</div>}
       {lead.phone && <div className="text-xs text-gray-500">{lead.phone}</div>}
-      {lead.appointment_at && (
-        <div className="flex items-center gap-1 text-xs text-purple-600 font-medium mt-1.5">
+      {lead.potential_amount != null && (
+        <div className="text-xs font-bold text-emerald-700 mt-1.5">{fmtDH(lead.potential_amount)}</div>
+      )}
+      {lead.next_appointment_at && (
+        <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${isOverdue(lead.next_appointment_at) ? 'text-red-600' : 'text-purple-600'}`}>
           <CalendarIcon className="w-3 h-3" />
-          {formatDateTimeFR(lead.appointment_at)}
+          {formatDateTimeFR(lead.next_appointment_at)}
+          {isOverdue(lead.next_appointment_at) && <span className="font-bold">En retard</span>}
         </div>
       )}
       <div className="text-[11px] text-gray-400 mt-1.5">{timeAgo(lead.created_at)}</div>
@@ -1458,22 +1671,31 @@ function KanbanCard({ lead, onOpen, onDragStart }) {
 
 function KanbanColumn({ status, leads, onOpen, onDragStart, onDrop }) {
   const [isOver, setIsOver] = useState(false)
+  const totalAmount = leads.reduce((sum, l) => sum + (Number(l.potential_amount) || 0), 0)
+  const weightedAmount = totalAmount * (STAGE_WEIGHTS[status] ?? 0)
+
   return (
     <div
       onDragOver={e => { e.preventDefault(); setIsOver(true) }}
       onDragLeave={() => setIsOver(false)}
       onDrop={e => { e.preventDefault(); setIsOver(false); onDrop(status) }}
-      className={`flex-shrink-0 w-[260px] rounded-xl transition-colors ${isOver ? 'bg-orias-gold/10 ring-2 ring-orias-gold/40' : 'bg-orias-bg'} p-3`}
+      className={`flex-shrink-0 w-[260px] rounded-xl transition-colors ${isOver ? 'bg-orias-gold/10 ring-2 ring-orias-gold/40' : 'bg-orias-bg'} p-3 flex flex-col`}
     >
       <div className="flex items-center justify-between mb-3 px-1">
         <span className="text-sm font-bold text-orias-green">{LEAD_STATUS_LABELS[status]}</span>
         <span className="text-xs font-semibold text-gray-400 bg-white rounded-full px-2 py-0.5">{leads.length}</span>
       </div>
-      <div className="space-y-2 min-h-[80px]">
+      <div className="space-y-2 min-h-[80px] flex-1">
         {leads.map(lead => (
           <KanbanCard key={lead.id} lead={lead} onOpen={onOpen} onDragStart={onDragStart} />
         ))}
       </div>
+      {totalAmount > 0 && (
+        <div className="mt-3 pt-2 border-t border-orias-border/60 px-1 text-[11px] text-gray-500">
+          <div className="font-semibold text-gray-700">{fmtDH(totalAmount)} <span className="font-normal text-gray-400">| Potentiel total</span></div>
+          <div>{fmtDH(weightedAmount)} <span className="text-gray-400">| Pondéré ({Math.round((STAGE_WEIGHTS[status] ?? 0) * 100)}%)</span></div>
+        </div>
+      )}
     </div>
   )
 }
@@ -1490,6 +1712,9 @@ function LeadCard({ lead, onStatusChange, onSaveNotes, onOpen }) {
             <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${SOURCE_BADGE_STYLES[lead.source] || SOURCE_BADGE_STYLES.autre}`}>
               {LEAD_SOURCE_LABELS[lead.source] || lead.source}
             </span>
+            {lead.potential_amount != null && (
+              <span className="text-[11px] font-bold text-emerald-700">{fmtDH(lead.potential_amount)}</span>
+            )}
           </div>
           <div className="text-sm text-gray-500 flex items-center gap-3 flex-wrap">
             {lead.email && <span>{lead.email}</span>}
@@ -1499,9 +1724,9 @@ function LeadCard({ lead, onStatusChange, onSaveNotes, onOpen }) {
           {lead.pack_interest && (
             <div className="text-xs text-orias-green font-medium mt-1">Intéressé par : {lead.pack_interest}</div>
           )}
-          {lead.appointment_at && (
-            <div className="flex items-center gap-1 text-xs text-purple-600 font-medium mt-1">
-              <CalendarIcon className="w-3 h-3" />{formatDateTimeFR(lead.appointment_at)}
+          {lead.next_appointment_at && (
+            <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${isOverdue(lead.next_appointment_at) ? 'text-red-600' : 'text-purple-600'}`}>
+              <CalendarIcon className="w-3 h-3" />{formatDateTimeFR(lead.next_appointment_at)}
             </div>
           )}
         </div>
@@ -1522,8 +1747,127 @@ function LeadCard({ lead, onStatusChange, onSaveNotes, onOpen }) {
   )
 }
 
+// Vue Agenda — tous les rendez-vous et tâches à venir, tous leads confondus,
+// regroupés Aujourd'hui / Cette semaine / Plus tard, avec badge "En retard".
+function AgendaView({ onOpenLead }) {
+  const [appointments, setAppointments] = useState([])
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    Promise.all([fetchUpcomingAppointments(), fetchUpcomingTasks()]).then(([appts, tks]) => {
+      setAppointments(appts)
+      setTasks(tks)
+      setLoading(false)
+    })
+  }, [])
+
+  const groupByPeriod = (items, dateKey) => {
+    const now = new Date()
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    const weekEnd = new Date(todayEnd.getTime() + 7 * 86400000)
+    const groups = { overdue: [], today: [], week: [], later: [] }
+    items.forEach(item => {
+      const dateVal = item[dateKey]
+      if (!dateVal) { groups.later.push(item); return }
+      const d = new Date(dateVal)
+      if (d < now) groups.overdue.push(item)
+      else if (d <= todayEnd) groups.today.push(item)
+      else if (d <= weekEnd) groups.week.push(item)
+      else groups.later.push(item)
+    })
+    return groups
+  }
+
+  const apptGroups = groupByPeriod(appointments, 'scheduled_at')
+  const taskGroups = groupByPeriod(tasks, 'due_at')
+
+  const renderApptRow = (a) => {
+    const fullName = `${a.leads?.first_name || ''} ${a.leads?.last_name || ''}`.trim() || '—'
+    return (
+      <div key={a.id} onClick={() => onOpenLead(a.lead_id)} className="card p-3 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+            <CalendarIcon className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-semibold text-sm text-gray-900">{fullName}</div>
+            <div className="text-xs text-gray-500">{APPOINTMENT_TYPE_LABELS[a.type] || a.type} · {a.leads?.phone || a.leads?.email || ''}</div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div className={`text-sm font-semibold ${isOverdue(a.scheduled_at) ? 'text-red-600' : 'text-gray-800'}`}>{formatDateTimeFR(a.scheduled_at)}</div>
+          {isOverdue(a.scheduled_at) && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">En retard</span>}
+        </div>
+      </div>
+    )
+  }
+
+  const renderTaskRow = (t) => {
+    const fullName = `${t.leads?.first_name || ''} ${t.leads?.last_name || ''}`.trim() || '—'
+    return (
+      <div key={t.id} onClick={() => onOpenLead(t.lead_id)} className="card p-3 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <CheckCircleIcon className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="font-semibold text-sm text-gray-900">{t.title}</div>
+            <div className="text-xs text-gray-500">{fullName}</div>
+          </div>
+        </div>
+        {t.due_at && (
+          <div className="text-right">
+            <div className={`text-sm font-semibold ${isOverdue(t.due_at) ? 'text-red-600' : 'text-gray-800'}`}>{formatDateFR(t.due_at)}</div>
+            {isOverdue(t.due_at) && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">En retard</span>}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  if (loading) return <div className="text-center py-12 text-gray-400">Chargement de l'agenda...</div>
+
+  const sections = [
+    { key: 'overdue', label: 'En retard' },
+    { key: 'today',   label: "Aujourd'hui" },
+    { key: 'week',    label: 'Cette semaine' },
+    { key: 'later',   label: 'Plus tard' },
+  ]
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div>
+        <h3 className="font-bold text-orias-green mb-3 flex items-center gap-2"><CalendarIcon className="w-4 h-4" /> Rendez-vous</h3>
+        <div className="space-y-4">
+          {sections.map(({ key, label }) => apptGroups[key].length > 0 && (
+            <div key={key}>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{label}</div>
+              <div className="space-y-2">{apptGroups[key].map(renderApptRow)}</div>
+            </div>
+          ))}
+          {appointments.length === 0 && <div className="text-sm text-gray-400">Aucun rendez-vous à venir.</div>}
+        </div>
+      </div>
+      <div>
+        <h3 className="font-bold text-orias-green mb-3 flex items-center gap-2"><CheckCircleIcon className="w-4 h-4" /> Tâches</h3>
+        <div className="space-y-4">
+          {sections.map(({ key, label }) => taskGroups[key].length > 0 && (
+            <div key={key}>
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide mb-2">{label}</div>
+              <div className="space-y-2">{taskGroups[key].map(renderTaskRow)}</div>
+            </div>
+          ))}
+          {tasks.length === 0 && <div className="text-sm text-gray-400">Aucune tâche en attente.</div>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CRMSection() {
   const [leads, setLeads] = useState([])
+  const [packs, setPacks] = useState([])
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState('kanban')
   const [sourceFilter, setSourceFilter] = useState('all')
@@ -1531,8 +1875,24 @@ function CRMSection() {
   const [toast, setToast] = useState(null)
   const [selectedLeadId, setSelectedLeadId] = useState(null)
 
+  const enrichWithNextAppointment = async (leadsData) => {
+    const upcoming = await fetchUpcomingAppointments()
+    const nextByLead = {}
+    upcoming.forEach(a => {
+      if (!nextByLead[a.lead_id] || new Date(a.scheduled_at) < new Date(nextByLead[a.lead_id])) {
+        nextByLead[a.lead_id] = a.scheduled_at
+      }
+    })
+    return leadsData.map(l => ({ ...l, next_appointment_at: nextByLead[l.id] || null }))
+  }
+
   useEffect(() => {
-    fetchLeads().then(data => { setLeads(data); setLoading(false) })
+    Promise.all([fetchLeads(), fetchPacks()]).then(async ([leadsData, packsData]) => {
+      const enriched = await enrichWithNextAppointment(leadsData)
+      setLeads(enriched)
+      setPacks(packsData)
+      setLoading(false)
+    })
 
     const unsubscribe = subscribeToLeads(({ event, lead }) => {
       if (!lead) return
@@ -1561,10 +1921,6 @@ function CRMSection() {
   const handleStatusChange = async (leadId, status) => {
     setLeads(prev => prev.map(l => l.id === leadId ? { ...l, status } : l))
     await updateLeadStatus(leadId, status)
-    if (status === 'rdv_pris') {
-      const lead = leads.find(l => l.id === leadId)
-      if (lead && !lead.appointment_at) setSelectedLeadId(leadId)
-    }
   }
 
   const handleSaveNotes = async (leadId, notes) => {
@@ -1572,13 +1928,17 @@ function CRMSection() {
     await updateLeadNotes(leadId, notes)
   }
 
-  const handleSetAppointment = async (leadId, { appointmentAt, appointmentType }) => {
-    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, appointment_at: appointmentAt, appointment_type: appointmentType } : l))
-    await setLeadAppointment(leadId, { appointmentAt, appointmentType })
-  }
-
   const handleAddNote = async (leadId, note) => {
     await addLeadNote(leadId, note)
+  }
+
+  const handleSetPack = async (leadId, { packId, potentialAmount }) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? { ...l, pack_id: packId, potential_amount: potentialAmount } : l))
+    await setLeadPack(leadId, { packId, potentialAmount })
+  }
+
+  const handleLogQuick = async (leadId, type, description) => {
+    await logQuickActivity(leadId, type, description)
   }
 
   const handleDrop = (status) => {
@@ -1603,6 +1963,7 @@ function CRMSection() {
   const total = leads.length
   const clientsCount = leads.filter(l => l.status === 'client').length
   const conversionRate = total > 0 ? Math.round((clientsCount / total) * 100) : 0
+  const totalPotential = leads.reduce((sum, l) => sum + (Number(l.potential_amount) || 0), 0)
 
   const countsBySource = leads.reduce((acc, l) => {
     acc[l.source] = (acc[l.source] || 0) + 1
@@ -1628,31 +1989,31 @@ function CRMSection() {
       {selectedLead && (
         <LeadDetailPanel
           lead={selectedLead}
+          packs={packs}
           onClose={() => setSelectedLeadId(null)}
           onStatusChange={handleStatusChange}
           onSaveNotes={handleSaveNotes}
-          onSetAppointment={handleSetAppointment}
           onAddNote={handleAddNote}
+          onSetPack={handleSetPack}
+          onLogQuick={handleLogQuick}
         />
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={<TargetIcon className="w-5 h-5 text-white" />} label="Total leads" value={total} color="bg-orias-green-light border-white/10" />
-        {LEAD_STATUSES.map(s => (
-          <StatCard
-            key={s}
-            icon={<CheckCircleIcon className="w-5 h-5 text-orias-gold" />}
-            label={LEAD_STATUS_LABELS[s]}
-            value={leads.filter(l => l.status === s).length}
-            color="bg-orias-gold/15 border-orias-gold/20"
-          />
-        ))}
+        <StatCard icon={<TrendingUpIcon className="w-5 h-5 text-orias-gold" />} label="Potentiel total" value={fmtDH(totalPotential) || '0 DH'} color="bg-orias-gold/15 border-orias-gold/20" />
+        <StatCard icon={<CheckCircleIcon className="w-5 h-5 text-emerald-600" />} label="Clients" value={clientsCount} color="bg-emerald-100 border-emerald-200" />
+        <StatCard icon={<AwardIcon className="w-5 h-5 text-orias-gold" />} label="Taux de conversion" value={`${conversionRate}%`} color="bg-orias-gold/15 border-orias-gold/20" />
       </div>
 
       <div className="card p-4 flex items-center justify-between flex-wrap gap-3">
-        <div className="text-sm text-gray-600">
-          Taux de conversion (Client / Total) : <span className="font-bold text-orias-green">{conversionRate}%</span>
+        <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
+          {LEAD_STATUSES.map(s => (
+            <span key={s} className={`px-2 py-1 rounded-full font-semibold border ${STATUS_BADGE_STYLES[s]}`}>
+              {LEAD_STATUS_LABELS[s]}: {leads.filter(l => l.status === s).length}
+            </span>
+          ))}
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500 flex-wrap">
           {Object.entries(countsBySource).map(([src, count]) => (
@@ -1667,23 +2028,28 @@ function CRMSection() {
       <div className="card p-4 flex flex-wrap items-center gap-3">
         <div className="flex rounded-xl border border-orias-border overflow-hidden flex-shrink-0">
           <button onClick={() => setView('kanban')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'kanban' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Kanban</button>
+          <button onClick={() => setView('agenda')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'agenda' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Agenda</button>
           <button onClick={() => setView('liste')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'liste' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Liste</button>
         </div>
-        <div className="relative flex-1 min-w-[180px]">
-          <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Rechercher un lead..."
-            className="input-field pl-9 text-sm"
-          />
-        </div>
-        <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className="input-field text-sm w-auto">
-          <option value="all">Toutes les sources</option>
-          {Object.entries(LEAD_SOURCE_LABELS).map(([k, label]) => (
-            <option key={k} value={k}>{label}</option>
-          ))}
-        </select>
+        {view !== 'agenda' && (
+          <>
+            <div className="relative flex-1 min-w-[180px]">
+              <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Rechercher un lead..."
+                className="input-field pl-9 text-sm"
+              />
+            </div>
+            <select value={sourceFilter} onChange={e => setSourceFilter(e.target.value)} className="input-field text-sm w-auto">
+              <option value="all">Toutes les sources</option>
+              {Object.entries(LEAD_SOURCE_LABELS).map(([k, label]) => (
+                <option key={k} value={k}>{label}</option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
       {/* Kanban view */}
@@ -1702,6 +2068,11 @@ function CRMSection() {
         </div>
       )}
 
+      {/* Agenda view */}
+      {view === 'agenda' && (
+        <AgendaView onOpenLead={setSelectedLeadId} />
+      )}
+
       {/* List view */}
       {view === 'liste' && (
         filtered.length === 0 ? (
@@ -1717,6 +2088,7 @@ function CRMSection() {
     </div>
   )
 }
+
 
 function NotificationsSection() {
   const [tab, setTab] = useState('individual')
