@@ -35,13 +35,13 @@ async function fetchOrCreateProfile(authUser) {
     // 1. Try to read existing row
     const { data, error } = await supabase
       .from('users')
-      .select('id, email, full_name, role, pack_purchased')
+      .select('id, email, full_name, role, pack_purchased, blocked')
       .eq('id', authUser.id)
       .single()
 
     if (data && !error) {
       console.log('[Auth] Profile found in DB:', data.role)
-      return { id: data.id, email: data.email, role: data.role, name: data.full_name, pack: data.pack_purchased }
+      return { id: data.id, email: data.email, role: data.role, name: data.full_name, pack: data.pack_purchased, blocked: data.blocked }
     }
 
     console.log('[Auth] No profile row, attempting auto-create...')
@@ -85,6 +85,15 @@ function withTimeout(promise, ms, fallback) {
   ])
 }
 
+// Any role (student, admin) can be blocked by a super_admin without deleting the account.
+// Returns true if the account was blocked and the session was signed out.
+async function blockIfFlagged(profile) {
+  if (!profile?.blocked) return false
+  console.warn('[Auth] Blocked account detected — signing out', profile.email)
+  await supabase.auth.signOut()
+  return true
+}
+
 export function AuthProvider({ children }) {
   const [user, setUser]       = useState(null)
   const [loading, setLoading] = useState(true)
@@ -118,6 +127,7 @@ export function AuthProvider({ children }) {
             2500,
             profileFromAuth(session.user)
           )
+          if (await blockIfFlagged(profile)) { setUser(null); return }
           if (profile.role === 'student') {
             try {
               const { data: dossier } = await supabase
@@ -153,6 +163,7 @@ export function AuthProvider({ children }) {
             2500,
             profileFromAuth(session.user)
           )
+          if (await blockIfFlagged(profile)) { setUser(null); return }
           // Block cancelled students right here too — this listener fires immediately
           // on signInWithPassword, before login()'s own check can complete, which is
           // what was causing the dashboard to flash open before being kicked back out.
@@ -222,6 +233,10 @@ export function AuthProvider({ children }) {
             3000,
             profileFromAuth(data.user)
           )
+
+          if (await blockIfFlagged(profile)) {
+            return { success: false, error: 'Compte bloqué, contactez un super administrateur.' }
+          }
 
           // Block login for students whose dossier was cancelled
           if (profile.role === 'student') {

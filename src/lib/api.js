@@ -1028,4 +1028,142 @@ export async function addLeadNote(leadId, note) {
   }
 }
 
+// ── Équipe (gestion des comptes admin / super_admin) ────────────
+
+export async function fetchAdmins() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id, email, full_name, role, blocked, created_at')
+      .in('role', ['admin', 'super_admin'])
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchAdmins error:', err?.message)
+    return []
+  }
+}
+
+export async function toggleUserBlocked(userId, blocked) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('users').update({ blocked }).eq('id', userId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+/** Supprime définitivement un compte admin/élève — réservé super_admin, via Edge Function (service role). */
+export async function deleteAdminAccount(userId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-admin-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    })
+    const json = await res.json()
+    return json
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+// ── Tickets / messages (clients via Support, admins en interne) ─
+
+export const TICKET_STATUS_LABELS = {
+  nouveau:  'Nouveau',
+  en_cours: 'En cours',
+  resolu:   'Résolu',
+}
+
+export async function submitSupportTicket({ subject, message, priority = 'normal' }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Non authentifié.' }
+    const { error } = await supabase.from('support_tickets').insert({
+      source: 'client',
+      created_by: user.id,
+      subject,
+      message,
+      priority,
+    })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function submitAdminTicket({ subject, message, priority = 'normal' }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Non authentifié.' }
+    const { error } = await supabase.from('support_tickets').insert({
+      source: 'admin_interne',
+      created_by: user.id,
+      subject,
+      message,
+      priority,
+    })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function fetchSupportTickets() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*, users:created_by(full_name, email, role)')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchSupportTickets error:', err?.message)
+    return []
+  }
+}
+
+export async function updateTicketStatus(ticketId, status, response) {
+  if (!isConfigured) return { success: true }
+  try {
+    const payload = { status }
+    if (response !== undefined) payload.response = response
+    const { error } = await supabase.from('support_tickets').update(payload).eq('id', ticketId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export function subscribeToSupportTickets(callback) {
+  if (!isConfigured) return () => {}
+  const channel = supabase
+    .channel(`tickets-realtime-${Math.random().toString(36).slice(2)}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'support_tickets' },
+      payload => {
+        callback({
+          event: payload.eventType,
+          ticket: payload.new ?? payload.old ?? null,
+        })
+      }
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+
 

@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks } from '../../lib/api'
+import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -27,6 +27,7 @@ const NAV_ITEMS = [
   { id: 'notifs',     label: 'Notifications',    icon: <BellIcon className="w-4 h-4" /> },
 ]
 const FINANCE_NAV_ITEM = { id: 'finance', label: 'Finance', icon: <TrendingUpIcon className="w-4 h-4" /> }
+const TEAM_NAV_ITEM = { id: 'equipe', label: 'Équipe', icon: <UsersIcon className="w-4 h-4" /> }
 
 function StatCard({ icon, label, value, sub, color }) {
   return (
@@ -117,6 +118,63 @@ function AddAdminModal({ onClose, onAdd }) {
               </button>
             </form>
           )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReportIssueModal({ onClose, onSent }) {
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [priority, setPriority] = useState('normal')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+    const result = await submitAdminTicket({ subject, message, priority })
+    setLoading(false)
+    if (result.success) {
+      onSent()
+    } else {
+      setError(result.error ?? 'Erreur lors de l\'envoi.')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-orias-green px-6 py-5 flex items-center justify-between">
+          <h3 className="font-bold text-white text-lg">Signaler un problème</h3>
+          <button onClick={onClose} className="text-green-300 hover:text-white transition-colors">
+            <XIcon className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Sujet</label>
+              <input value={subject} onChange={e => setSubject(e.target.value)} required className="input-field" placeholder="Ex: Erreur sur la fiche client X" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Détails</label>
+              <textarea value={message} onChange={e => setMessage(e.target.value)} required rows={4} className="input-field resize-none" placeholder="Décrivez le problème rencontré..." />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Priorité</label>
+              <select value={priority} onChange={e => setPriority(e.target.value)} className="input-field">
+                <option value="normal">Normal</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+            <button type="submit" disabled={loading} className="btn-gold w-full disabled:opacity-70">
+              {loading ? 'Envoi...' : 'Envoyer au super admin'}
+            </button>
+          </form>
         </div>
       </div>
     </div>
@@ -258,7 +316,6 @@ function ClientsSection({ isSuperAdmin }) {
   const [selected, setSelected] = useState(null)
   const [filter, setFilter]     = useState('all')
   const [showAdd, setShowAdd]   = useState(false)
-  const [showAddAdmin, setShowAddAdmin] = useState(false)
   const [editClient, setEditClient] = useState(null)
   const [cancelTarget, setCancelTarget] = useState(null)
   const [busyDossier, setBusyDossier] = useState(false)
@@ -319,12 +376,6 @@ function ClientsSection({ isSuperAdmin }) {
         </div>
         <span className="text-sm text-gray-500">{filtered.length} client{filtered.length > 1 ? 's' : ''}</span>
         <div className="flex items-center gap-2 ml-auto">
-          {isSuperAdmin && (
-            <button onClick={() => setShowAddAdmin(true)} className="flex items-center gap-2 text-sm px-4 py-2.5 rounded-xl font-semibold border border-orias-green text-orias-green hover:bg-orias-green/5 transition-colors">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-              Ajouter un admin
-            </button>
-          )}
           <button onClick={() => setShowAdd(true)} className="btn-gold flex items-center gap-2 text-sm">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Ajouter un client
@@ -415,7 +466,6 @@ function ClientsSection({ isSuperAdmin }) {
       </div>
 
       {showAdd && <AddClientModal onClose={() => setShowAdd(false)} onAdd={() => { loadClients(); setShowAdd(false) }} />}
-      {showAddAdmin && <AddAdminModal onClose={() => setShowAddAdmin(false)} onAdd={() => setShowAddAdmin(false)} />}
 
       {cancelTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCancelTarget(null)}>
@@ -2190,16 +2240,166 @@ function CRMSection() {
 }
 
 
+function TeamSection() {
+  const [admins, setAdmins] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showAddAdmin, setShowAddAdmin] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const load = () => fetchAdmins().then(data => { setAdmins(data); setLoading(false) })
+
+  useEffect(() => { load() }, [])
+
+  const handleToggleBlock = async (admin) => {
+    setBusy(true)
+    await toggleUserBlocked(admin.id, !admin.blocked)
+    await load()
+    setBusy(false)
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setBusy(true)
+    setError('')
+    const result = await deleteAdminAccount(deleteTarget.id)
+    setBusy(false)
+    if (result.success) {
+      setDeleteTarget(null)
+      load()
+    } else {
+      setError(result.error || 'Erreur lors de la suppression.')
+    }
+  }
+
+  if (loading) return <div className="text-center py-12 text-gray-400">Chargement de l'équipe...</div>
+
+  return (
+    <div className="space-y-4">
+      <div className="card p-4 flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 className="font-bold text-orias-green text-lg">Équipe</h2>
+          <p className="text-sm text-gray-500">{admins.length} compte{admins.length > 1 ? 's' : ''} avec accès admin</p>
+        </div>
+        <button onClick={() => setShowAddAdmin(true)} className="btn-gold flex items-center gap-2 text-sm">
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          Ajouter un admin
+        </button>
+      </div>
+
+      <div className="card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-orias-bg text-left text-xs font-bold text-gray-500 uppercase">
+            <tr>
+              <th className="px-5 py-3">Nom</th>
+              <th className="px-4 py-3">Email</th>
+              <th className="px-4 py-3">Rôle</th>
+              <th className="px-4 py-3">Statut</th>
+              <th className="px-5 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-orias-border">
+            {admins.map(admin => (
+              <tr key={admin.id} className="hover:bg-orias-bg/50">
+                <td className="px-5 py-3 font-semibold text-gray-800">{admin.full_name}</td>
+                <td className="px-4 py-3 text-gray-500">{admin.email}</td>
+                <td className="px-4 py-3">
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${admin.role === 'super_admin' ? 'bg-orias-gold/20 text-orias-gold' : 'bg-orias-green/10 text-orias-green'}`}>
+                    {admin.role === 'super_admin' ? 'Super admin' : 'Admin'}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {admin.blocked ? (
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-red-100 text-red-600">Bloqué</span>
+                  ) : (
+                    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-emerald-100 text-emerald-700">Actif</span>
+                  )}
+                </td>
+                <td className="px-5 py-3">
+                  <div className="flex items-center justify-end gap-1">
+                    {admin.role !== 'super_admin' && (
+                      <>
+                        <button
+                          onClick={() => handleToggleBlock(admin)}
+                          disabled={busy}
+                          className={`p-1.5 rounded-lg transition-colors ${admin.blocked ? 'text-emerald-500 hover:bg-emerald-50' : 'text-gray-400 hover:text-amber-600 hover:bg-amber-50'}`}
+                          title={admin.blocked ? 'Débloquer' : 'Bloquer'}
+                        >
+                          {admin.blocked
+                            ? <CheckCircleIcon className="w-4 h-4" />
+                            : <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                          }
+                        </button>
+                        <button
+                          onClick={() => setDeleteTarget(admin)}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                          title="Supprimer"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {showAddAdmin && <AddAdminModal onClose={() => setShowAddAdmin(false)} onAdd={() => { load(); setShowAddAdmin(false) }} />}
+
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 text-lg mb-2">Supprimer ce compte ?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              <strong>{deleteTarget.full_name}</strong> ({deleteTarget.email}) sera définitivement supprimé. Cette action est irréversible.
+            </p>
+            {error && <p className="text-sm text-red-600 mb-3">{error}</p>}
+            <div className="flex gap-2">
+              <button onClick={() => setDeleteTarget(null)} className="flex-1 py-2.5 rounded-xl border border-orias-border text-gray-600 font-semibold text-sm">Annuler</button>
+              <button onClick={handleDelete} disabled={busy} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm disabled:opacity-60">
+                {busy ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function NotificationsSection() {
   const [tab, setTab] = useState('individual')
   const [recipient, setRecipient] = useState('')
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
-  const [history] = useState([
-    { id: 1, to: 'Sophie Martin', msg: 'Votre dossier a été validé.', date: 'il y a 1h', type: 'individual' },
-    { id: 2, to: 'Tous les clients', msg: 'Nouvelle mise à jour de la plateforme disponible.', date: 'il y a 2j', type: 'broadcast' },
-    { id: 3, to: 'Karim Benali', msg: 'Félicitations, votre ORIAS a été obtenu !', date: 'il y a 3j', type: 'individual' },
-  ])
+
+  const [tickets, setTickets] = useState([])
+  const [loadingTickets, setLoadingTickets] = useState(true)
+  const [ticketFilter, setTicketFilter] = useState('all')
+  const [toast, setToast] = useState(null)
+  const [expandedTicket, setExpandedTicket] = useState(null)
+  const [responseDrafts, setResponseDrafts] = useState({})
+
+  const loadTickets = () => fetchSupportTickets().then(data => { setTickets(data); setLoadingTickets(false) })
+
+  useEffect(() => {
+    loadTickets()
+    const unsubscribe = subscribeToSupportTickets(({ event, ticket }) => {
+      if (!ticket) return
+      if (event === 'INSERT') {
+        loadTickets()
+        setToast(`Nouveau ${ticket.source === 'client' ? 'message client' : 'ticket interne'} — ${ticket.subject}`)
+        setTimeout(() => setToast(null), 6000)
+      } else {
+        loadTickets()
+      }
+    })
+    return unsubscribe
+  }, [])
 
   const handleSend = (e) => {
     e.preventDefault()
@@ -2207,8 +2407,38 @@ function NotificationsSection() {
     setTimeout(() => { setSent(false); setMessage(''); setRecipient('') }, 3000)
   }
 
+  const handleStatusChange = async (ticketId, status) => {
+    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t))
+    await updateTicketStatus(ticketId, status)
+  }
+
+  const handleSendResponse = async (ticketId) => {
+    const response = responseDrafts[ticketId]
+    if (!response?.trim()) return
+    await updateTicketStatus(ticketId, 'resolu', response.trim())
+    setResponseDrafts(prev => ({ ...prev, [ticketId]: '' }))
+    loadTickets()
+  }
+
+  const filteredTickets = tickets.filter(t => {
+    if (ticketFilter === 'client') return t.source === 'client'
+    if (ticketFilter === 'admin_interne') return t.source === 'admin_interne'
+    if (ticketFilter === 'nouveau') return t.status === 'nouveau'
+    return true
+  })
+
+  const newCount = tickets.filter(t => t.status === 'nouveau').length
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {toast && (
+        <div className="fixed top-20 right-6 z-50 bg-orias-green text-white px-5 py-3 rounded-xl shadow-2xl shadow-black/20 flex items-center gap-3 animate-pulse col-span-full">
+          <BellIcon className="w-5 h-5 text-orias-gold flex-shrink-0" />
+          <span className="text-sm font-semibold">{toast}</span>
+          <button onClick={() => setToast(null)} className="text-white/60 hover:text-white"><XIcon className="w-4 h-4" /></button>
+        </div>
+      )}
+
       <div className="card p-6">
         <div className="flex items-center gap-2 mb-5">
           <div className="flex rounded-xl border border-orias-border overflow-hidden">
@@ -2261,23 +2491,75 @@ function NotificationsSection() {
       </div>
 
       <div className="card p-6">
-        <h3 className="font-bold text-orias-green mb-4">Historique des messages</h3>
-        <div className="space-y-3">
-          {history.map(h => (
-            <div key={h.id} className="p-4 rounded-xl bg-orias-bg border border-orias-border">
-              <div className="flex items-start justify-between gap-2 mb-1">
-                <p className="font-semibold text-gray-800 text-sm">{h.to}</p>
-                <div className="flex items-center gap-1.5">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${h.type === 'broadcast' ? 'bg-orias-gold/20 text-orias-gold' : 'bg-orias-green/10 text-orias-green'}`}>
-                    {h.type === 'broadcast' ? 'Broadcast' : 'Individuel'}
-                  </span>
-                  <span className="text-xs text-gray-400">{h.date}</span>
-                </div>
-              </div>
-              <p className="text-sm text-gray-600">{h.msg}</p>
-            </div>
-          ))}
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h3 className="font-bold text-orias-green flex items-center gap-2">
+            Messages reçus
+            {newCount > 0 && <span className="text-xs font-bold bg-orias-gold text-orias-green rounded-full px-2 py-0.5">{newCount} nouveau{newCount > 1 ? 'x' : ''}</span>}
+          </h3>
+          <div className="flex rounded-lg border border-orias-border overflow-hidden text-xs">
+            {[['all','Tous'],['client','Clients'],['admin_interne','Équipe'],['nouveau','Non traités']].map(([v,l]) => (
+              <button key={v} onClick={() => setTicketFilter(v)} className={`px-2.5 py-1.5 font-semibold transition-colors ${ticketFilter === v ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>{l}</button>
+            ))}
+          </div>
         </div>
+
+        {loadingTickets ? (
+          <div className="text-sm text-gray-400 text-center py-8">Chargement...</div>
+        ) : filteredTickets.length === 0 ? (
+          <div className="text-sm text-gray-400 text-center py-8">Aucun message.</div>
+        ) : (
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+            {filteredTickets.map(t => (
+              <div key={t.id} className="p-4 rounded-xl bg-orias-bg border border-orias-border">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">{t.subject}</p>
+                    <p className="text-xs text-gray-400">{t.users?.full_name || t.users?.email} · {timeAgo(t.created_at)}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {t.priority === 'urgent' && <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-600">Urgent</span>}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${t.source === 'admin_interne' ? 'bg-purple-100 text-purple-700' : 'bg-orias-green/10 text-orias-green'}`}>
+                      {t.source === 'admin_interne' ? 'Équipe' : 'Client'}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mb-2 cursor-pointer" onClick={() => setExpandedTicket(expandedTicket === t.id ? null : t.id)}>
+                  {expandedTicket === t.id ? t.message : (t.message.length > 100 ? t.message.slice(0, 100) + '...' : t.message)}
+                </p>
+
+                {t.response && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 mb-2 text-xs text-emerald-700">
+                    <span className="font-semibold">Réponse :</span> {t.response}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-2">
+                  <select
+                    value={t.status}
+                    onChange={e => handleStatusChange(t.id, e.target.value)}
+                    className="text-xs font-semibold rounded-full px-2 py-1 border border-orias-border bg-white"
+                  >
+                    {Object.entries(TICKET_STATUS_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {expandedTicket === t.id && t.status !== 'resolu' && (
+                  <div className="flex gap-2 mt-2">
+                    <input
+                      value={responseDrafts[t.id] || ''}
+                      onChange={e => setResponseDrafts(prev => ({ ...prev, [t.id]: e.target.value }))}
+                      placeholder="Répondre..."
+                      className="input-field text-xs py-1.5 flex-1"
+                    />
+                    <button onClick={() => handleSendResponse(t.id)} className="btn-green text-xs px-3 py-1.5">Répondre</button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -2507,6 +2789,9 @@ export default function AdminDashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [monthRevenue, setMonthRevenue] = useState(0)
   const [newLeadsBadge, setNewLeadsBadge] = useState(0)
+  const [newTicketsBadge, setNewTicketsBadge] = useState(0)
+  const [showReportIssue, setShowReportIssue] = useState(false)
+  const [issueSent, setIssueSent] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -2534,13 +2819,24 @@ export default function AdminDashboard() {
     return unsubscribe
   }, [])
 
+  // Live badge on Notifications — new client message or internal ticket.
+  useEffect(() => {
+    const unsubscribe = subscribeToSupportTickets(({ event }) => {
+      if (event === 'INSERT') {
+        setNewTicketsBadge(prev => prev + 1)
+      }
+    })
+    return unsubscribe
+  }, [])
+
   const handleTabClick = (id) => {
     setActiveTab(id)
     if (id === 'leads') setNewLeadsBadge(0)
+    if (id === 'notifs') setNewTicketsBadge(0)
   }
 
   const isSuperAdmin = user?.role === 'super_admin'
-  const navItems = isSuperAdmin ? [...NAV_ITEMS, FINANCE_NAV_ITEM] : NAV_ITEMS
+  const navItems = isSuperAdmin ? [...NAV_ITEMS, TEAM_NAV_ITEM, FINANCE_NAV_ITEM] : NAV_ITEMS
 
   const renderSection = () => {
     switch (activeTab) {
@@ -2549,6 +2845,7 @@ export default function AdminDashboard() {
       case 'dossiers':  return <DossierSection />
       case 'formation': return <FormationTrackingSection />
       case 'notifs':    return <NotificationsSection />
+      case 'equipe':    return isSuperAdmin ? <TeamSection /> : <ClientsSection />
       case 'finance':   return isSuperAdmin ? <FinanceSection /> : <ClientsSection />
       default:          return <ClientsSection />
     }
@@ -2566,6 +2863,12 @@ export default function AdminDashboard() {
               <span className="hidden md:block text-green-300 text-sm font-medium">Administration</span>
             </div>
             <div className="hidden md:flex items-center gap-4">
+              {!isSuperAdmin && (
+                <button onClick={() => setShowReportIssue(true)} className="flex items-center gap-2 text-amber-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10 border border-amber-300/30">
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Signaler un problème
+                </button>
+              )}
               <span className="text-white font-semibold text-sm">{user?.name}</span>
               <button onClick={handleLogout} className="flex items-center gap-2 text-green-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10">
                 <LogoutIcon className="w-4 h-4" />
@@ -2625,6 +2928,11 @@ export default function AdminDashboard() {
                     {newLeadsBadge > 9 ? '9+' : newLeadsBadge}
                   </span>
                 )}
+                {item.id === 'notifs' && newTicketsBadge > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-orias-gold text-orias-green text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow">
+                    {newTicketsBadge > 9 ? '9+' : newTicketsBadge}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
@@ -2635,7 +2943,7 @@ export default function AdminDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-5">
           <h2 className="text-xl font-bold text-orias-green">
-            {NAV_ITEMS.find(n => n.id === activeTab)?.label}
+            {navItems.find(n => n.id === activeTab)?.label}
           </h2>
         </div>
         {renderSection()}
@@ -2647,6 +2955,20 @@ export default function AdminDashboard() {
           <p className="text-xs text-gray-400">© 2026 ASSURYAL CONSEIL — Administration</p>
         </div>
       </footer>
+
+      {showReportIssue && (
+        <ReportIssueModal
+          onClose={() => setShowReportIssue(false)}
+          onSent={() => { setShowReportIssue(false); setIssueSent(true); setTimeout(() => setIssueSent(false), 4000) }}
+        />
+      )}
+
+      {issueSent && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-2">
+          <CheckCircleIcon className="w-5 h-5" />
+          <span className="text-sm font-semibold">Problème signalé au super admin.</span>
+        </div>
+      )}
     </div>
   )
 }

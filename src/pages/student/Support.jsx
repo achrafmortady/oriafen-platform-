@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { FAQ_ITEMS } from '../../data/mockData'
 import { WhatsAppIcon, ChevronDownIcon, CalendarIcon, MessageIcon } from '../../components/Icons'
+import { submitSupportTicket } from '../../lib/api'
 
 function FAQItem({ item }) {
   const [open, setOpen] = useState(false)
@@ -25,11 +26,21 @@ function FAQItem({ item }) {
 export default function Support() {
   const [form, setForm] = useState({ sujet: '', message: '', priority: 'normal' })
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    setSubmitted(true)
-    setTimeout(() => { setSubmitted(false); setForm({ sujet: '', message: '', priority: 'normal' }) }, 4000)
+    setError('')
+    setSubmitting(true)
+    const result = await submitSupportTicket({ subject: form.sujet, message: form.message, priority: form.priority })
+    setSubmitting(false)
+    if (result.success) {
+      setSubmitted(true)
+      setTimeout(() => { setSubmitted(false); setForm({ sujet: '', message: '', priority: 'normal' }) }, 4000)
+    } else {
+      setError(result.error || 'Erreur lors de l\'envoi. Réessayez ou contactez-nous sur WhatsApp.')
+    }
   }
 
   return (
@@ -126,6 +137,9 @@ export default function Support() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Sujet</label>
@@ -162,11 +176,11 @@ export default function Support() {
               />
             </div>
             <div className="flex justify-end">
-              <button type="submit" className="btn-gold flex items-center gap-2">
+              <button type="submit" disabled={submitting} className="btn-gold flex items-center gap-2 disabled:opacity-60">
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
                 </svg>
-                Envoyer le message
+                {submitting ? 'Envoi...' : 'Envoyer le message'}
               </button>
             </div>
           </form>
