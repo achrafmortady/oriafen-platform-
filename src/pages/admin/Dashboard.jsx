@@ -2376,6 +2376,7 @@ function NotificationsSection() {
   const [recipient, setRecipient] = useState('')
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
+  const [allClients, setAllClients] = useState([])
 
   const [tickets, setTickets] = useState([])
   const [loadingTickets, setLoadingTickets] = useState(true)
@@ -2387,6 +2388,7 @@ function NotificationsSection() {
   const loadTickets = () => fetchSupportTickets().then(data => { setTickets(data); setLoadingTickets(false) })
 
   useEffect(() => {
+    fetchAllClients().then(data => setAllClients(data.filter(c => c.email !== 'admin@oriafen.com')))
     loadTickets()
     const unsubscribe = subscribeToSupportTickets(({ event, ticket }) => {
       if (!ticket) return
@@ -2952,7 +2954,7 @@ export default function AdminDashboard() {
       <footer className="border-t border-orias-border mt-12 py-6 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-wrap items-center justify-between gap-4">
           <Logo size="sm" variant="light" />
-          <p className="text-xs text-gray-400">© 2026 ASSURYAL CONSEIL — Administration</p>
+          <p className="text-xs text-gray-400">© 2026 Oriafen — Administration</p>
         </div>
       </footer>
 
