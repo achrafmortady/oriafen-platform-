@@ -8,7 +8,7 @@ import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsW
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
-import { supabase as _supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase'
 
 const FINAL_DOCS_CATALOGUE = [
   { type: 'attestation_ias1', label: 'Attestation IAS1' },
@@ -2003,6 +2003,111 @@ function AgendaView({ onOpenLead }) {
   )
 }
 
+function AddLeadModal({ packs, onClose, onAdded }) {
+  const [form, setForm] = useState({
+    first_name: '', last_name: '', email: '', phone: '',
+    city: '', pack_interest: '', message: '', source: 'whatsapp',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  const update = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    if (!form.first_name && !form.phone && !form.email) {
+      setError('Renseignez au moins un nom, email ou téléphone.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    const { error: err } = await supabase.from('leads').insert({
+      source: form.source,
+      status: 'nouveau',
+      first_name: form.first_name || null,
+      last_name: form.last_name || null,
+      email: form.email || null,
+      phone: form.phone || null,
+      city: form.city || null,
+      pack_interest: form.pack_interest || null,
+      message: form.message || null,
+    })
+    setSaving(false)
+    if (err) { setError(err.message); return }
+    onAdded()
+    onClose()
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-orias-green px-6 py-5 flex items-center justify-between">
+          <h3 className="font-bold text-white text-lg">Ajouter un lead manuellement</h3>
+          <button onClick={onClose} className="text-green-300 hover:text-white"><XIcon className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Source *</label>
+              <select value={form.source} onChange={e => update('source', e.target.value)} className="input-field text-sm">
+                {Object.entries(LEAD_SOURCE_LABELS).map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Prénom</label>
+                <input value={form.first_name} onChange={e => update('first_name', e.target.value)} className="input-field text-sm" placeholder="Prénom" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1">Nom</label>
+                <input value={form.last_name} onChange={e => update('last_name', e.target.value)} className="input-field text-sm" placeholder="Nom" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">WhatsApp / Téléphone</label>
+              <input value={form.phone} onChange={e => update('phone', e.target.value)} className="input-field text-sm" placeholder="+212 6XX XXX XXX" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Email</label>
+              <input type="email" value={form.email} onChange={e => update('email', e.target.value)} className="input-field text-sm" placeholder="email@exemple.com" />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Ville</label>
+              <input value={form.city} onChange={e => update('city', e.target.value)} className="input-field text-sm" placeholder="Casablanca, Rabat..." />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Pack intéressé</label>
+              <select value={form.pack_interest} onChange={e => update('pack_interest', e.target.value)} className="input-field text-sm">
+                <option value="">Sélectionner...</option>
+                {packs.map(p => <option key={p.id} value={p.name}>{p.name}</option>)}
+                <option value="Je ne sais pas encore">Je ne sais pas encore</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Notes / Message</label>
+              <textarea value={form.message} onChange={e => update('message', e.target.value)} rows={3} className="input-field text-sm resize-none" placeholder="Notes sur ce lead, contexte de la conversation..." />
+            </div>
+
+            <button type="submit" disabled={saving} className="btn-gold w-full disabled:opacity-60">
+              {saving ? 'Ajout en cours...' : 'Ajouter ce lead'}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function CRMSection() {
   const [leads, setLeads] = useState([])
   const [packs, setPacks] = useState([])
@@ -2012,6 +2117,7 @@ function CRMSection() {
   const [search, setSearch] = useState('')
   const [toast, setToast] = useState(null)
   const [selectedLeadId, setSelectedLeadId] = useState(null)
+  const [showAddLead, setShowAddLead] = useState(false)
 
   const enrichWithNextAppointment = async (leadsData) => {
     const upcoming = await fetchUpcomingAppointments()
@@ -2135,6 +2241,20 @@ function CRMSection() {
         </div>
       )}
 
+      {showAddLead && (
+        <AddLeadModal
+          packs={packs}
+          onClose={() => setShowAddLead(false)}
+          onAdded={() => {
+            fetchLeads().then(async data => {
+              const enriched = await enrichWithNextAppointment(data)
+              setLeads(enriched)
+            })
+            setToast('Lead ajouté avec succès ✓')
+          }}
+        />
+      )}
+
       {selectedLead && (
         <LeadDetailPanel
           lead={selectedLead}
@@ -2200,6 +2320,13 @@ function CRMSection() {
             </select>
           </>
         )}
+        <button
+          onClick={() => setShowAddLead(true)}
+          className="btn-gold flex items-center gap-2 text-sm ml-auto flex-shrink-0"
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un lead
+        </button>
       </div>
 
       {/* Kanban view */}
