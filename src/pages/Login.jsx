@@ -21,7 +21,7 @@ export default function Login() {
     if (!resetEmail) return
     setLoading(true)
     await supabase.auth.resetPasswordForEmail(resetEmail, {
-      redirectTo: 'https://oriafen-platform.vercel.app/set-password',
+      redirectTo: 'https://app.oriafen.com/set-password',
     })
     setLoading(false)
     setResetSent(true)
