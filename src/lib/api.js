@@ -600,34 +600,32 @@ export async function fetchAllClients(includeCancelled = true) {
 }
 
 export async function createClient(fullName, email, packId, discountPercent = 0) {
-  if (!isConfigured) return { success: false, error: 'Supabase non configuré — activez Supabase pour créer des comptes.' }
+  if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
   try {
     const { data: pack } = await supabase.from('packs').select('*').eq('id', packId).single()
     if (!pack) return { success: false, error: 'Pack introuvable.' }
 
-    const tempPassword = `Oriafen${Math.floor(Math.random() * 9000) + 1000}!`
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: tempPassword,
-      options: {
-        data: { full_name: fullName, role: 'student', pack_id: packId },
-        emailRedirectTo: 'https://app.oriafen.com/set-password',
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
       },
+      body: JSON.stringify({ fullName, email, role: 'student', packId, discountPercent }),
     })
-    if (error) return { success: false, error: error.message }
+    const result = await res.json()
+    if (!result.success) return { success: false, error: result.error }
 
-    const userId = data.user?.id
+    const userId = result.userId
     let createdPayments = []
     if (userId) {
-      // Make sure pack_id is set on the users row (signUp metadata may not sync immediately)
-      await supabase.from('users').update({ pack_id: packId }).eq('id', userId)
-      // Create the payment milestone rows for this client (with discount applied if any)
       const rows = buildPaymentRows(userId, pack, discountPercent)
       const { data: inserted } = await supabase.from('payments').insert(rows).select()
       createdPayments = inserted ?? []
     }
 
-    return { success: true, tempPassword, userId, payments: createdPayments }
+    return { success: true, tempPassword: result.tempPassword, userId, payments: createdPayments }
   } catch (err) {
     return { success: false, error: err?.message }
   }
@@ -637,27 +635,22 @@ export async function createClient(fullName, email, packId, discountPercent = 0)
 export async function createAdminAccount(fullName, email) {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
   try {
-    const tempPassword = `Oriafen${Math.floor(Math.random() * 9000) + 1000}!`
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password: tempPassword,
-      options: {
-        data: { full_name: fullName, role: 'admin' },
-        emailRedirectTo: 'https://app.oriafen.com/set-password',
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
       },
+      body: JSON.stringify({ fullName, email, role: 'admin' }),
     })
-    if (error) return { success: false, error: error.message }
-
-    const userId = data.user?.id
-    if (userId) {
-      // Make sure role is set on the users row (signUp metadata may not sync immediately)
-      await supabase.from('users').update({ role: 'admin' }).eq('id', userId)
-    }
-
-    return { success: true, tempPassword, userId }
+    const result = await res.json()
+    if (!result.success) return { success: false, error: result.error }
+    return { success: true, tempPassword: result.tempPassword, userId: result.userId }
   } catch (err) {
     return { success: false, error: err?.message }
   }
+}
 }
 
 // Mark a client's dossier as cancelled — keeps all data, just flips status for visibility everywhere
