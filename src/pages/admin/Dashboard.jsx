@@ -218,7 +218,10 @@ function AddClientModal({ onClose, onAdd }) {
       setSuccess(result.tempPassword)
       onAdd()
     } else {
-      setError(result.error ?? 'Erreur lors de la création du compte.')
+      const errMsg = typeof result.error === 'string'
+        ? result.error
+        : result.error?.message || JSON.stringify(result.error) || 'Erreur lors de la création du compte.'
+      setError(errMsg)
     }
   }
 
