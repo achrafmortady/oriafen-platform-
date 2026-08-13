@@ -611,7 +611,7 @@ export async function createClient(fullName, email, packId, discountPercent = 0)
       password: tempPassword,
       options: {
         data: { full_name: fullName, role: 'student', pack_id: packId },
-        emailRedirectTo: 'https://oriafen-platform.vercel.app/set-password',
+        emailRedirectTo: 'https://app.oriafen.com/set-password',
       },
     })
     if (error) return { success: false, error: error.message }
@@ -643,7 +643,7 @@ export async function createAdminAccount(fullName, email) {
       password: tempPassword,
       options: {
         data: { full_name: fullName, role: 'admin' },
-        emailRedirectTo: 'https://oriafen-platform.vercel.app/set-password',
+        emailRedirectTo: 'https://app.oriafen.com/set-password',
       },
     })
     if (error) return { success: false, error: error.message }
