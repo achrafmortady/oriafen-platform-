@@ -10,7 +10,7 @@ import {
 } from '../../lib/api'
 import { DOSSIER_STEPS, REQUIRED_DOCUMENTS } from '../../data/mockData'
 import {
-  CheckCircleIcon, ClockIcon, XCircleIcon, LockIcon, WhatsAppIcon,
+  CheckCircleIcon, ClockIcon, XCircleIcon, LockIcon,
 } from '../../components/Icons'
 
 const STEP_LABELS_FULL = [
@@ -371,33 +371,6 @@ export default function MonDossier() {
 
           {/* Right sidebar */}
           <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
-
-            {/* Conseiller card */}
-            <div style={{ background:'linear-gradient(135deg, #1a4a2e 0%, #0d2818 100%)', border:'1px solid rgba(201,168,76,0.2)', borderRadius:'20px', padding:'24px', boxShadow:'0 8px 30px rgba(0,0,0,0.2)' }}>
-              <p style={{ margin:'0 0 16px', fontSize:'10px', fontWeight:'600', letterSpacing:'2px', textTransform:'uppercase', color:'rgba(201,168,76,0.7)', fontFamily:"'Montserrat', sans-serif" }}>Votre Conseiller Dédié</p>
-              <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'16px' }}>
-                <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(201,168,76,0.15)', border:'2px solid rgba(201,168,76,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:'700', color:'#c9a84c', flexShrink:0, fontFamily:"'Montserrat', sans-serif" }}>MA</div>
-                <div>
-                  <p style={{ margin:0, fontWeight:'600', color:'#f5f0e8', fontSize:'16px', fontFamily:"'Cormorant Garamond', serif" }}>Mehdi Alaoui</p>
-                  <p style={{ margin:'2px 0 0', fontSize:'12px', color:'rgba(201,168,76,0.7)', fontFamily:"'Montserrat', sans-serif", fontWeight:'300' }}>Conseiller ORIAS</p>
-                </div>
-              </div>
-              <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginBottom:'16px' }}>
-                {[
-                  { icon:'🕐', text:'Disponible 9h – 20h GMT+1' },
-                  { icon:'📅', text:'Lundi – Samedi' },
-                ].map(({ icon, text }) => (
-                  <div key={text} style={{ display:'flex', alignItems:'center', gap:'8px', fontSize:'13px', color:'rgba(255,255,255,0.65)', fontFamily:"'Montserrat', sans-serif" }}>
-                    <span>{icon}</span><span>{text}</span>
-                  </div>
-                ))}
-              </div>
-              <a href="https://wa.me/212784513202" target="_blank" rel="noopener noreferrer"
-                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', width:'100%', padding:'13px', borderRadius:'14px', fontWeight:'600', color:'#fff', background:'linear-gradient(135deg, #25d366, #1db954)', textDecoration:'none', fontSize:'13px', fontFamily:"'Montserrat', sans-serif", boxShadow:'0 4px 20px rgba(37,211,102,0.25)', transition:'all 0.2s' }}>
-                <WhatsAppIcon className="w-5 h-5" />
-                Contacter sur WhatsApp
-              </a>
-            </div>
 
             {/* Current step */}
             <div style={{ background:'#ffffff', border:'1px solid #e8e2d6', borderRadius:'16px', padding:'18px', boxShadow:'0 2px 8px rgba(0,0,0,0.04)' }}>
