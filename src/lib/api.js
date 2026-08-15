@@ -651,6 +651,19 @@ export async function createAdminAccount(fullName, email) {
     return { success: false, error: err?.message }
   }
 }
+
+// Update an existing client's profile (full name, pack) — usable at any dossier status
+export async function updateClientInfo(userId, { fullName, packId }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('users').update({
+      full_name: fullName || null,
+      pack_id: packId || null,
+    }).eq('id', userId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
 }
 
 // Mark a client's dossier as cancelled — keeps all data, just flips status for visibility everywhere
@@ -740,6 +753,22 @@ export async function updateLeadNotes(leadId, notes) {
   if (!isConfigured) return { success: true }
   try {
     const { error } = await supabase.from('leads').update({ notes }).eq('id', leadId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function updateLeadInfo(leadId, { firstName, lastName, email, phone, city }) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('leads').update({
+      first_name: firstName || null,
+      last_name: lastName || null,
+      email: email || null,
+      phone: phone || null,
+      city: city || null,
+    }).eq('id', leadId)
     return { success: !error, error: error?.message }
   } catch (err) {
     return { success: false, error: err?.message }

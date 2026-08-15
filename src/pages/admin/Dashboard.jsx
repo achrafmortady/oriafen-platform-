@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -312,6 +312,101 @@ function AddClientModal({ onClose, onAdd }) {
   )
 }
 
+function EditClientModal({ client, onClose, onSaved }) {
+  const [fullName, setFullName] = useState(`${client.prenom || ''} ${client.nom || ''}`.trim())
+  const [packId, setPackId] = useState(client.packId || '')
+  const [packs, setPacks] = useState([])
+  const [loadingPacks, setLoadingPacks] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    fetchPacks().then(data => {
+      setPacks(data)
+      setLoadingPacks(false)
+    })
+  }, [])
+
+  const packsByCategory = packs.reduce((acc, p) => {
+    (acc[p.category] = acc[p.category] || []).push(p)
+    return acc
+  }, {})
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSaving(true)
+    const result = await updateClientInfo(client.id, { fullName, packId })
+    setSaving(false)
+    if (result.success) {
+      onSaved()
+    } else {
+      setError(result.error || 'Erreur lors de la mise à jour.')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
+        <div className="bg-orias-gold px-6 py-5 flex items-center justify-between">
+          <h3 className="font-bold text-white text-lg">Modifier — {client.prenom} {client.nom}</h3>
+          <button onClick={onClose} className="text-white/80 hover:text-white"><XIcon className="w-6 h-6" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">{error}</div>
+            )}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Nom complet</label>
+              <input value={fullName} onChange={e => setFullName(e.target.value)} required className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+              <div className="input-field bg-orias-bg text-gray-500">{client.email}</div>
+              <p className="text-xs text-gray-400 mt-1">L'email de connexion ne se modifie pas ici — contactez le support Supabase pour un changement d'adresse.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Pack</label>
+              {loadingPacks ? (
+                <div className="input-field text-sm text-gray-400">Chargement des packs…</div>
+              ) : (
+                <select value={packId} onChange={e => setPackId(e.target.value)} className="input-field">
+                  {Object.entries(packsByCategory).map(([cat, list]) => (
+                    <optgroup key={cat} label={PACK_CATEGORY_LABELS[cat] ?? cat}>
+                      {list.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} — {p.price_ttc.toLocaleString('fr-FR')} DHS TTC</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div className="bg-orias-bg rounded-xl p-3 border border-orias-border flex justify-between text-sm">
+              <span className="text-gray-500 font-medium">Statut dossier</span>
+              <span className={`font-semibold ${client.statut === 'ORIAS obtenu' ? 'text-emerald-600' : 'text-amber-600'}`}>{client.statut}</span>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href={`https://wa.me/?text=Bonjour%20${encodeURIComponent(client.prenom)}%2C%20`}
+                target="_blank" rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-[#25d366] hover:bg-[#20bd5a] transition-colors"
+              >
+                <MessageIcon className="w-4 h-4" />
+                WhatsApp
+              </a>
+              <button type="button" onClick={onClose} className="flex-1 btn-outline-green">Annuler</button>
+              <button type="submit" disabled={saving || loadingPacks} className="flex-1 btn-gold disabled:opacity-70">
+                {saving ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ClientsSection({ isSuperAdmin }) {
   const [clients, setClients]   = useState([])
   const [loadingClients, setLoadingClients] = useState(true)
@@ -497,45 +592,11 @@ function ClientsSection({ isSuperAdmin }) {
       )}
 
       {editClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setEditClient(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-orias-gold px-6 py-5 flex items-center justify-between">
-              <h3 className="font-bold text-white text-lg">Modifier — {editClient.prenom} {editClient.nom}</h3>
-              <button onClick={() => setEditClient(null)} className="text-white/80 hover:text-white"><XIcon className="w-6 h-6" /></button>
-            </div>
-            <div className="p-6 space-y-4">
-              <div className="bg-orias-bg rounded-xl p-4 border border-orias-border space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 font-medium">Email</span>
-                  <span className="font-semibold text-gray-700">{editClient.email}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 font-medium">Pack</span>
-                  <span className="font-semibold text-orias-green">{editClient.pack}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 font-medium">Statut</span>
-                  <span className={`font-semibold ${editClient.statut === 'ORIAS obtenu' ? 'text-emerald-600' : 'text-amber-600'}`}>{editClient.statut}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500 font-medium">Progression</span>
-                  <span className="font-semibold text-orias-green">{editClient.progression ?? 0}%</span>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <a
-                  href={`https://wa.me/?text=Bonjour%20${encodeURIComponent(editClient.prenom)}%2C%20`}
-                  target="_blank" rel="noopener noreferrer"
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-[#25d366] hover:bg-[#20bd5a] transition-colors"
-                >
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-                  WhatsApp
-                </a>
-                <button onClick={() => setEditClient(null)} className="flex-1 btn-outline-green">Fermer</button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <EditClientModal
+          client={editClient}
+          onClose={() => setEditClient(null)}
+          onSaved={() => { loadClients(); setEditClient(null) }}
+        />
       )}
 
       {/* Client detail modal */}
@@ -578,11 +639,17 @@ function ClientsSection({ isSuperAdmin }) {
                 <p className="font-semibold text-gray-700 text-sm">{selected.activite}</p>
               </div>
               <div className="flex gap-2 pt-2">
-                <button className="btn-gold flex-1 flex items-center justify-center gap-2">
+                <button
+                  onClick={() => window.open(`https://wa.me/?text=Bonjour%20${encodeURIComponent(selected.prenom)}%2C%20`, '_blank')}
+                  className="btn-gold flex-1 flex items-center justify-center gap-2"
+                >
                   <MessageIcon className="w-4 h-4" />
                   Message WhatsApp
                 </button>
-                <button className="btn-outline-green flex items-center gap-2 px-4">
+                <button
+                  onClick={() => { setEditClient(selected); setSelected(null) }}
+                  className="btn-outline-green flex items-center gap-2 px-4"
+                >
                   <EditIcon className="w-4 h-4" />
                   Modifier
                 </button>
@@ -1308,9 +1375,17 @@ function isOverdue(dateStr) {
 // Slide-over detail panel for a single lead — contact info, pipeline status,
 // pack & montant potentiel, rendez-vous multiples, tâches, actions rapides (appel/email),
 // notes, et historique d'activité complet (HubSpot-style).
-function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, onAddNote, onSetPack, onLogQuick, onConverted }) {
+function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, onAddNote, onSetPack, onLogQuick, onConverted, onSaveInfo }) {
   const [notes, setNotes] = useState(lead.notes || '')
   const [savingNotes, setSavingNotes] = useState(false)
+
+  const [editingInfo, setEditingInfo] = useState(false)
+  const [infoFirstName, setInfoFirstName] = useState(lead.first_name || '')
+  const [infoLastName, setInfoLastName] = useState(lead.last_name || '')
+  const [infoEmail, setInfoEmail] = useState(lead.email || '')
+  const [infoPhone, setInfoPhone] = useState(lead.phone || '')
+  const [infoCity, setInfoCity] = useState(lead.city || '')
+  const [savingInfo, setSavingInfo] = useState(false)
   const [activity, setActivity] = useState([])
   const [loadingActivity, setLoadingActivity] = useState(true)
   const [newNote, setNewNote] = useState('')
@@ -1362,6 +1437,12 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
     setAmountBasis(lead.amount_basis || 'ht')
     setConvertResult(null)
     setConvertError('')
+    setEditingInfo(false)
+    setInfoFirstName(lead.first_name || '')
+    setInfoLastName(lead.last_name || '')
+    setInfoEmail(lead.email || '')
+    setInfoPhone(lead.phone || '')
+    setInfoCity(lead.city || '')
     loadActivity()
     loadAppointments()
     loadTasks()
@@ -1415,6 +1496,19 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
     setSavingNotes(true)
     await onSaveNotes(lead.id, notes)
     setSavingNotes(false)
+  }
+
+  const handleSaveInfoClick = async () => {
+    setSavingInfo(true)
+    await onSaveInfo(lead.id, {
+      firstName: infoFirstName.trim(),
+      lastName: infoLastName.trim(),
+      email: infoEmail.trim(),
+      phone: infoPhone.trim(),
+      city: infoCity.trim(),
+    })
+    setSavingInfo(false)
+    setEditingInfo(false)
   }
 
   const handleAddNoteClick = async () => {
@@ -1507,12 +1601,33 @@ function LeadDetailPanel({ lead, packs, onClose, onStatusChange, onSaveNotes, on
           </div>
 
           {/* Contact info */}
-          <div className="space-y-1.5 text-sm">
-            {lead.email && <div className="text-gray-700">{lead.email}</div>}
-            {lead.phone && <div className="text-gray-700 flex items-center gap-1.5"><PhoneIcon className="w-3.5 h-3.5 text-gray-400" />{lead.phone}</div>}
-            {lead.city && <div className="text-gray-700">{lead.city}</div>}
-            {lead.pack_interest && <div className="text-orias-green font-medium">Intéressé par : {lead.pack_interest}</div>}
-          </div>
+          {editingInfo ? (
+            <div className="space-y-2 text-sm bg-orias-bg rounded-lg p-3 border border-orias-border">
+              <div className="grid grid-cols-2 gap-2">
+                <input value={infoFirstName} onChange={e => setInfoFirstName(e.target.value)} className="input-field text-sm py-1.5" placeholder="Prénom" />
+                <input value={infoLastName} onChange={e => setInfoLastName(e.target.value)} className="input-field text-sm py-1.5" placeholder="Nom" />
+              </div>
+              <input type="email" value={infoEmail} onChange={e => setInfoEmail(e.target.value)} className="input-field text-sm py-1.5 w-full" placeholder="Email" />
+              <input value={infoPhone} onChange={e => setInfoPhone(e.target.value)} className="input-field text-sm py-1.5 w-full" placeholder="Téléphone" />
+              <input value={infoCity} onChange={e => setInfoCity(e.target.value)} className="input-field text-sm py-1.5 w-full" placeholder="Ville" />
+              <div className="flex gap-2 pt-1">
+                <button onClick={handleSaveInfoClick} disabled={savingInfo} className="btn-green flex-1 text-xs py-2 disabled:opacity-60">
+                  {savingInfo ? 'Enregistrement…' : 'Enregistrer'}
+                </button>
+                <button onClick={() => setEditingInfo(false)} className="btn-outline-green flex-1 text-xs py-2">Annuler</button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5 text-sm">
+              {lead.email && <div className="text-gray-700">{lead.email}</div>}
+              {lead.phone && <div className="text-gray-700 flex items-center gap-1.5"><PhoneIcon className="w-3.5 h-3.5 text-gray-400" />{lead.phone}</div>}
+              {lead.city && <div className="text-gray-700">{lead.city}</div>}
+              {lead.pack_interest && <div className="text-orias-green font-medium">Intéressé par : {lead.pack_interest}</div>}
+              <button onClick={() => setEditingInfo(true)} className="flex items-center gap-1.5 text-xs font-semibold text-orias-gold hover:text-orias-green transition-colors mt-1">
+                <EditIcon className="w-3.5 h-3.5" /> Modifier les infos
+              </button>
+            </div>
+          )}
 
           {lead.message && (
             <div>
@@ -2175,6 +2290,14 @@ function CRMSection() {
     await updateLeadNotes(leadId, notes)
   }
 
+  const handleSaveInfo = async (leadId, { firstName, lastName, email, phone, city }) => {
+    setLeads(prev => prev.map(l => l.id === leadId ? {
+      ...l, first_name: firstName || null, last_name: lastName || null, email: email || null, phone: phone || null, city: city || null,
+    } : l))
+    await updateLeadInfo(leadId, { firstName, lastName, email, phone, city })
+    setToast('Informations du lead mises à jour ✓')
+  }
+
   const handleAddNote = async (leadId, note) => {
     await addLeadNote(leadId, note)
   }
@@ -2265,6 +2388,7 @@ function CRMSection() {
           onClose={() => setSelectedLeadId(null)}
           onStatusChange={handleStatusChange}
           onSaveNotes={handleSaveNotes}
+          onSaveInfo={handleSaveInfo}
           onAddNote={handleAddNote}
           onSetPack={handleSetPack}
           onLogQuick={handleLogQuick}
