@@ -460,23 +460,27 @@ export async function fetchPacks() {
 
 // Milestones for a 'milestone' pack: 50% souscription / 25% kbis+formation / 25% orias
 // Milestones for a 'full' pack: 100% souscription
-// overrideHt : montant HT final négocié (ex: "Potentiel" saisi dans la fiche lead du CRM).
-// S'il est fourni, il remplace entièrement le prix catalogue du pack (la remise n'est
-// pas réappliquée par-dessus — le montant négocié EST déjà le prix final).
-function buildPaymentRows(userId, pack, discountPercent = 0, overrideHt = null) {
-  const hasOverride = overrideHt != null && overrideHt !== '' && !isNaN(Number(overrideHt)) && Number(overrideHt) > 0
+//
+// overrideAmounts : { ht, ttc } — montant final réellement encaissé (ex: "Potentiel" saisi
+// dans la fiche lead du CRM), déjà calculé selon la base choisie par l'admin (HT ou TTC).
+// Important : amount_ttc est le SEUL champ utilisé par la partie Finance pour ses totaux
+// (fetchFinanceSummary somme amount_ttc) — donc quel que soit le libellé HT/TTC choisi par
+// l'admin, `ttc` ici DOIT correspondre au montant réellement encaissé, sans ajout de TVA :
+// coché "HT" à 60 000 DH => l'admin a été payé 60 000 DH, pas 60 000 + 20% de TVA.
+function buildPaymentRows(userId, pack, discountPercent = 0, overrideAmounts = null) {
+  const hasOverride = overrideAmounts != null && !isNaN(Number(overrideAmounts.ttc)) && Number(overrideAmounts.ttc) > 0
   const discountFactor = 1 - (Number(discountPercent) || 0) / 100
-  const effectiveHt = hasOverride ? Number(overrideHt) : pack.price_ht * discountFactor
-  const ttc = Math.round(effectiveHt * TVA_RATE)
+  const effectiveHt  = hasOverride ? Number(overrideAmounts.ht)  : pack.price_ht * discountFactor
+  const effectiveTtc = hasOverride ? Number(overrideAmounts.ttc) : Math.round(effectiveHt * TVA_RATE)
   if (pack.payment_type === 'full') {
     return [
-      { user_id: userId, pack_id: pack.id, milestone: 'full', amount_ht: effectiveHt, amount_ttc: ttc, status: 'pending', discount_percent: discountPercent },
+      { user_id: userId, pack_id: pack.id, milestone: 'full', amount_ht: effectiveHt, amount_ttc: effectiveTtc, status: 'pending', discount_percent: discountPercent },
     ]
   }
   const half  = Math.round(effectiveHt * 0.5)
   const quart = Math.round(effectiveHt * 0.25)
-  const halfTtc  = Math.round(half * TVA_RATE)
-  const quartTtc = Math.round(quart * TVA_RATE)
+  const halfTtc  = hasOverride ? Math.round(effectiveTtc * 0.5)  : Math.round(half * TVA_RATE)
+  const quartTtc = hasOverride ? Math.round(effectiveTtc * 0.25) : Math.round(quart * TVA_RATE)
   return [
     { user_id: userId, pack_id: pack.id, milestone: 'souscription',   amount_ht: half,  amount_ttc: halfTtc,  status: 'pending', discount_percent: discountPercent },
     { user_id: userId, pack_id: pack.id, milestone: 'kbis_formation', amount_ht: quart, amount_ttc: quartTtc, status: 'pending', discount_percent: discountPercent },
@@ -603,10 +607,11 @@ export async function fetchAllClients(includeCancelled = true) {
   }
 }
 
-// finalAmountHt : montant HT final négocié à facturer (remplace le prix catalogue du pack
-// si fourni) — utilisé notamment par convertLeadToClient pour respecter le "Potentiel"
-// saisi par l'admin dans la fiche lead du CRM.
-export async function createClient(fullName, email, packId, discountPercent = 0, finalAmountHt = null) {
+// finalAmounts : { ht, ttc } — montant final négocié à facturer (remplace le prix catalogue
+// du pack si fourni) — utilisé notamment par convertLeadToClient pour respecter le
+// "Potentiel" saisi par l'admin dans la fiche lead du CRM. `ttc` doit être le montant
+// réellement encaissé (voir buildPaymentRows).
+export async function createClient(fullName, email, packId, discountPercent = 0, finalAmounts = null) {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
   try {
     const { data: pack } = await supabase.from('packs').select('*').eq('id', packId).single()
@@ -627,7 +632,7 @@ export async function createClient(fullName, email, packId, discountPercent = 0,
     const userId = result.userId
     let createdPayments = []
     if (userId) {
-      const rows = buildPaymentRows(userId, pack, discountPercent, finalAmountHt)
+      const rows = buildPaymentRows(userId, pack, discountPercent, finalAmounts)
       const { data: inserted } = await supabase.from('payments').insert(rows).select()
       createdPayments = inserted ?? []
     }
@@ -988,15 +993,19 @@ export async function convertLeadToClient(lead) {
   const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || lead.email
 
   // Si un "Potentiel" a été saisi sur le lead (montant final négocié avec le client), on
-  // l'utilise comme base de facturation plutôt que le prix catalogue du pack. Il peut avoir
-  // été saisi en HT ou en TTC (bascule HT/TTC de la fiche lead) — on le ramène toujours en HT.
-  let finalAmountHt = null
+  // l'utilise comme base de facturation plutôt que le prix catalogue du pack. Ce montant —
+  // qu'il ait été saisi en HT ou en TTC (bascule de la fiche lead) — est TOUJOURS le total
+  // réellement encaissé : cocher "HT" ne rajoute pas 20% de TVA par-dessus, ça veut juste
+  // dire que la somme reçue a été négociée/formulée hors taxe.
+  let finalAmounts = null
   const potentialAmount = Number(lead.potential_amount)
   if (lead.potential_amount != null && lead.potential_amount !== '' && !isNaN(potentialAmount) && potentialAmount > 0) {
-    finalAmountHt = lead.amount_basis === 'ttc' ? potentialAmount / TVA_RATE : potentialAmount
+    finalAmounts = lead.amount_basis === 'ttc'
+      ? { ht: potentialAmount / TVA_RATE, ttc: potentialAmount }
+      : { ht: potentialAmount, ttc: potentialAmount }
   }
 
-  const result = await createClient(fullName, lead.email, lead.pack_id, lead.discount_percent || 0, finalAmountHt)
+  const result = await createClient(fullName, lead.email, lead.pack_id, lead.discount_percent || 0, finalAmounts)
   if (!result.success) return result
 
   // Le premier jalon (souscription ou paiement complet) est déjà réglé pour devenir client
