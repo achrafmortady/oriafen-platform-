@@ -460,9 +460,13 @@ export async function fetchPacks() {
 
 // Milestones for a 'milestone' pack: 50% souscription / 25% kbis+formation / 25% orias
 // Milestones for a 'full' pack: 100% souscription
-function buildPaymentRows(userId, pack, discountPercent = 0) {
+// overrideHt : montant HT final négocié (ex: "Potentiel" saisi dans la fiche lead du CRM).
+// S'il est fourni, il remplace entièrement le prix catalogue du pack (la remise n'est
+// pas réappliquée par-dessus — le montant négocié EST déjà le prix final).
+function buildPaymentRows(userId, pack, discountPercent = 0, overrideHt = null) {
+  const hasOverride = overrideHt != null && overrideHt !== '' && !isNaN(Number(overrideHt)) && Number(overrideHt) > 0
   const discountFactor = 1 - (Number(discountPercent) || 0) / 100
-  const effectiveHt = pack.price_ht * discountFactor
+  const effectiveHt = hasOverride ? Number(overrideHt) : pack.price_ht * discountFactor
   const ttc = Math.round(effectiveHt * TVA_RATE)
   if (pack.payment_type === 'full') {
     return [
@@ -599,7 +603,10 @@ export async function fetchAllClients(includeCancelled = true) {
   }
 }
 
-export async function createClient(fullName, email, packId, discountPercent = 0) {
+// finalAmountHt : montant HT final négocié à facturer (remplace le prix catalogue du pack
+// si fourni) — utilisé notamment par convertLeadToClient pour respecter le "Potentiel"
+// saisi par l'admin dans la fiche lead du CRM.
+export async function createClient(fullName, email, packId, discountPercent = 0, finalAmountHt = null) {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
   try {
     const { data: pack } = await supabase.from('packs').select('*').eq('id', packId).single()
@@ -620,7 +627,7 @@ export async function createClient(fullName, email, packId, discountPercent = 0)
     const userId = result.userId
     let createdPayments = []
     if (userId) {
-      const rows = buildPaymentRows(userId, pack, discountPercent)
+      const rows = buildPaymentRows(userId, pack, discountPercent, finalAmountHt)
       const { data: inserted } = await supabase.from('payments').insert(rows).select()
       createdPayments = inserted ?? []
     }
@@ -980,7 +987,16 @@ export async function convertLeadToClient(lead) {
 
   const fullName = `${lead.first_name || ''} ${lead.last_name || ''}`.trim() || lead.email
 
-  const result = await createClient(fullName, lead.email, lead.pack_id, lead.discount_percent || 0)
+  // Si un "Potentiel" a été saisi sur le lead (montant final négocié avec le client), on
+  // l'utilise comme base de facturation plutôt que le prix catalogue du pack. Il peut avoir
+  // été saisi en HT ou en TTC (bascule HT/TTC de la fiche lead) — on le ramène toujours en HT.
+  let finalAmountHt = null
+  const potentialAmount = Number(lead.potential_amount)
+  if (lead.potential_amount != null && lead.potential_amount !== '' && !isNaN(potentialAmount) && potentialAmount > 0) {
+    finalAmountHt = lead.amount_basis === 'ttc' ? potentialAmount / TVA_RATE : potentialAmount
+  }
+
+  const result = await createClient(fullName, lead.email, lead.pack_id, lead.discount_percent || 0, finalAmountHt)
   if (!result.success) return result
 
   // Le premier jalon (souscription ou paiement complet) est déjà réglé pour devenir client
