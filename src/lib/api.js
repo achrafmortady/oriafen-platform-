@@ -1098,6 +1098,29 @@ export async function deleteAdminAccount(userId) {
   }
 }
 
+// Suppression definitive d'un compte client (reservee au super_admin) — reutilise la meme
+// fonction Edge que deleteAdminAccount : supprime le compte auth (cascade vers dossier,
+// documents, formation, examens ET paiements — l'historique Finance est donc entierement effacé).
+// Contrairement a "Annuler le dossier" (cancelClientDossier), cette action est irreversible.
+export async function deleteClientAccount(userId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-admin-account`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token}`,
+      },
+      body: JSON.stringify({ userId }),
+    })
+    const json = await res.json()
+    return json
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
 // ── Tickets / messages (clients via Support, admins en interne) ─
 
 export const TICKET_STATUS_LABELS = {

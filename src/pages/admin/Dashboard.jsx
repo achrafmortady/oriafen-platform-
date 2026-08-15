@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -417,6 +417,10 @@ function ClientsSection({ isSuperAdmin }) {
   const [editClient, setEditClient] = useState(null)
   const [cancelTarget, setCancelTarget] = useState(null)
   const [busyDossier, setBusyDossier] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [busyDelete, setBusyDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const loadClients = () => fetchAllClients().then(data => setClients(data))
 
@@ -452,6 +456,21 @@ function ClientsSection({ isSuperAdmin }) {
     await loadClients()
     setBusyDossier(false)
     setCancelTarget(null)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (!deleteTarget) return
+    setBusyDelete(true)
+    setDeleteError('')
+    const result = await deleteClientAccount(deleteTarget.id)
+    setBusyDelete(false)
+    if (result.success) {
+      setDeleteTarget(null)
+      setDeleteConfirmText('')
+      loadClients()
+    } else {
+      setDeleteError(result.error || 'Erreur lors de la suppression.')
+    }
   }
 
   return (
@@ -554,6 +573,14 @@ function ClientsSection({ isSuperAdmin }) {
                           : <XIcon className="w-4 h-4" />
                         }
                       </button>
+                      {isSuperAdmin && (
+                        <button
+                          onClick={() => { setDeleteTarget(client); setDeleteConfirmText(''); setDeleteError('') }}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-red-700 hover:bg-red-50 transition-colors" title="Supprimer définitivement"
+                        >
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -584,6 +611,45 @@ function ClientsSection({ isSuperAdmin }) {
                 <button onClick={() => setCancelTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm border border-orias-border text-gray-600 hover:bg-orias-bg transition-colors">Annuler</button>
                 <button onClick={handleConfirmCancel} disabled={busyDossier} className={`flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm text-white transition-colors disabled:opacity-60 ${cancelTarget.statut === 'Annulé' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'}`}>
                   {busyDossier ? '...' : 'Confirmer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suppression definitive — super_admin uniquement */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="p-6 space-y-4">
+              <div className="w-14 h-14 rounded-full mx-auto flex items-center justify-center bg-red-50">
+                <svg className="w-7 h-7 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+              </div>
+              <p className="font-bold text-gray-800 text-center">
+                Supprimer définitivement {deleteTarget.prenom} {deleteTarget.nom} ?
+              </p>
+              <p className="text-sm text-gray-500 text-center">
+                Contrairement à "Annuler", cette action supprime <strong>tout</strong> : le compte, le dossier, les documents, la progression et <strong>tout l'historique de paiements de ce client dans Finance</strong>. C'est irréversible.
+              </p>
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">Tapez <span className="font-mono text-red-600">SUPPRIMER</span> pour confirmer</label>
+                <input
+                  value={deleteConfirmText}
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  className="input-field text-sm"
+                  placeholder="SUPPRIMER"
+                />
+              </div>
+              {deleteError && <p className="text-sm text-red-600">{deleteError}</p>}
+              <div className="flex gap-3">
+                <button onClick={() => setDeleteTarget(null)} className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm border border-orias-border text-gray-600 hover:bg-orias-bg transition-colors">Annuler</button>
+                <button
+                  onClick={handleConfirmDelete}
+                  disabled={busyDelete || deleteConfirmText !== 'SUPPRIMER'}
+                  className="flex-1 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-red-600 hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {busyDelete ? 'Suppression…' : 'Supprimer définitivement'}
                 </button>
               </div>
             </div>
