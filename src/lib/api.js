@@ -1235,5 +1235,102 @@ export function subscribeToSupportTickets(callback) {
   return () => supabase.removeChannel(channel)
 }
 
+// ── Marketing — onboarding & suivi (brand_briefs / client_deliverables) ──
+
+// Whether this client's pack includes marketing (web ou combiné) — controls tab visibility
+export async function fetchMarketingAccess(userId) {
+  if (!isConfigured || !userId) return false
+  try {
+    const { data, error } = await supabase.rpc('user_has_marketing_access', { p_user_id: userId })
+    if (error) throw error
+    return !!data
+  } catch (err) {
+    console.warn('[api] fetchMarketingAccess error:', err?.message)
+    return false
+  }
+}
+
+// Pack + identité déjà connus côté session — utilisé pour pré-remplir le questionnaire
+export async function fetchUserMarketingProfile(userId) {
+  if (!isConfigured || !userId) return null
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('pack_id, full_name, email')
+      .eq('id', userId)
+      .single()
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.warn('[api] fetchUserMarketingProfile error:', err?.message)
+    return null
+  }
+}
+
+// Le brief existant du client connecté (null si pas encore rempli)
+export async function fetchBrandBrief(userId) {
+  if (!isConfigured || !userId) return null
+  try {
+    const { data, error } = await supabase
+      .from('brand_briefs')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.warn('[api] fetchBrandBrief error:', err?.message)
+    return null
+  }
+}
+
+// Statut de production — vue déjà filtrée sur auth.uid()
+export async function fetchMarketingStatus() {
+  if (!isConfigured) return null
+  try {
+    const { data, error } = await supabase.from('my_marketing_status').select('*').maybeSingle()
+    if (error) throw error
+    return data
+  } catch (err) {
+    console.warn('[api] fetchMarketingStatus error:', err?.message)
+    return null
+  }
+}
+
+// Soumission du questionnaire — le trigger check_brief_pack_eligibility protège côté DB
+export async function submitBrandBrief(payload) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Non authentifié.' }
+    const { data, error } = await supabase
+      .from('brand_briefs')
+      .insert({ ...payload, user_id: user.id })
+      .select()
+      .single()
+    if (error) throw error
+    return { success: true, brief: data }
+  } catch (err) {
+    console.warn('[api] submitBrandBrief error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// Upload logo / photos vers le bucket public "documents" (réutilisé, sous un préfixe marketing/)
+export async function uploadBrandAsset(userId, kind, file) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const ext  = (file.name.split('.').pop() || 'bin').toLowerCase()
+    const path = `${userId}/marketing/${kind}/${Date.now()}.${ext}`
+    const { error: storageErr } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
+    if (storageErr) throw storageErr
+    const { data } = supabase.storage.from('documents').getPublicUrl(path)
+    return { success: true, url: data?.publicUrl, fileName: file.name }
+  } catch (err) {
+    console.warn('[api] uploadBrandAsset error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
 
 

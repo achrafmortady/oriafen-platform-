@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { LogoutIcon, MenuIcon, XIcon } from '../../components/Icons'
@@ -8,9 +8,11 @@ import MaFormation from './MaFormation'
 import FormationCommerciale from './FormationCommerciale'
 import MesDocuments from './MesDocuments'
 import Support from './Support'
+import Marketing from './Marketing'
+import { fetchMarketingAccess } from '../../lib/api'
 
 
-const NAV_ITEMS = [
+const BASE_NAV_ITEMS = [
   { id: 'dossier',     label: 'Mon Dossier',  short: 'Dossier' },
   { id: 'formation',   label: 'Formation IAS1', short: 'IAS1' },
   { id: 'commercial',  label: 'Vente & Scripts', short: 'Vente' },
@@ -18,11 +20,25 @@ const NAV_ITEMS = [
   { id: 'support',     label: 'Support',      short: 'Support' },
 ]
 
+const MARKETING_NAV_ITEM = { id: 'marketing', label: 'Mon site & communication', short: 'Marketing' }
+
 export default function StudentDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('dossier')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [hasMarketing, setHasMarketing] = useState(false)
+
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    fetchMarketingAccess(user.id).then(access => { if (!cancelled) setHasMarketing(access) })
+    return () => { cancelled = true }
+  }, [user?.id])
+
+  const NAV_ITEMS = hasMarketing
+    ? [...BASE_NAV_ITEMS.slice(0, 1), MARKETING_NAV_ITEM, ...BASE_NAV_ITEMS.slice(1)]
+    : BASE_NAV_ITEMS
 
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
   const handleNav = (id) => { setActiveTab(id); setMobileMenuOpen(false) }
@@ -30,6 +46,7 @@ export default function StudentDashboard() {
   const renderSection = () => {
     switch (activeTab) {
       case 'dossier':    return <MonDossier />
+      case 'marketing':  return hasMarketing ? <Marketing /> : <MonDossier />
       case 'formation':  return <MaFormation />
       case 'commercial': return <FormationCommerciale />
       case 'documents':  return <MesDocuments />
