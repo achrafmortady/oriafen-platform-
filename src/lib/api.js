@@ -586,6 +586,7 @@ export async function fetchAllClients(includeCancelled = true) {
         prenom:         u.full_name?.split(' ')[0] ?? '—',
         pack:           u.packs?.name ?? 'Essentiel',
         packId:         u.pack_id ?? null,
+        hasMarketing:   ['marketing', 'combine'].includes(u.packs?.category),
         progression:    Math.round(((u.formation_progress?.filter(p => p.completed)?.length ?? 0) / 5) * 100),
         statut:         dossier?.status ?? 'En cours',
         activite:       'récemment',
@@ -1328,6 +1329,35 @@ export async function uploadBrandAsset(userId, kind, file) {
     return { success: true, url: data?.publicUrl, fileName: file.name }
   } catch (err) {
     console.warn('[api] uploadBrandAsset error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// ── Marketing — vue CRM (admin & super_admin) ──────────────────
+
+// Tous les briefs marketing + leur suivi de production, pour le CRM (admin/super_admin)
+export async function fetchAdminMarketingBriefs() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('brand_briefs')
+      .select('*, client_deliverables(*)')
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchAdminMarketingBriefs error:', err?.message)
+    return []
+  }
+}
+
+// Mise à jour du suivi de production par l'équipe (statuts, lien du site, notes internes)
+export async function updateClientDeliverables(deliverableId, payload) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const { error } = await supabase.from('client_deliverables').update(payload).eq('id', deliverableId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
     return { success: false, error: err?.message }
   }
 }

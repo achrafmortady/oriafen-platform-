@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -407,6 +407,167 @@ function EditClientModal({ client, onClose, onSaved }) {
   )
 }
 
+// ── Marketing brief — vue CRM (admin & super_admin) ──────────────────
+
+const MKT_STYLE_LABELS = { prestige: 'Prestige', clarte: 'Clarté', dynamique: 'Dynamique' }
+const MKT_STATUS_OPTIONS = [['a_faire', 'À faire'], ['en_cours', 'En cours'], ['livre', 'Livré']]
+const MKT_INSURANCE_LABELS = {
+  auto: 'Automobile', moto: 'Moto / 2-roues', habitation: 'Habitation', sante: 'Santé',
+  prevoyance: 'Prévoyance', emprunteur: 'Emprunteur', voyage: 'Voyage', rc_pro: 'RC Pro',
+  multirisque_pro: 'Multirisque Professionnelle',
+}
+
+function mktStatusCls(v) {
+  return v === 'livre' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+    : v === 'en_cours' ? 'bg-amber-50 text-amber-700 border-amber-200'
+    : 'bg-gray-100 text-gray-500 border-gray-200'
+}
+
+function MarketingBriefModal({ brief, onClose, onSaved }) {
+  const deliverable = brief.client_deliverables?.[0] ?? null
+  const [brandKit, setBrandKit]   = useState(deliverable?.brand_kit_status ?? 'a_faire')
+  const [site, setSite]           = useState(deliverable?.site_status ?? 'a_faire')
+  const [social, setSocial]       = useState(deliverable?.social_status ?? 'a_faire')
+  const [ads, setAds]             = useState(deliverable?.ads_status ?? 'a_faire')
+  const [siteUrl, setSiteUrl]     = useState(deliverable?.site_url ?? '')
+  const [notesInternes, setNotesInternes] = useState(deliverable?.notes_internes ?? '')
+  const [saving, setSaving]       = useState(false)
+  const [saved, setSaved]         = useState(false)
+
+  const handleSave = async () => {
+    if (!deliverable) return
+    setSaving(true)
+    const res = await updateClientDeliverables(deliverable.id, {
+      brand_kit_status: brandKit,
+      site_status: site,
+      social_status: social,
+      ads_status: ads,
+      site_url: siteUrl.trim() || null,
+      notes_internes: notesInternes.trim() || null,
+    })
+    setSaving(false)
+    if (res.success) { setSaved(true); onSaved(); setTimeout(() => setSaved(false), 2000) }
+  }
+
+  const typesList = Array.isArray(brief.types_assurance_prioritaires) ? brief.types_assurance_prioritaires : []
+  const photos = Array.isArray(brief.photos_urls) ? brief.photos_urls : []
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <div className="bg-orias-green px-6 py-5 sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-white text-lg">🎨 {brief.cabinet_name}</h3>
+              <p className="text-green-300 text-sm">Brief marketing reçu le {new Date(brief.created_at).toLocaleDateString('fr-FR')}</p>
+            </div>
+            <button onClick={onClose} className="text-green-300 hover:text-white transition-colors"><XIcon className="w-6 h-6" /></button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* Coordonnées */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-orias-bg rounded-xl p-3 border border-orias-border"><p className="text-xs text-gray-500">Contact</p><p className="font-semibold text-gray-800">{brief.contact_full_name}</p></div>
+            <div className="bg-orias-bg rounded-xl p-3 border border-orias-border"><p className="text-xs text-gray-500">Email</p><p className="font-semibold text-gray-800">{brief.email}</p></div>
+            {brief.whatsapp && <div className="bg-orias-bg rounded-xl p-3 border border-orias-border"><p className="text-xs text-gray-500">WhatsApp</p><p className="font-semibold text-gray-800">{brief.whatsapp}</p></div>}
+            {brief.ville_france && <div className="bg-orias-bg rounded-xl p-3 border border-orias-border"><p className="text-xs text-gray-500">Ville (France)</p><p className="font-semibold text-gray-800">{brief.ville_france}</p></div>}
+          </div>
+
+          {/* Style & couleurs */}
+          <div>
+            <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-2">Site internet</p>
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orias-green/10 text-orias-green border border-orias-green/20">
+                Style : {MKT_STYLE_LABELS[brief.style_prefere] ?? brief.style_prefere}
+              </span>
+              <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full border" style={{ background: brief.couleur_principale }} />{brief.couleur_principale}</span>
+              <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full border" style={{ background: brief.couleur_secondaire }} />{brief.couleur_secondaire}</span>
+              {brief.domaine_souhaite && <span className="text-gray-500">Domaine souhaité : <strong className="text-gray-700">{brief.domaine_souhaite}</strong></span>}
+            </div>
+            {brief.notes_style && <p className="text-sm text-gray-500 mt-2 italic">"{brief.notes_style}"</p>}
+          </div>
+
+          {/* Types d'assurance */}
+          {typesList.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-2">À mettre en avant</p>
+              <div className="flex flex-wrap gap-1.5">
+                {typesList.map(t => (
+                  <span key={t} className="px-2.5 py-1 rounded-full text-xs font-medium bg-orias-bg text-gray-700 border border-orias-border">
+                    {t.startsWith('autre:') ? t.slice(6) : (MKT_INSURANCE_LABELS[t] ?? t)}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Demandes spéciales */}
+          {brief.demandes_speciales && (
+            <div>
+              <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-2">Demandes spéciales</p>
+              <p className="text-sm text-gray-700 bg-orias-bg rounded-xl p-3 border border-orias-border">{brief.demandes_speciales}</p>
+            </div>
+          )}
+
+          {/* Actifs existants */}
+          <div>
+            <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-2">Actifs existants</p>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {brief.a_un_logo
+                ? <a href={brief.logo_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green font-medium hover:underline">📎 Logo fourni</a>
+                : <span className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-400 text-xs">Pas de logo existant</span>}
+              {photos.length > 0
+                ? photos.map((p, i) => <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green font-medium hover:underline">🖼️ Photo {i + 1}</a>)
+                : <span className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-400 text-xs">Pas de photos existantes</span>}
+              {brief.instagram_existant && <span className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-gray-700">📷 {brief.instagram_existant}</span>}
+              {brief.facebook_existant && <span className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-gray-700">👤 {brief.facebook_existant}</span>}
+              {brief.reseaux_a_creer && <span className="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">À créer si absents</span>}
+            </div>
+          </div>
+
+          {/* Suivi de production — éditable */}
+          <div className="pt-3 border-t border-orias-border">
+            <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-3">Suivi de production</p>
+            {!deliverable ? (
+              <p className="text-sm text-red-500">Aucune fiche de suivi trouvée pour ce brief.</p>
+            ) : (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    ['Brand kit', brandKit, setBrandKit],
+                    ['Site internet', site, setSite],
+                    ['Réseaux sociaux', social, setSocial],
+                    ['Créatifs pub', ads, setAds],
+                  ].map(([label, val, setter]) => (
+                    <div key={label}>
+                      <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                      <select value={val} onChange={e => setter(e.target.value)} className={`input-field text-sm py-2 border ${mktStatusCls(val)}`}>
+                        {MKT_STATUS_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Lien du site (une fois livré)</label>
+                  <input value={siteUrl} onChange={e => setSiteUrl(e.target.value)} placeholder="https://..." className="input-field text-sm" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Notes internes (non visibles par le client)</label>
+                  <textarea value={notesInternes} onChange={e => setNotesInternes(e.target.value)} rows={2} className="input-field text-sm" />
+                </div>
+                <button onClick={handleSave} disabled={saving} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
+                  {saving ? 'Enregistrement…' : saved ? '✓ Enregistré' : 'Enregistrer le suivi'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ClientsSection({ isSuperAdmin }) {
   const [clients, setClients]   = useState([])
   const [loadingClients, setLoadingClients] = useState(true)
@@ -421,11 +582,18 @@ function ClientsSection({ isSuperAdmin }) {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [busyDelete, setBusyDelete] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [briefsByUser, setBriefsByUser] = useState({})
+  const [briefModalTarget, setBriefModalTarget] = useState(null)
 
   const loadClients = () => fetchAllClients().then(data => setClients(data))
+  const loadBriefs = () => fetchAdminMarketingBriefs().then(data => {
+    const map = {}
+    data.forEach(b => { map[b.user_id] = b })
+    setBriefsByUser(map)
+  })
 
   useEffect(() => {
-    loadClients().finally(() => setLoadingClients(false))
+    Promise.all([loadClients(), loadBriefs()]).finally(() => setLoadingClients(false))
   }, [])
 
   const filtered = clients.filter(c => {
@@ -510,6 +678,7 @@ function ClientsSection({ isSuperAdmin }) {
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden md:table-cell">Pack</th>
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Progression</th>
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600">Statut</th>
+                <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Marketing</th>
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden xl:table-cell">Activité</th>
                 <th className="text-right px-5 py-3.5 font-semibold text-gray-600">Actions</th>
               </tr>
@@ -544,6 +713,19 @@ function ClientsSection({ isSuperAdmin }) {
                       {client.statut === 'ORIAS obtenu' ? <CheckCircleIcon className="w-3 h-3" /> : client.statut === 'Annulé' ? <XIcon className="w-3 h-3" /> : <ClockIcon className="w-3 h-3" />}
                       <span className="hidden sm:inline">{client.statut}</span>
                     </span>
+                  </td>
+                  <td className="px-4 py-4 hidden lg:table-cell">
+                    {!client.hasMarketing ? (
+                      <span className="text-xs text-gray-300">—</span>
+                    ) : briefsByUser[client.id] ? (
+                      <button onClick={() => setBriefModalTarget(client)} className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                        ✓ Brief reçu
+                      </button>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">
+                        ⏳ En attente
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-4 hidden xl:table-cell text-xs text-gray-400">{client.activite}</td>
                   <td className="px-5 py-4">
@@ -665,6 +847,14 @@ function ClientsSection({ isSuperAdmin }) {
         />
       )}
 
+      {briefModalTarget && briefsByUser[briefModalTarget.id] && (
+        <MarketingBriefModal
+          brief={briefsByUser[briefModalTarget.id]}
+          onClose={() => setBriefModalTarget(null)}
+          onSaved={loadBriefs}
+        />
+      )}
+
       {/* Client detail modal */}
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setSelected(null)}>
@@ -704,6 +894,21 @@ function ClientsSection({ isSuperAdmin }) {
                 <p className="text-xs text-gray-500 font-medium">Dernière activité</p>
                 <p className="font-semibold text-gray-700 text-sm">{selected.activite}</p>
               </div>
+              {selected.hasMarketing && (
+                <div className="bg-orias-bg rounded-xl p-3 border border-orias-border flex items-center justify-between">
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium">Marketing (site & communication)</p>
+                    <p className={`text-sm font-semibold ${briefsByUser[selected.id] ? 'text-emerald-600' : 'text-amber-600'}`}>
+                      {briefsByUser[selected.id] ? '✓ Brief reçu' : '⏳ En attente du brief client'}
+                    </p>
+                  </div>
+                  {briefsByUser[selected.id] && (
+                    <button onClick={() => { setBriefModalTarget(selected); setSelected(null) }} className="btn-outline-green text-xs px-3 py-1.5">
+                      Voir le brief
+                    </button>
+                  )}
+                </div>
+              )}
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => window.open(`https://wa.me/?text=Bonjour%20${encodeURIComponent(selected.prenom)}%2C%20`, '_blank')}
