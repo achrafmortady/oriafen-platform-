@@ -131,16 +131,9 @@ function YesNoToggle({ value, onChange }) {
 // ── Questionnaire (3a) ──────────────────────────────────────
 
 function BriefForm({ userId, profile, pushToast, onSubmitted }) {
-  const [cabinetName, setCabinetName]         = useState('')
-  const [contactFullName, setContactFullName] = useState(profile?.full_name || '')
-  const [email, setEmail]                     = useState(profile?.email || '')
-  const [whatsapp, setWhatsapp]               = useState('')
-  const [villeFrance, setVilleFrance]         = useState('')
-
   const [stylePrefere, setStylePrefere]       = useState('')
   const [notesStyle, setNotesStyle]           = useState('')
   const [couleurPrincipale, setCouleurPrincipale] = useState('#1a3d2b')
-  const [couleurSecondaire, setCouleurSecondaire] = useState('#c9a84c')
   const [domaineSouhaite, setDomaineSouhaite] = useState('')
 
   const [typesAssurance, setTypesAssurance]   = useState([])
@@ -163,11 +156,6 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
   const [submitting, setSubmitting] = useState(false)
   const logoInputRef = useRef(null)
   const photosInputRef = useRef(null)
-
-  useEffect(() => {
-    if (profile?.full_name) setContactFullName(profile.full_name)
-    if (profile?.email) setEmail(profile.email)
-  }, [profile])
 
   const toggleType = (id) => {
     setTypesAssurance(prev => prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id])
@@ -199,10 +187,10 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
 
   const removePhoto = (url) => setPhotosUrls(prev => prev.filter(p => p.url !== url))
 
-  const canSubmit = cabinetName.trim() && contactFullName.trim() && email.trim() && stylePrefere && !submitting
+  const canSubmit = stylePrefere && !submitting
 
   const handleSubmit = async () => {
-    if (!canSubmit) { pushToast('Merci de compléter les champs obligatoires (*).', 'error'); return }
+    if (!canSubmit) { pushToast('Merci de choisir un style (*).', 'error'); return }
     setSubmitting(true)
 
     const typesFinal = [...typesAssurance]
@@ -210,14 +198,12 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
 
     const payload = {
       pack_id: profile?.pack_id,
-      cabinet_name: cabinetName.trim(),
-      contact_full_name: contactFullName.trim(),
-      email: email.trim(),
-      whatsapp: whatsapp.trim() || null,
-      ville_france: villeFrance.trim() || null,
+      cabinet_name: (profile?.full_name || 'Client Oriafen').trim(),
+      contact_full_name: (profile?.full_name || 'Client Oriafen').trim(),
+      email: (profile?.email || '').trim(),
       style_prefere: stylePrefere,
       couleur_principale: couleurPrincipale,
-      couleur_secondaire: couleurSecondaire,
+      couleur_secondaire: null,
       notes_style: notesStyle.trim() || null,
       domaine_souhaite: domaineSouhaite.trim() || null,
       types_assurance_prioritaires: typesFinal,
@@ -248,16 +234,6 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
 
-      <SectionCard eyebrow="Vos coordonnées" title="Qui contacter pour la production">
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'16px' }}>
-          <TextField label="Nom du cabinet / de la marque" required value={cabinetName} onChange={e => setCabinetName(e.target.value)} placeholder="Ex. Cabinet Martin Assurances" />
-          <TextField label="Nom du contact" required value={contactFullName} onChange={e => setContactFullName(e.target.value)} />
-          <TextField label="Email" required type="email" value={email} onChange={e => setEmail(e.target.value)} />
-          <TextField label="WhatsApp" value={whatsapp} onChange={e => setWhatsapp(e.target.value)} placeholder="+212 6..." />
-          <TextField label="Ville d'exercice (France)" value={villeFrance} onChange={e => setVilleFrance(e.target.value)} />
-        </div>
-      </SectionCard>
-
       <SectionCard eyebrow="Site internet" title="Style et identité visuelle">
         <div style={{ marginBottom:'18px' }}>
           <span style={{ fontSize:'12px', fontWeight:'600', color:'#374151', display:'block', marginBottom:'10px' }}>Style souhaité <span style={{color:'#ef4444'}}>*</span></span>
@@ -280,8 +256,7 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
           placeholder="Sites que vous aimez, ambiance recherchée..." style={{ minHeight:'60px', marginBottom:'18px' }} />
 
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(220px, 1fr))', gap:'16px' }}>
-          <ColorField label="Couleur principale" value={couleurPrincipale} onChange={setCouleurPrincipale} />
-          <ColorField label="Couleur secondaire" value={couleurSecondaire} onChange={setCouleurSecondaire} />
+          <ColorField label="Couleur de votre marque" value={couleurPrincipale} onChange={setCouleurPrincipale} />
           <TextField label="Nom de domaine souhaité (optionnel)" value={domaineSouhaite} onChange={e => setDomaineSouhaite(e.target.value)} placeholder="www.moncabinet.fr" />
         </div>
       </SectionCard>

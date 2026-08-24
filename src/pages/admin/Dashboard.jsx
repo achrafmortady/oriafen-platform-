@@ -482,7 +482,7 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
                 Style : {MKT_STYLE_LABELS[brief.style_prefere] ?? brief.style_prefere}
               </span>
               <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full border" style={{ background: brief.couleur_principale }} />{brief.couleur_principale}</span>
-              <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full border" style={{ background: brief.couleur_secondaire }} />{brief.couleur_secondaire}</span>
+              {brief.couleur_secondaire && <span className="flex items-center gap-1.5"><span className="w-4 h-4 rounded-full border" style={{ background: brief.couleur_secondaire }} />{brief.couleur_secondaire}</span>}
               {brief.domaine_souhaite && <span className="text-gray-500">Domaine souhaité : <strong className="text-gray-700">{brief.domaine_souhaite}</strong></span>}
             </div>
             {brief.notes_style && <p className="text-sm text-gray-500 mt-2 italic">"{brief.notes_style}"</p>}
@@ -536,9 +536,9 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     ['Brand kit', brandKit, setBrandKit],
-                    ['Site internet', site, setSite],
-                    ['Réseaux sociaux', social, setSocial],
-                    ['Créatifs pub', ads, setAds],
+                    ['Site livré', site, setSite],
+                    ['Page Instagram livrée', social, setSocial],
+                    ['Setup Ads terminé', ads, setAds],
                   ].map(([label, val, setter]) => (
                     <div key={label}>
                       <label className="block text-xs text-gray-500 mb-1">{label}</label>
@@ -678,7 +678,7 @@ function ClientsSection({ isSuperAdmin }) {
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden md:table-cell">Pack</th>
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Progression</th>
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600">Statut</th>
-                <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Marketing</th>
+                <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden sm:table-cell">Marketing</th>
                 <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden xl:table-cell">Activité</th>
                 <th className="text-right px-5 py-3.5 font-semibold text-gray-600">Actions</th>
               </tr>
@@ -714,7 +714,7 @@ function ClientsSection({ isSuperAdmin }) {
                       <span className="hidden sm:inline">{client.statut}</span>
                     </span>
                   </td>
-                  <td className="px-4 py-4 hidden lg:table-cell">
+                  <td className="px-4 py-4 hidden sm:table-cell">
                     {!client.hasMarketing ? (
                       <span className="text-xs text-gray-300">—</span>
                     ) : briefsByUser[client.id] ? (
