@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que la dépendance au sens de l'assurance ?",
-    options: ["Une addiction à une substance", "L'incapacité totale ou partielle d'effectuer seul les actes essentiels de la vie quotidienne", "Un état de maladie chronique uniquement", "L'impossibilité de travailler suite à un accident"],
-    correct: 1,
+    options: ["L'incapacité totale ou partielle d'effectuer seul les actes essentiels de la vie quotidienne", "L'impossibilité de travailler suite à un accident", "Un état de maladie chronique uniquement", "Une addiction à une substance"], correct: 0,
     explication: "En assurance, la dépendance désigne l'incapacité d'une personne à accomplir seule les actes de la vie courante (se lever, se laver, s'habiller, manger) en raison d'une déficience physique ou mentale."
   },
   {
     q: "Qu'est-ce que la grille AGGIR ?",
-    options: ["Un contrat d'assurance dépendance standard", "Un outil d'évaluation du degré de dépendance pour classer les personnes en GIR (Groupes Iso-Ressources)", "Un fonds de garantie pour les personnes âgées", "Un label qualité pour les maisons de retraite"],
-    correct: 1,
+    options: ["Un contrat d'assurance dépendance standard", "Un label qualité pour les maisons de retraite", "Un outil d'évaluation du degré de dépendance pour classer les personnes en GIR (Groupes Iso-Ressources)", "Un fonds de garantie pour les personnes âgées"], correct: 2,
     explication: "La grille AGGIR (Autonomie Gérontologie Groupes Iso-Ressources) évalue le degré de perte d'autonomie et classe les personnes de GIR 1 (dépendance totale) à GIR 6 (autonomie totale). Elle conditionne l'APA."
   },
   {
     q: "Qu'est-ce que l'APA (Allocation Personnalisée d'Autonomie) ?",
-    options: ["Une assurance privée obligatoire pour les personnes âgées", "Une aide publique versée par le département pour financer les besoins des personnes dépendantes de 60 ans et plus", "Un placement financier pour anticiper la dépendance", "Un contrat collectif d'entreprise pour les salariés seniors"],
-    correct: 1,
+    options: ["Une assurance privée obligatoire pour les personnes âgées", "Une aide publique versée par le département pour financer les besoins des personnes dépendantes de 60 ans et plus", "Un placement financier pour anticiper la dépendance", "Un contrat collectif d'entreprise pour les salariés seniors"], correct: 1,
     explication: "L'APA est une prestation d'aide sociale versée par le Conseil Départemental aux personnes âgées de 60 ans et plus en perte d'autonomie (GIR 1 à 4). Son montant dépend du degré de dépendance et des revenus."
   },
   {
     q: "Dans un contrat d'assurance dépendance, la garantie 'dépendance totale' couvre :",
-    options: ["Uniquement les GIR 5 et 6", "Les personnes classées GIR 1 et 2 — dépendance sévère nécessitant une aide permanente", "Toutes les personnes de plus de 60 ans", "Uniquement les accidents de la route"],
-    correct: 1,
+    options: ["Toutes les personnes de plus de 60 ans", "Uniquement les accidents de la route", "Uniquement les GIR 5 et 6", "Les personnes classées GIR 1 et 2 — dépendance sévère nécessitant une aide permanente"], correct: 3,
     explication: "La garantie dépendance totale correspond généralement aux GIR 1 et 2, où la personne a besoin d'une aide permanente pour tous les actes de la vie courante. Certains contrats étendent la couverture au GIR 3 (dépendance partielle)."
   },
   {
     q: "Quel est le principal avantage de souscrire une assurance dépendance tôt ?",
-    options: ["Les garanties sont meilleures après 70 ans", "Une prime moins élevée et moins de risque de refus pour problème de santé", "L'assurance est gratuite avant 50 ans", "Les remboursements sont plus rapides"],
-    correct: 1,
+    options: ["L'assurance est gratuite avant 50 ans", "Les garanties sont meilleures après 70 ans", "Les remboursements sont plus rapides", "Une prime moins élevée et moins de risque de refus pour problème de santé"], correct: 3,
     explication: "Plus la souscription est précoce, plus la prime est faible. De plus, les problèmes de santé qui apparaissent avec l'âge peuvent entraîner des exclusions ou un refus d'assurance. Souscrire jeune permet de se prémunir à moindre coût."
   },
 ]

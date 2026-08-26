@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quel est le rôle principal de l'Autorité de Contrôle Prudentiel et de Résolution (ACPR) ?",
-    options: ["Fixer les tarifs des primes d'assurance", "Superviser et contrôler les entreprises d'assurance et de banque", "Gérer les sinistres non réglés", "Établir les contrats types d'assurance"],
-    correct: 1,
+    options: ["Gérer les sinistres non réglés", "Établir les contrats types d'assurance", "Fixer les tarifs des primes d'assurance", "Superviser et contrôler les entreprises d'assurance et de banque"], correct: 3,
     explication: "L'ACPR est l'autorité de supervision française des secteurs de l'assurance et de la banque. Elle veille à la solidité financière des entreprises et à la protection des assurés."
   },
   {
     q: "Que signifie la directive Solvabilité II ?",
-    options: ["Une directive sur les mutuelles de santé uniquement", "Un cadre réglementaire européen sur les exigences de capital des assureurs", "Une loi française sur les contrats d'assurance vie", "Un accord international sur les tarifs d'assurance"],
-    correct: 1,
+    options: ["Un accord international sur les tarifs d'assurance", "Une loi française sur les contrats d'assurance vie", "Un cadre réglementaire européen sur les exigences de capital des assureurs", "Une directive sur les mutuelles de santé uniquement"], correct: 2,
     explication: "Solvabilité II est la directive européenne qui impose aux assureurs des exigences de capital et de gouvernance pour garantir leur solidité financière et protéger les assurés."
   },
   {
     q: "Qu'est-ce que la réassurance ?",
-    options: ["Une assurance souscrite par un particulier pour un montant élevé", "Un contrat par lequel un assureur transfère une partie de ses risques à un autre assureur (réassureur)", "Une assurance obligatoire pour les entreprises", "Un remboursement de prime en cas d'absence de sinistre"],
-    correct: 1,
+    options: ["Un remboursement de prime en cas d'absence de sinistre", "Un contrat par lequel un assureur transfère une partie de ses risques à un autre assureur (réassureur)", "Une assurance souscrite par un particulier pour un montant élevé", "Une assurance obligatoire pour les entreprises"], correct: 1,
     explication: "La réassurance permet à un assureur de céder une partie de ses risques à un réassureur. C'est une assurance de l'assureur qui lui permet d'équilibrer son portefeuille de risques."
   },
   {
     q: "Le Fonds de Garantie des Assurances Obligatoires (FGAO) intervient :",
-    options: ["Pour rembourser les primes en cas de faillite de l'assuré", "Pour indemniser les victimes lorsque le responsable n'est pas assuré ou est insolvable", "Pour financer les formations IAS", "Pour réguler les tarifs des assurances obligatoires"],
-    correct: 1,
+    options: ["Pour réguler les tarifs des assurances obligatoires", "Pour financer les formations IAS", "Pour rembourser les primes en cas de faillite de l'assuré", "Pour indemniser les victimes lorsque le responsable n'est pas assuré ou est insolvable"], correct: 3,
     explication: "Le FGAO garantit l'indemnisation des victimes d'accidents causés par des conducteurs non assurés ou insolvables, et intervient aussi en cas de défaillance d'un assureur."
   },
   {
     q: "Le Code des assurances en France régit principalement :",
-    options: ["Uniquement les assurances vie", "L'ensemble des contrats et entreprises d'assurance soumis au droit français", "Uniquement les assurances obligatoires", "Les mutuelles et institutions de prévoyance uniquement"],
-    correct: 1,
+    options: ["Uniquement les assurances vie", "Uniquement les assurances obligatoires", "L'ensemble des contrats et entreprises d'assurance soumis au droit français", "Les mutuelles et institutions de prévoyance uniquement"], correct: 2,
     explication: "Le Code des assurances est le texte de référence qui encadre l'ensemble des activités d'assurance en France : contrats, entreprises, intermédiaires et obligations réglementaires."
   },
 ]

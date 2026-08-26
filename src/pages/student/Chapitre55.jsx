@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quelles sont les grandes étapes du cycle de vie d'un contrat IARD ?",
-    options: ["Souscription, paiement, résiliation uniquement", "Souscription, gestion courante (modifications, renouvellement), déclaration de sinistre, indemnisation, résiliation", "Vente, signature, archivage", "Prospection, devis, contrat, oubli"],
-    correct: 1,
+    options: ["Prospection, devis, contrat, oubli", "Vente, signature, archivage", "Souscription, gestion courante (modifications, renouvellement), déclaration de sinistre, indemnisation, résiliation", "Souscription, paiement, résiliation uniquement"], correct: 2,
     explication: "Le cycle de vie d'un contrat IARD comprend : la souscription (recueil des besoins, proposition, émission), la gestion courante (avenants, renouvellement, quittancement), la gestion des sinistres (déclaration, expertise, indemnisation) et la résiliation."
   },
   {
     q: "Dans quel délai l'assuré doit-il déclarer un sinistre en assurance IARD ?",
-    options: ["Dans les 24 heures pour tous les sinistres", "Dans les délais prévus au contrat, généralement 5 jours ouvrés (2 jours pour le vol)", "Dans les 30 jours calendaires", "Il n'y a aucun délai légal"],
-    correct: 1,
+    options: ["Dans les 24 heures pour tous les sinistres", "Dans les délais prévus au contrat, généralement 5 jours ouvrés (2 jours pour le vol)", "Il n'y a aucun délai légal", "Dans les 30 jours calendaires"], correct: 1,
     explication: "Le délai légal de déclaration de sinistre est généralement de 5 jours ouvrés à compter de la connaissance du sinistre. Des délais spéciaux s'appliquent : 2 jours ouvrés pour le vol, 10 jours pour les catastrophes naturelles après arrêté interministériel."
   },
   {
     q: "Qu'est-ce qu'un avenant au contrat d'assurance ?",
-    options: ["Un document récapitulatif annuel envoyé à l'assuré", "Un document contractuel qui modifie les conditions d'un contrat en cours (garanties, coordonnées, bien assuré)", "La lettre de résiliation du contrat", "Le premier document signé à la souscription"],
-    correct: 1,
+    options: ["Un document récapitulatif annuel envoyé à l'assuré", "La lettre de résiliation du contrat", "Un document contractuel qui modifie les conditions d'un contrat en cours (garanties, coordonnées, bien assuré)", "Le premier document signé à la souscription"], correct: 2,
     explication: "L'avenant est un document qui modifie le contrat initial en cours de vie. Il peut modifier les garanties, les coordonnées de l'assuré, le bien assuré, la prime. Il doit être signé par les deux parties pour être valable."
   },
   {
     q: "Qu'est-ce que la résiliation à l'échéance annuelle ?",
-    options: ["La possibilité de résilier à tout moment sans préavis", "La faculté pour l'assuré ou l'assureur de mettre fin au contrat à sa date anniversaire, avec un préavis de 2 mois", "La résiliation automatique après 10 ans", "La résiliation imposée par l'ACPR"],
-    correct: 1,
+    options: ["La faculté pour l'assuré ou l'assureur de mettre fin au contrat à sa date anniversaire, avec un préavis de 2 mois", "La résiliation imposée par l'ACPR", "La résiliation automatique après 10 ans", "La possibilité de résilier à tout moment sans préavis"], correct: 0,
     explication: "Chaque partie peut résilier le contrat à l'échéance annuelle en respectant un préavis de 2 mois. La loi Chatel oblige l'assureur à rappeler ce droit à l'assuré. La loi Hamon permet en plus la résiliation à tout moment après 1 an pour certains contrats."
   },
   {
     q: "Qu'est-ce que l'expertise amiable en cas de sinistre ?",
-    options: ["Une procédure judiciaire obligatoire pour chaque sinistre", "Une évaluation contradictoire des dommages entre l'expert de l'assureur et celui de l'assuré pour fixer l'indemnité", "Un questionnaire rempli par l'assuré seul", "Une estimation faite uniquement par l'assureur"],
-    correct: 1,
+    options: ["Un questionnaire rempli par l'assuré seul", "Une procédure judiciaire obligatoire pour chaque sinistre", "Une estimation faite uniquement par l'assureur", "Une évaluation contradictoire des dommages entre l'expert de l'assureur et celui de l'assuré pour fixer l'indemnité"], correct: 3,
     explication: "L'expertise amiable est le processus par lequel l'expert mandaté par l'assureur évalue les dommages pour fixer l'indemnité. Si l'assuré conteste, il peut mandater son propre expert. En cas de désaccord persistant, une tierce expertise (expert-arbitre) peut trancher."
   },
 ]

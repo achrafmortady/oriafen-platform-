@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce qu'un courtier en assurance ?",
-    options: ["Un salarié d'une compagnie d'assurance", "Un intermédiaire indépendant qui représente le client et compare les offres de plusieurs assureurs", "Un agent exclusif d'une seule compagnie", "Un régulateur du marché de l'assurance"],
-    correct: 1,
+    options: ["Un salarié d'une compagnie d'assurance", "Un régulateur du marché de l'assurance", "Un agent exclusif d'une seule compagnie", "Un intermédiaire indépendant qui représente le client et compare les offres de plusieurs assureurs"], correct: 3,
     explication: "Le courtier est un intermédiaire indépendant mandaté par le client. Il représente les intérêts de l'assuré et peut proposer des contrats de plusieurs compagnies d'assurance."
   },
   {
     q: "Quelle est la différence entre un agent général et un courtier ?",
-    options: ["Il n'y a aucune différence", "L'agent général représente une seule compagnie ; le courtier est indépendant et peut travailler avec plusieurs compagnies", "Le courtier représente une seule compagnie ; l'agent est indépendant", "L'agent général est réglementé, le courtier ne l'est pas"],
-    correct: 1,
+    options: ["L'agent général représente une seule compagnie ; le courtier est indépendant et peut travailler avec plusieurs compagnies", "Le courtier représente une seule compagnie ; l'agent est indépendant", "Il n'y a aucune différence", "L'agent général est réglementé, le courtier ne l'est pas"], correct: 0,
     explication: "L'agent général est un mandataire exclusif d'une compagnie d'assurance. Le courtier est indépendant et représente les intérêts de ses clients auprès de plusieurs assureurs."
   },
   {
     q: "L'inscription à l'ORIAS est obligatoire pour :",
-    options: ["Uniquement les courtiers", "Tous les intermédiaires en assurance (courtiers, agents, mandataires)", "Uniquement les compagnies d'assurance", "Uniquement les comparateurs en ligne"],
-    correct: 1,
+    options: ["Uniquement les compagnies d'assurance", "Tous les intermédiaires en assurance (courtiers, agents, mandataires)", "Uniquement les courtiers", "Uniquement les comparateurs en ligne"], correct: 1,
     explication: "Tous les intermédiaires en assurance doivent être immatriculés à l'ORIAS pour exercer légalement : courtiers, agents généraux, mandataires d'assurance et mandataires d'intermédiaires."
   },
   {
     q: "Le devoir de conseil de l'intermédiaire signifie qu'il doit :",
-    options: ["Vendre le contrat le plus rentable pour lui", "Analyser les besoins du client et proposer le contrat le mieux adapté", "Proposer uniquement des contrats d'une seule compagnie", "Fixer librement les tarifs des contrats"],
-    correct: 1,
+    options: ["Vendre le contrat le plus rentable pour lui", "Fixer librement les tarifs des contrats", "Analyser les besoins du client et proposer le contrat le mieux adapté", "Proposer uniquement des contrats d'une seule compagnie"], correct: 2,
     explication: "Le devoir de conseil oblige l'intermédiaire à recueillir les besoins du client, à analyser sa situation et à lui proposer le contrat le mieux adapté, en lui expliquant les garanties et exclusions."
   },
   {
     q: "Un mandataire d'assurance est :",
-    options: ["Un client qui mandate son courtier", "Un intermédiaire qui agit au nom et pour le compte d'une ou plusieurs compagnies d'assurance", "Un salarié de l'ACPR", "Un expert en sinistres"],
-    correct: 1,
+    options: ["Un intermédiaire qui agit au nom et pour le compte d'une ou plusieurs compagnies d'assurance", "Un expert en sinistres", "Un salarié de l'ACPR", "Un client qui mandate son courtier"], correct: 0,
     explication: "Le mandataire agit au nom et pour le compte d'une ou plusieurs compagnies d'assurance. Contrairement au courtier, il représente l'assureur et non l'assuré."
   },
 ]

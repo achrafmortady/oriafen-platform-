@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que la Responsabilité Civile Professionnelle (RC Pro) ?",
-    options: ["Une assurance couvrant les dommages subis par l'entreprise elle-même", "Une assurance couvrant les dommages causés à des tiers dans le cadre de l'activité professionnelle", "Une assurance obligatoire uniquement pour les médecins", "Une garantie couvrant les accidents du travail des salariés"],
-    correct: 1,
+    options: ["Une garantie couvrant les accidents du travail des salariés", "Une assurance couvrant les dommages subis par l'entreprise elle-même", "Une assurance couvrant les dommages causés à des tiers dans le cadre de l'activité professionnelle", "Une assurance obligatoire uniquement pour les médecins"], correct: 2,
     explication: "La RC Pro couvre les conséquences financières des dommages causés à des clients ou tiers dans le cadre de l'exercice de l'activité professionnelle (erreur, omission, négligence). Elle est obligatoire pour de nombreuses professions réglementées."
   },
   {
     q: "Qu'est-ce que l'assurance Multirisque Professionnelle (MRP) ?",
-    options: ["Un contrat couvrant uniquement les locaux professionnels", "Un contrat package regroupant plusieurs garanties : locaux, matériel, RC Pro, perte d'exploitation", "Une assurance réservée aux grandes entreprises", "Un contrat couvrant uniquement la responsabilité civile"],
-    correct: 1,
+    options: ["Une assurance réservée aux grandes entreprises", "Un contrat couvrant uniquement la responsabilité civile", "Un contrat couvrant uniquement les locaux professionnels", "Un contrat package regroupant plusieurs garanties : locaux, matériel, RC Pro, perte d'exploitation"], correct: 3,
     explication: "La MRP est un contrat tout-en-un pour les professionnels qui regroupe la protection des locaux et du matériel (incendie, dégâts des eaux, vol), la RC professionnelle, et souvent la perte d'exploitation. C'est le contrat de base pour les TPE/PME."
   },
   {
     q: "Qu'est-ce que la garantie perte d'exploitation en assurance professionnelle ?",
-    options: ["Une garantie qui couvre les pertes financières dues à une mauvaise gestion", "Une garantie qui compense la perte de chiffre d'affaires suite à un sinistre ayant interrompu l'activité", "Une assurance contre la faillite de l'entreprise", "Une garantie couvrant les impayés clients"],
-    correct: 1,
+    options: ["Une garantie qui compense la perte de chiffre d'affaires suite à un sinistre ayant interrompu l'activité", "Une assurance contre la faillite de l'entreprise", "Une garantie couvrant les impayés clients", "Une garantie qui couvre les pertes financières dues à une mauvaise gestion"], correct: 0,
     explication: "La perte d'exploitation (PE) compense la perte de marge brute et les frais fixes que l'entreprise continue à supporter suite à un sinistre (incendie, dégât des eaux) ayant interrompu ou réduit son activité. Elle permet à l'entreprise de survivre à un sinistre majeur."
   },
   {
     q: "L'assurance Homme Clé couvre :",
-    options: ["Les accidents de travail du dirigeant", "Les conséquences financières pour l'entreprise du décès ou de l'invalidité d'une personne indispensable à son activité", "Le chômage du dirigeant en cas de liquidation", "Les erreurs de gestion du dirigeant"],
-    correct: 1,
+    options: ["Les conséquences financières pour l'entreprise du décès ou de l'invalidité d'une personne indispensable à son activité", "Le chômage du dirigeant en cas de liquidation", "Les erreurs de gestion du dirigeant", "Les accidents de travail du dirigeant"], correct: 0,
     explication: "L'assurance Homme Clé protège l'entreprise contre les conséquences financières (perte de CA, coût de remplacement) liées au décès ou à l'invalidité d'une personne indispensable : dirigeant, associé technique, commercial clé. Le bénéficiaire est l'entreprise."
   },
   {
     q: "Qu'est-ce que la garantie décennale en assurance construction ?",
-    options: ["Une garantie valable 10 mois après la livraison d'un bâtiment", "Une garantie obligatoire couvrant pendant 10 ans les dommages compromettant la solidité de l'ouvrage ou le rendant impropre à sa destination", "Une assurance optionnelle pour les promoteurs immobiliers", "Une garantie couvrant uniquement les défauts esthétiques"],
-    correct: 1,
+    options: ["Une garantie valable 10 mois après la livraison d'un bâtiment", "Une assurance optionnelle pour les promoteurs immobiliers", "Une garantie couvrant uniquement les défauts esthétiques", "Une garantie obligatoire couvrant pendant 10 ans les dommages compromettant la solidité de l'ouvrage ou le rendant impropre à sa destination"], correct: 3,
     explication: "La garantie décennale est obligatoire pour tous les constructeurs (artisans, entreprises du BTP). Elle couvre pendant 10 ans les dommages graves affectant la solidité de l'ouvrage ou le rendant inhabitable. Elle est souscrite avant l'ouverture du chantier."
   },
 ]

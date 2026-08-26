@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce qu'un contrat d'assurance vie en termes juridiques ?",
-    options: ["Un contrat de placement bancaire", "Un contrat par lequel l'assureur s'engage à verser un capital ou une rente en cas de vie ou de décès de l'assuré", "Un contrat uniquement pour couvrir le risque de décès", "Un placement immobilier défiscalisé"],
-    correct: 1,
+    options: ["Un placement immobilier défiscalisé", "Un contrat de placement bancaire", "Un contrat par lequel l'assureur s'engage à verser un capital ou une rente en cas de vie ou de décès de l'assuré", "Un contrat uniquement pour couvrir le risque de décès"], correct: 2,
     explication: "L'assurance vie est un contrat d'assurance de personnes par lequel l'assureur s'engage, en contrepartie du paiement de primes, à verser un capital ou une rente à l'assuré s'il est vivant à terme, ou aux bénéficiaires en cas de décès."
   },
   {
     q: "Qu'est-ce que la clause bénéficiaire dans un contrat d'assurance vie ?",
-    options: ["La clause qui détermine le montant des primes", "La désignation de la ou des personnes qui recevront le capital en cas de décès de l'assuré", "La clause qui fixe le taux de rendement garanti", "La liste des exclusions du contrat"],
-    correct: 1,
+    options: ["La désignation de la ou des personnes qui recevront le capital en cas de décès de l'assuré", "La liste des exclusions du contrat", "La clause qui détermine le montant des primes", "La clause qui fixe le taux de rendement garanti"], correct: 0,
     explication: "La clause bénéficiaire désigne qui recevra le capital en cas de décès de l'assuré. Sa rédaction est cruciale : elle doit être précise pour éviter tout litige. Elle peut être modifiée à tout moment par le souscripteur."
   },
   {
     q: "Qu'est-ce qu'un contrat d'assurance vie en unités de compte (UC) ?",
-    options: ["Un contrat avec capital garanti indexé sur l'inflation", "Un contrat dont les supports sont investis sur les marchés financiers, sans garantie de capital", "Un contrat libellé en devises étrangères", "Un contrat réservé aux professionnels"],
-    correct: 1,
+    options: ["Un contrat libellé en devises étrangères", "Un contrat dont les supports sont investis sur les marchés financiers, sans garantie de capital", "Un contrat avec capital garanti indexé sur l'inflation", "Un contrat réservé aux professionnels"], correct: 1,
     explication: "Les unités de compte sont des supports d'investissement liés aux marchés financiers (actions, obligations, immobilier). La valeur peut fluctuer à la hausse comme à la baisse — le capital n'est pas garanti, contrairement au fonds euros."
   },
   {
     q: "Quelle est la fiscalité de l'assurance vie après 8 ans de détention ?",
-    options: ["Aucun avantage fiscal", "Abattement de 4 600€ (personne seule) ou 9 200€ (couple) sur les gains, puis PFU de 7,5% au-delà", "Exonération totale d'impôt sur tous les gains", "Imposition au taux marginal d'imposition sans abattement"],
-    correct: 1,
+    options: ["Abattement de 4 600€ (personne seule) ou 9 200€ (couple) sur les gains, puis PFU de 7,5% au-delà", "Aucun avantage fiscal", "Imposition au taux marginal d'imposition sans abattement", "Exonération totale d'impôt sur tous les gains"], correct: 0,
     explication: "Après 8 ans, les rachats bénéficient d'un abattement annuel de 4 600€ pour une personne seule (9 200€ pour un couple) sur les gains. Au-delà, le taux préférentiel de 7,5% s'applique (+ prélèvements sociaux de 17,2%)."
   },
   {
     q: "Qu'est-ce que l'analyse des besoins patrimoniaux dans le cadre du conseil en assurance vie ?",
-    options: ["Calculer uniquement le montant des primes à payer", "Identifier les objectifs du client (épargne, transmission, protection) pour recommander le contrat adapté", "Comparer les taux de rendement entre compagnies", "Évaluer uniquement la situation fiscale du client"],
-    correct: 1,
+    options: ["Évaluer uniquement la situation fiscale du client", "Comparer les taux de rendement entre compagnies", "Identifier les objectifs du client (épargne, transmission, protection) pour recommander le contrat adapté", "Calculer uniquement le montant des primes à payer"], correct: 2,
     explication: "L'analyse des besoins patrimoniaux consiste à comprendre la situation personnelle, professionnelle et financière du client, ses objectifs (se constituer un capital, préparer la retraite, transmettre son patrimoine) et son profil de risque pour lui recommander le contrat le plus adapté."
   },
 ]

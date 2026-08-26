@@ -17,32 +17,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quel est le rôle principal de l'assurance ?",
-    options: ["Générer des bénéfices pour les actionnaires", "Transférer et mutualiser les risques entre les assurés", "Financer les dépenses publiques de l'État", "Remplacer la Sécurité Sociale"],
-    correct: 1,
+    options: ["Transférer et mutualiser les risques entre les assurés", "Remplacer la Sécurité Sociale", "Générer des bénéfices pour les actionnaires", "Financer les dépenses publiques de l'État"], correct: 0,
     explication: "L'assurance est un mécanisme de transfert et de mutualisation des risques — chacun cotise pour que tous soient couverts."
   },
   {
     q: "Quel est le rang de la France dans le marché mondial de l'assurance ?",
-    options: ["1ère mondiale", "2ème européenne, 4ème mondiale", "1ère européenne", "3ème mondiale"],
-    correct: 1,
+    options: ["1ère européenne", "3ème mondiale", "2ème européenne, 4ème mondiale", "1ère mondiale"], correct: 2,
     explication: "La France est le 2ème marché européen et le 4ème mondial, avec plus de 300 milliards d'euros de primes collectées par an."
   },
   {
     q: "Qu'est-ce qu'une mutuelle relevant du Code mutualité ?",
-    options: ["Une société anonyme à but lucratif", "Une société sans but lucratif gérée par ses membres", "Un organisme paritaire employeurs/salariés", "Une filiale d'un groupe bancaire"],
-    correct: 1,
+    options: ["Un organisme paritaire employeurs/salariés", "Une société sans but lucratif gérée par ses membres", "Une filiale d'un groupe bancaire", "Une société anonyme à but lucratif"], correct: 1,
     explication: "Les mutuelles (Code mutualité) sont des sociétés sans but lucratif, gérées démocratiquement par leurs adhérents."
   },
   {
     q: "Le principe indemnitaire signifie que :",
-    options: ["L'indemnité peut dépasser le préjudice pour compenser la souffrance", "L'indemnité ne peut pas dépasser le préjudice réel subi", "L'indemnité est fixée forfaitairement à la souscription", "L'indemnité est toujours plafonnée à 10 000€"],
-    correct: 1,
+    options: ["L'indemnité est toujours plafonnée à 10 000€", "L'indemnité peut dépasser le préjudice pour compenser la souffrance", "L'indemnité est fixée forfaitairement à la souscription", "L'indemnité ne peut pas dépasser le préjudice réel subi"], correct: 3,
     explication: "Le principe indemnitaire garantit qu'on ne peut pas s'enrichir avec une assurance — l'indemnité = le préjudice réel, pas plus."
   },
   {
     q: "Le principe forfaitaire s'applique à :",
-    options: ["Les assurances de biens (incendie, vol)", "Les assurances de responsabilité", "Les assurances de personnes (vie, décès)", "Les assurances automobiles"],
-    correct: 2,
+    options: ["Les assurances de personnes (vie, décès)", "Les assurances de responsabilité", "Les assurances automobiles", "Les assurances de biens (incendie, vol)"], correct: 0,
     explication: "Le principe forfaitaire s'applique aux assurances de personnes : la prestation est fixée contractuellement à l'avance, indépendamment du préjudice réel."
   },
 ]

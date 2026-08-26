@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce qu'un régime de prévoyance collectif obligatoire ?",
-    options: ["Un régime souscrit uniquement par les grandes entreprises", "Un régime imposé par accord collectif ou décision unilatérale de l'employeur, auquel tous les salariés (ou une catégorie) doivent adhérer", "Un régime facultatif proposé par l'employeur", "Un régime géré uniquement par la Sécurité Sociale"],
-    correct: 1,
+    options: ["Un régime souscrit uniquement par les grandes entreprises", "Un régime imposé par accord collectif ou décision unilatérale de l'employeur, auquel tous les salariés (ou une catégorie) doivent adhérer", "Un régime géré uniquement par la Sécurité Sociale", "Un régime facultatif proposé par l'employeur"], correct: 1,
     explication: "Un régime collectif obligatoire est mis en place par l'entreprise (via accord collectif, DUE ou référendum) et s'impose à tous les salariés ou à une catégorie objective. L'employeur prend en charge une partie des cotisations."
   },
   {
     q: "Qu'est-ce qu'une Décision Unilatérale de l'Employeur (DUE) en prévoyance ?",
-    options: ["Un accord signé par les syndicats et l'employeur", "Un document par lequel l'employeur met en place seul un régime de prévoyance sans négociation avec les salariés", "Une décision de la Sécurité Sociale", "Un contrat imposé par l'État"],
-    correct: 1,
+    options: ["Un document par lequel l'employeur met en place seul un régime de prévoyance sans négociation avec les salariés", "Une décision de la Sécurité Sociale", "Un accord signé par les syndicats et l'employeur", "Un contrat imposé par l'État"], correct: 0,
     explication: "La DUE est l'un des trois modes de mise en place d'un régime collectif (avec l'accord collectif et le référendum). L'employeur fixe seul les garanties et les cotisations, mais doit respecter les conditions d'exonération sociales et fiscales."
   },
   {
     q: "Qu'est-ce que le caractère collectif et obligatoire d'un régime de prévoyance garantit ?",
-    options: ["Que tous les salariés paient la même prime", "L'exonération de charges sociales sur les cotisations patronales dans les limites légales", "Que le régime est géré par l'État", "Que les garanties sont identiques à celles de la Sécurité Sociale"],
-    correct: 1,
+    options: ["Que le régime est géré par l'État", "Que les garanties sont identiques à celles de la Sécurité Sociale", "L'exonération de charges sociales sur les cotisations patronales dans les limites légales", "Que tous les salariés paient la même prime"], correct: 2,
     explication: "Pour bénéficier des exonérations sociales et fiscales, le régime doit être collectif (couvrir tous les salariés ou une catégorie objective) et obligatoire (tous les salariés concernés doivent y adhérer). Sans ces conditions, les cotisations patronales sont soumises à charges."
   },
   {
     q: "Qu'est-ce que la portabilité de la prévoyance collective ?",
-    options: ["La possibilité de transférer son contrat vers un autre assureur", "Le maintien des garanties prévoyance et santé pour les salariés qui quittent l'entreprise, pendant la période de chômage indemnisé", "La possibilité de changer d'employeur sans perdre ses droits retraite", "Le transfert des droits acquis vers un PER"],
-    correct: 1,
+    options: ["La possibilité de changer d'employeur sans perdre ses droits retraite", "Le maintien des garanties prévoyance et santé pour les salariés qui quittent l'entreprise, pendant la période de chômage indemnisé", "Le transfert des droits acquis vers un PER", "La possibilité de transférer son contrat vers un autre assureur"], correct: 1,
     explication: "La portabilité (loi ANI 2008, généralisée en 2014) permet aux anciens salariés de conserver les garanties prévoyance et santé de leur ancienne entreprise pendant leur période de chômage indemnisé, sans cotisation supplémentaire, dans la limite de 12 mois."
   },
   {
     q: "La catégorie objective en prévoyance collective désigne :",
-    options: ["Une catégorie de risques couverts par le contrat", "Un critère neutre et objectif (cadres/non-cadres, ancienneté, classification) permettant de distinguer les bénéficiaires d'un régime", "La notation financière de l'assureur", "Le niveau de garantie minimum imposé par la loi"],
-    correct: 1,
+    options: ["Un critère neutre et objectif (cadres/non-cadres, ancienneté, classification) permettant de distinguer les bénéficiaires d'un régime", "La notation financière de l'assureur", "Une catégorie de risques couverts par le contrat", "Le niveau de garantie minimum imposé par la loi"], correct: 0,
     explication: "Pour être valide, un régime collectif doit couvrir une catégorie objective de salariés définie selon des critères neutres : appartenance aux cadres/non-cadres (CCN AGIRC), classification conventionnelle, niveau de rémunération, etc. Cela évite toute discrimination."
   },
 ]

@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Que signifie IARD ?",
-    options: ["Incendie, Accidents, Risques Décès", "Incendie, Accidents, Risques Divers", "Invalidité, Accidents, Responsabilité, Décès", "Indemnisation, Assurance, Risques, Dommages"],
-    correct: 1,
+    options: ["Incendie, Accidents, Risques Divers", "Indemnisation, Assurance, Risques, Dommages", "Invalidité, Accidents, Responsabilité, Décès", "Incendie, Accidents, Risques Décès"], correct: 0,
     explication: "IARD signifie Incendie, Accidents, Risques Divers. Cette branche regroupe toutes les assurances de biens (habitation, auto, RC Pro) et de responsabilités, par opposition aux assurances de personnes (vie, santé, prévoyance)."
   },
   {
     q: "Qu'est-ce que la garantie responsabilité civile (RC) ?",
-    options: ["Une garantie qui couvre les dommages subis par l'assuré lui-même", "Une garantie qui couvre les dommages corporels, matériels ou immatériels causés à des tiers par l'assuré", "Une assurance obligatoire uniquement pour les entreprises", "Une garantie qui couvre les dommages causés par des catastrophes naturelles"],
-    correct: 1,
+    options: ["Une assurance obligatoire uniquement pour les entreprises", "Une garantie qui couvre les dommages subis par l'assuré lui-même", "Une garantie qui couvre les dommages causés par des catastrophes naturelles", "Une garantie qui couvre les dommages corporels, matériels ou immatériels causés à des tiers par l'assuré"], correct: 3,
     explication: "La RC couvre les conséquences financières des dommages que l'assuré cause involontairement à des tiers (personnes extérieures). Elle peut être vie privée, professionnelle ou automobile. La RC automobile est obligatoire en France."
   },
   {
     q: "Qu'est-ce que la franchise en assurance IARD ?",
-    options: ["Une période sans couverture au début du contrat", "La partie du sinistre qui reste à la charge de l'assuré après l'intervention de l'assureur", "Le montant maximum que l'assureur peut verser", "Une réduction de prime accordée aux bons conducteurs"],
-    correct: 1,
+    options: ["Le montant maximum que l'assureur peut verser", "Une période sans couverture au début du contrat", "La partie du sinistre qui reste à la charge de l'assuré après l'intervention de l'assureur", "Une réduction de prime accordée aux bons conducteurs"], correct: 2,
     explication: "La franchise est la somme qui reste à la charge de l'assuré en cas de sinistre. Elle peut être absolue (déduite de toute indemnité) ou relative (si le sinistre dépasse un seuil). Elle responsabilise l'assuré et réduit les petits sinistres."
   },
   {
     q: "Qu'est-ce qu'un contrat MRH (Multirisque Habitation) ?",
-    options: ["Un contrat uniquement pour les propriétaires", "Un contrat qui regroupe plusieurs garanties pour l'habitation : incendie, dégâts des eaux, vol, RC, catastrophes naturelles", "Un contrat obligatoire pour tous les locataires", "Un contrat couvrant uniquement les dommages causés aux voisins"],
-    correct: 1,
+    options: ["Un contrat obligatoire pour tous les locataires", "Un contrat qui regroupe plusieurs garanties pour l'habitation : incendie, dégâts des eaux, vol, RC, catastrophes naturelles", "Un contrat couvrant uniquement les dommages causés aux voisins", "Un contrat uniquement pour les propriétaires"], correct: 1,
     explication: "Le contrat MRH est un contrat package qui couvre l'habitation contre les principaux risques (incendie, dégâts des eaux, vol, bris de glace, catastrophes naturelles) et inclut une RC vie privée. Il est quasi obligatoire pour les locataires."
   },
   {
     q: "En assurance auto, qu'est-ce que le bonus-malus ?",
-    options: ["Un système de récompense uniquement pour les bons conducteurs", "Un coefficient multiplicateur de prime qui évolue selon le comportement de l'assuré : bonus si pas de sinistre, malus si sinistre responsable", "Une assurance complémentaire optionnelle", "Une taxe appliquée sur les véhicules polluants"],
-    correct: 1,
+    options: ["Une taxe appliquée sur les véhicules polluants", "Un coefficient multiplicateur de prime qui évolue selon le comportement de l'assuré : bonus si pas de sinistre, malus si sinistre responsable", "Une assurance complémentaire optionnelle", "Un système de récompense uniquement pour les bons conducteurs"], correct: 1,
     explication: "Le coefficient de bonus-malus (CRM) ajuste la prime d'assurance auto. Il part de 1, diminue de 5% par an sans sinistre responsable (minimum 0,50) et augmente de 25% par sinistre responsable (maximum 3,50). Il suit l'assuré en cas de changement d'assureur."
   },
 ]

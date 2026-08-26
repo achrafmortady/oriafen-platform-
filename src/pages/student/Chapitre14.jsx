@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quelles sont les deux grandes catégories d'assurance en France ?",
-    options: ["Assurance vie et assurance décès", "Assurances de dommages et assurances de personnes", "Assurance obligatoire et assurance facultative", "Assurance IARD et assurance prévoyance"],
-    correct: 1,
+    options: ["Assurance vie et assurance décès", "Assurance obligatoire et assurance facultative", "Assurance IARD et assurance prévoyance", "Assurances de dommages et assurances de personnes"], correct: 3,
     explication: "Les assurances se divisent en deux grandes catégories : les assurances de dommages (biens et responsabilités) et les assurances de personnes (vie, santé, prévoyance)."
   },
   {
     q: "L'assurance automobile est-elle obligatoire en France ?",
-    options: ["Non, elle est facultative", "Oui, la garantie responsabilité civile est obligatoire pour tout véhicule terrestre à moteur", "Oui, mais uniquement pour les voitures de plus de 5 ans", "Non, sauf pour les véhicules professionnels"],
-    correct: 1,
+    options: ["Non, elle est facultative", "Oui, la garantie responsabilité civile est obligatoire pour tout véhicule terrestre à moteur", "Non, sauf pour les véhicules professionnels", "Oui, mais uniquement pour les voitures de plus de 5 ans"], correct: 1,
     explication: "En France, toute personne possédant un véhicule terrestre à moteur est tenue de souscrire au minimum une assurance responsabilité civile (RC), aussi appelée assurance au tiers."
   },
   {
     q: "Qu'est-ce que la MRH (Multirisque Habitation) ?",
-    options: ["Une assurance uniquement pour les propriétaires", "Un contrat qui couvre l'habitation contre plusieurs risques : incendie, dégâts des eaux, vol, RC", "Une assurance obligatoire pour tous", "Un contrat qui couvre uniquement les dommages causés aux voisins"],
-    correct: 1,
+    options: ["Un contrat qui couvre uniquement les dommages causés aux voisins", "Une assurance uniquement pour les propriétaires", "Une assurance obligatoire pour tous", "Un contrat qui couvre l'habitation contre plusieurs risques : incendie, dégâts des eaux, vol, RC"], correct: 3,
     explication: "La MRH est un contrat multi-garanties qui couvre le logement contre les principaux risques (incendie, dégâts des eaux, vol, catastrophes naturelles) et inclut une responsabilité civile vie privée."
   },
   {
     q: "Quelle est la différence entre assurance vie et assurance décès ?",
-    options: ["Il n'y a aucune différence", "L'assurance vie verse un capital si l'assuré est vivant à terme ; l'assurance décès verse un capital au décès", "L'assurance vie est obligatoire, pas l'assurance décès", "L'assurance décès ne couvre que les accidents"],
-    correct: 1,
+    options: ["L'assurance vie verse un capital si l'assuré est vivant à terme ; l'assurance décès verse un capital au décès", "L'assurance vie est obligatoire, pas l'assurance décès", "Il n'y a aucune différence", "L'assurance décès ne couvre que les accidents"], correct: 0,
     explication: "L'assurance vie (épargne) verse un capital si l'assuré survit à la date prévue. L'assurance décès (prévoyance) verse un capital aux bénéficiaires en cas de décès de l'assuré."
   },
   {
     q: "La complémentaire santé (mutuelle) couvre :",
-    options: ["L'intégralité des frais médicaux sans limite", "Le remboursement complémentaire des frais de santé après intervention de la Sécurité Sociale", "Uniquement les hospitalisations", "Uniquement les médicaments remboursables"],
-    correct: 1,
+    options: ["L'intégralité des frais médicaux sans limite", "Uniquement les médicaments remboursables", "Le remboursement complémentaire des frais de santé après intervention de la Sécurité Sociale", "Uniquement les hospitalisations"], correct: 2,
     explication: "La complémentaire santé intervient en complément de la Sécurité Sociale pour rembourser tout ou partie du reste à charge : consultations, médicaments, soins dentaires, optique, hospitalisation."
   },
 ]

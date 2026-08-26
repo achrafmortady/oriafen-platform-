@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que la sélection du risque en assurance ?",
-    options: ["Le refus systématique de tous les mauvais risques", "Le processus par lequel l'assureur évalue et classe les risques pour fixer une prime adaptée ou accepter/refuser une garantie", "La sélection des clients les plus rentables uniquement", "L'évaluation des sinistres après qu'ils se produisent"],
-    correct: 1,
+    options: ["Le refus systématique de tous les mauvais risques", "L'évaluation des sinistres après qu'ils se produisent", "La sélection des clients les plus rentables uniquement", "Le processus par lequel l'assureur évalue et classe les risques pour fixer une prime adaptée ou accepter/refuser une garantie"], correct: 3,
     explication: "La sélection du risque (ou souscription) consiste à évaluer le profil de risque de chaque candidat à l'assurance. L'assureur peut accepter le risque au tarif standard, avec surprime, avec exclusion, ou le refuser s'il est trop élevé."
   },
   {
     q: "Qu'est-ce qu'une surprime en assurance de personnes ?",
-    options: ["Une prime remboursée en fin d'année si pas de sinistre", "Une majoration de la prime appliquée lorsque le risque présenté est supérieur au risque standard", "Une prime obligatoire pour les contrats de plus de 10 ans", "Une taxe appliquée par l'État sur certains contrats"],
-    correct: 1,
+    options: ["Une majoration de la prime appliquée lorsque le risque présenté est supérieur au risque standard", "Une prime obligatoire pour les contrats de plus de 10 ans", "Une prime remboursée en fin d'année si pas de sinistre", "Une taxe appliquée par l'État sur certains contrats"], correct: 0,
     explication: "La surprime est une majoration de la cotisation appliquée pour tenir compte d'un risque aggravé (problème de santé, profession dangereuse, pratique sportive à risque). Elle permet à l'assureur d'accepter le risque tout en maintenant l'équilibre technique."
   },
   {
     q: "Qu'est-ce que la loi AERAS ?",
-    options: ["Une loi sur les assurances automobiles à risque", "Un dispositif permettant aux personnes présentant un risque aggravé de santé d'accéder à l'assurance emprunteur", "Une réglementation sur les exclusions de garantie", "Une loi sur la transparence des tarifs d'assurance"],
-    correct: 1,
+    options: ["Une loi sur la transparence des tarifs d'assurance", "Un dispositif permettant aux personnes présentant un risque aggravé de santé d'accéder à l'assurance emprunteur", "Une loi sur les assurances automobiles à risque", "Une réglementation sur les exclusions de garantie"], correct: 1,
     explication: "AERAS (s'Assurer et Emprunter avec un Risque Aggravé de Santé) est une convention permettant aux personnes ayant ou ayant eu un problème de santé grave d'accéder à l'assurance emprunteur, via un mécanisme d'écrêtement des surprimes."
   },
   {
     q: "En actuariat, la loi des grands nombres permet de :",
-    options: ["Calculer exactement chaque sinistre à l'avance", "Prévoir avec précision la fréquence des sinistres sur un grand nombre d'assurés pour fixer des primes équilibrées", "Garantir l'absence de sinistre pour chaque assuré", "Déterminer le nombre maximum de contrats qu'un assureur peut souscrire"],
-    correct: 1,
+    options: ["Déterminer le nombre maximum de contrats qu'un assureur peut souscrire", "Garantir l'absence de sinistre pour chaque assuré", "Calculer exactement chaque sinistre à l'avance", "Prévoir avec précision la fréquence des sinistres sur un grand nombre d'assurés pour fixer des primes équilibrées"], correct: 3,
     explication: "La loi des grands nombres (statistique) établit que sur un grand nombre d'assurés, la fréquence observée des sinistres converge vers la probabilité théorique. C'est le fondement actuariel du calcul des primes."
   },
   {
     q: "Qu'est-ce que l'anti-sélection en assurance ?",
-    options: ["Le refus de couvrir certaines catégories de personnes", "Le phénomène par lequel les personnes à risque élevé sont plus enclines à souscrire une assurance, déséquilibrant le portefeuille", "La sélection des meilleurs risques par l'assureur", "Une technique de marketing pour attirer de nouveaux clients"],
-    correct: 1,
+    options: ["La sélection des meilleurs risques par l'assureur", "Une technique de marketing pour attirer de nouveaux clients", "Le phénomène par lequel les personnes à risque élevé sont plus enclines à souscrire une assurance, déséquilibrant le portefeuille", "Le refus de couvrir certaines catégories de personnes"], correct: 2,
     explication: "L'anti-sélection (ou sélection adverse) se produit quand les personnes les plus exposées au risque cherchent davantage à s'assurer. Sans sélection médicale ou questionnaire de santé, le portefeuille se dégrade. C'est pourquoi les assureurs évaluent les risques à la souscription."
   },
 ]

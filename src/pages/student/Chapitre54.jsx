@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quels sont les éléments principaux qui composent une prime d'assurance ?",
-    options: ["Uniquement le coût des sinistres", "La prime pure (coût technique des sinistres) + les chargements (frais de gestion, commerciaux, bénéfice) + les taxes", "Le salaire des agents d'assurance uniquement", "Le rendement des placements financiers uniquement"],
-    correct: 1,
+    options: ["Le salaire des agents d'assurance uniquement", "La prime pure (coût technique des sinistres) + les chargements (frais de gestion, commerciaux, bénéfice) + les taxes", "Le rendement des placements financiers uniquement", "Uniquement le coût des sinistres"], correct: 1,
     explication: "La prime commerciale = prime pure (probabilité × coût moyen des sinistres) + chargements de gestion (frais fixes et variables) + chargements commerciaux (commissions) + bénéfice de l'assureur + taxes (taxe d'assurance)."
   },
   {
     q: "Qu'est-ce que la prime pure en actuariat ?",
-    options: ["La prime sans les taxes", "Le coût théorique des sinistres calculé statistiquement : fréquence × coût moyen", "La prime minimale fixée par l'État", "La prime payée uniquement en cas de sinistre"],
-    correct: 1,
+    options: ["La prime minimale fixée par l'État", "La prime sans les taxes", "Le coût théorique des sinistres calculé statistiquement : fréquence × coût moyen", "La prime payée uniquement en cas de sinistre"], correct: 2,
     explication: "La prime pure représente le coût technique pur des sinistres : c'est le produit de la fréquence des sinistres (probabilité de survenance) par leur coût moyen. C'est la base du calcul actuariel avant ajout des frais et marges."
   },
   {
     q: "Qu'est-ce que le taux de sinistralité (S/P) ?",
-    options: ["Le nombre de sinistres par assuré", "Le rapport entre les sinistres payés et les primes encaissées — indicateur de rentabilité technique", "Le délai moyen de traitement des sinistres", "Le pourcentage de sinistres refusés par l'assureur"],
-    correct: 1,
+    options: ["Le rapport entre les sinistres payés et les primes encaissées — indicateur de rentabilité technique", "Le pourcentage de sinistres refusés par l'assureur", "Le délai moyen de traitement des sinistres", "Le nombre de sinistres par assuré"], correct: 0,
     explication: "Le taux S/P (Sinistres sur Primes) mesure la part des primes consacrée au paiement des sinistres. Un S/P de 70% signifie que 70€ sont versés en sinistres pour 100€ de primes. C'est l'indicateur clé de la rentabilité technique d'un portefeuille."
   },
   {
     q: "Qu'est-ce qu'une exclusion de garantie ?",
-    options: ["Une garantie optionnelle payante", "Un cas ou une situation expressément exclu(e) du champ de la couverture d'assurance", "Un sinistre dont le montant dépasse le plafond", "Une clause qui réduit la prime en échange d'une limitation des garanties"],
-    correct: 1,
+    options: ["Une garantie optionnelle payante", "Un cas ou une situation expressément exclu(e) du champ de la couverture d'assurance", "Un sinistre dont le montant dépasse le plafond", "Une clause qui réduit la prime en échange d'une limitation des garanties"], correct: 1,
     explication: "Les exclusions délimitent le périmètre exact de la garantie. Elles peuvent être légales (imposées par la loi : faute intentionnelle, guerre) ou conventionnelles (définies contractuellement). Elles doivent être rédigées en caractères apparents et compréhensibles."
   },
   {
     q: "Qu'est-ce que la coassurance ?",
-    options: ["Quand un assuré souscrit plusieurs contrats pour le même risque", "Quand plusieurs assureurs se partagent la couverture d'un même risque selon des quotes-parts définies à l'avance", "Une assurance souscrite en couple", "Un contrat d'assurance collectif pour une association"],
-    correct: 1,
+    options: ["Quand un assuré souscrit plusieurs contrats pour le même risque", "Un contrat d'assurance collectif pour une association", "Une assurance souscrite en couple", "Quand plusieurs assureurs se partagent la couverture d'un même risque selon des quotes-parts définies à l'avance"], correct: 3,
     explication: "La coassurance permet à plusieurs assureurs de partager un risque important selon des proportions fixes (apériteur + co-assureurs). Chaque assureur ne couvre que sa quote-part et n'est responsable que de celle-ci, contrairement à la réassurance où l'assureur reste l'interlocuteur unique."
   },
 ]

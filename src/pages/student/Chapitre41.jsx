@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce qu'un contrat d'assurance de groupe ?",
-    options: ["Un contrat signé par plusieurs personnes à titre individuel", "Un contrat souscrit par une personne morale (employeur, association) au bénéfice d'un ensemble de personnes liées à elle", "Un contrat réservé aux grandes entreprises de plus de 500 salariés", "Un contrat collectif géré par la Sécurité Sociale"],
-    correct: 1,
+    options: ["Un contrat réservé aux grandes entreprises de plus de 500 salariés", "Un contrat souscrit par une personne morale (employeur, association) au bénéfice d'un ensemble de personnes liées à elle", "Un contrat collectif géré par la Sécurité Sociale", "Un contrat signé par plusieurs personnes à titre individuel"], correct: 1,
     explication: "L'assurance de groupe est souscrite par un souscripteur (entreprise, association) pour le compte d'un groupe de personnes (salariés, membres). Elle couvre des risques liés à la personne : décès, invalidité, incapacité, maladie."
   },
   {
     q: "Qu'est-ce que la prévoyance collective d'entreprise couvre principalement ?",
-    options: ["Uniquement le décès des salariés", "Le décès, l'invalidité, l'incapacité de travail et éventuellement la dépendance des salariés", "Uniquement les accidents du travail", "Les dommages causés aux équipements de l'entreprise"],
-    correct: 1,
+    options: ["Uniquement les accidents du travail", "Uniquement le décès des salariés", "Le décès, l'invalidité, l'incapacité de travail et éventuellement la dépendance des salariés", "Les dommages causés aux équipements de l'entreprise"], correct: 2,
     explication: "La prévoyance collective couvre les risques lourds liés à la personne du salarié : décès (capital versé aux ayants droit), invalidité permanente, incapacité temporaire de travail (maintien de salaire) et parfois la dépendance."
   },
   {
     q: "Depuis la loi ANI 2013, quelle obligation s'impose aux entreprises concernant la complémentaire santé ?",
-    options: ["Proposer une complémentaire santé uniquement aux cadres", "Couvrir 100% des frais médicaux de leurs salariés", "Proposer une complémentaire santé collective à tous les salariés avec au moins 50% de cotisation prise en charge", "Souscrire une assurance décès pour chaque salarié"],
-    correct: 2,
+    options: ["Souscrire une assurance décès pour chaque salarié", "Couvrir 100% des frais médicaux de leurs salariés", "Proposer une complémentaire santé uniquement aux cadres", "Proposer une complémentaire santé collective à tous les salariés avec au moins 50% de cotisation prise en charge"], correct: 3,
     explication: "Depuis le 1er janvier 2016 (loi ANI), toutes les entreprises privées doivent proposer une complémentaire santé collective à leurs salariés. L'employeur doit prendre en charge au minimum 50% de la cotisation."
   },
   {
     q: "Qu'est-ce que le maintien de salaire en prévoyance collective ?",
-    options: ["L'obligation pour l'employeur de payer le salaire à vie en cas de maladie", "La garantie qui complète les indemnités journalières de la Sécurité Sociale pour maintenir un revenu proche du salaire net en cas d'arrêt de travail", "Un dispositif uniquement pour les accidents du travail", "Une prime versée aux salariés les plus anciens"],
-    correct: 1,
+    options: ["Un dispositif uniquement pour les accidents du travail", "Une prime versée aux salariés les plus anciens", "La garantie qui complète les indemnités journalières de la Sécurité Sociale pour maintenir un revenu proche du salaire net en cas d'arrêt de travail", "L'obligation pour l'employeur de payer le salaire à vie en cas de maladie"], correct: 2,
     explication: "En cas d'arrêt maladie, la Sécurité Sociale verse des indemnités journalières limitées. La prévoyance collective complète ces IJ pour maintenir un revenu proche du salaire net, selon les garanties du contrat."
   },
   {
     q: "Quel est l'avantage fiscal principal des contrats de prévoyance collective pour l'employeur ?",
-    options: ["Aucun avantage fiscal", "Les cotisations patronales sont déductibles du bénéfice imposable et exonérées de charges sociales dans certaines limites", "Les cotisations sont remboursées par l'État à 100%", "L'entreprise est exonérée de TVA sur toutes ses prestations"],
-    correct: 1,
+    options: ["Les cotisations sont remboursées par l'État à 100%", "Aucun avantage fiscal", "L'entreprise est exonérée de TVA sur toutes ses prestations", "Les cotisations patronales sont déductibles du bénéfice imposable et exonérées de charges sociales dans certaines limites"], correct: 3,
     explication: "Les cotisations patronales versées pour la prévoyance et la santé collective sont déductibles du bénéfice imposable. Elles bénéficient également d'une exonération de charges sociales dans la limite de plafonds fixés par la loi."
   },
 ]

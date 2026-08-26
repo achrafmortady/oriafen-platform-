@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que le patrimoine au sens financier ?",
-    options: ["Uniquement les biens immobiliers d'une personne", "L'ensemble des actifs (biens, placements, droits) diminué des passifs (dettes) d'une personne", "Les biens hérités uniquement", "Le capital disponible sur les comptes bancaires"],
-    correct: 1,
+    options: ["Le capital disponible sur les comptes bancaires", "Les biens hérités uniquement", "Uniquement les biens immobiliers d'une personne", "L'ensemble des actifs (biens, placements, droits) diminué des passifs (dettes) d'une personne"], correct: 3,
     explication: "Le patrimoine est la différence entre l'actif (ce qu'on possède : immobilier, placements, épargne, véhicules) et le passif (ce qu'on doit : crédits, dettes). L'objectif de l'ingénierie patrimoniale est de l'optimiser et le transmettre."
   },
   {
     q: "Qu'est-ce que la retraite par répartition en France ?",
-    options: ["Un système où chacun épargne pour sa propre retraite", "Un système où les cotisations des actifs financent directement les pensions des retraités actuels", "Un fonds de pension privé géré par les entreprises", "Un placement en bourse dédié à la retraite"],
-    correct: 1,
+    options: ["Un placement en bourse dédié à la retraite", "Un fonds de pension privé géré par les entreprises", "Un système où chacun épargne pour sa propre retraite", "Un système où les cotisations des actifs financent directement les pensions des retraités actuels"], correct: 3,
     explication: "En France, le système de retraite de base est par répartition : les cotisations des actifs d'aujourd'hui paient les retraites d'aujourd'hui. Ce système est confronté au vieillissement de la population."
   },
   {
     q: "Qu'est-ce que le PER (Plan d'Épargne Retraite) ?",
-    options: ["Un compte courant dédié aux seniors", "Un produit d'épargne retraite permettant de se constituer un capital avec avantage fiscal à l'entrée", "Une pension versée par l'État dès 60 ans", "Un contrat d'assurance décès pour les retraités"],
-    correct: 1,
+    options: ["Une pension versée par l'État dès 60 ans", "Un compte courant dédié aux seniors", "Un produit d'épargne retraite permettant de se constituer un capital avec avantage fiscal à l'entrée", "Un contrat d'assurance décès pour les retraités"], correct: 2,
     explication: "Le PER (créé par la loi PACTE 2019) est un produit d'épargne permettant de se constituer une retraite complémentaire. Les versements sont déductibles du revenu imposable. La sortie se fait en capital ou en rente à la retraite."
   },
   {
     q: "Quelle est la différence entre une rente viagère et un capital ?",
-    options: ["Il n'y a aucune différence", "La rente est versée régulièrement jusqu'au décès ; le capital est versé en une seule fois", "Le capital est toujours plus avantageux fiscalement", "La rente n'est versée que pendant 10 ans"],
-    correct: 1,
+    options: ["La rente est versée régulièrement jusqu'au décès ; le capital est versé en une seule fois", "Le capital est toujours plus avantageux fiscalement", "Il n'y a aucune différence", "La rente n'est versée que pendant 10 ans"], correct: 0,
     explication: "La rente viagère garantit un revenu régulier jusqu'au décès de l'assuré, quelle que soit sa longévité. Le capital est un versement unique. Le choix dépend de l'espérance de vie, de la situation familiale et des besoins."
   },
   {
     q: "Dans l'analyse patrimoniale, le bilan patrimonial sert à :",
-    options: ["Calculer uniquement les impôts à payer", "Établir une photographie complète de la situation financière, familiale et fiscale du client pour le conseiller", "Comparer les offres d'assurance vie entre elles", "Déterminer le montant de la retraite de base"],
-    correct: 1,
+    options: ["Comparer les offres d'assurance vie entre elles", "Établir une photographie complète de la situation financière, familiale et fiscale du client pour le conseiller", "Déterminer le montant de la retraite de base", "Calculer uniquement les impôts à payer"], correct: 1,
     explication: "Le bilan patrimonial est un outil d'audit qui recense tous les actifs, passifs, revenus, charges, situation familiale et fiscale du client. Il permet d'identifier les points forts et faibles et de construire une stratégie patrimoniale personnalisée."
   },
 ]

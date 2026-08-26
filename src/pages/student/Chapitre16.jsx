@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que le devoir de conseil en assurance ?",
-    options: ["Vendre le contrat le plus cher", "Obligation de recueillir les besoins du client et de lui proposer le contrat le mieux adapté", "Informer uniquement sur les garanties sans mentionner les exclusions", "Proposer systématiquement le même contrat à tous les clients"],
-    correct: 1,
+    options: ["Proposer systématiquement le même contrat à tous les clients", "Obligation de recueillir les besoins du client et de lui proposer le contrat le mieux adapté", "Vendre le contrat le plus cher", "Informer uniquement sur les garanties sans mentionner les exclusions"], correct: 1,
     explication: "Le devoir de conseil oblige l'intermédiaire à analyser la situation et les besoins du client, puis à lui recommander le contrat le plus adapté en lui expliquant les garanties, exclusions et conditions."
   },
   {
     q: "Qu'est-ce que la LCB-FT en assurance ?",
-    options: ["La loi sur les contrats bancaires et financiers", "La lutte contre le blanchiment de capitaux et le financement du terrorisme", "La liste des courtiers en bonne et favorable trajectoire", "Le label de conformité bancaire et fiscale des transactions"],
-    correct: 1,
+    options: ["La liste des courtiers en bonne et favorable trajectoire", "Le label de conformité bancaire et fiscale des transactions", "La lutte contre le blanchiment de capitaux et le financement du terrorisme", "La loi sur les contrats bancaires et financiers"], correct: 2,
     explication: "La LCB-FT (Lutte Contre le Blanchiment de capitaux et le Financement du Terrorisme) impose aux professionnels de l'assurance de vérifier l'identité des clients et de déclarer les opérations suspectes à Tracfin."
   },
   {
     q: "Le RGPD en assurance impose de :",
-    options: ["Partager librement les données clients entre assureurs", "Protéger les données personnelles des clients et obtenir leur consentement", "Conserver les données des clients pendant 50 ans minimum", "Ne jamais demander de documents personnels aux clients"],
-    correct: 1,
+    options: ["Conserver les données des clients pendant 50 ans minimum", "Partager librement les données clients entre assureurs", "Ne jamais demander de documents personnels aux clients", "Protéger les données personnelles des clients et obtenir leur consentement"], correct: 3,
     explication: "Le RGPD (Règlement Général sur la Protection des Données) impose aux assureurs de collecter uniquement les données nécessaires, d'obtenir le consentement du client et de garantir la sécurité des données."
   },
   {
     q: "Que doit contenir une fiche de recueil des besoins ?",
-    options: ["Uniquement le montant de la prime", "La situation du client, ses besoins, ses exigences et la recommandation faite", "Uniquement les garanties du contrat proposé", "Les coordonnées bancaires du client"],
-    correct: 1,
+    options: ["Uniquement le montant de la prime", "Uniquement les garanties du contrat proposé", "Les coordonnées bancaires du client", "La situation du client, ses besoins, ses exigences et la recommandation faite"], correct: 3,
     explication: "La fiche de recueil des besoins doit documenter la situation personnelle et professionnelle du client, ses besoins identifiés, ses exigences, et la recommandation de l'intermédiaire avec la justification du choix."
   },
   {
     q: "Qu'est-ce qu'une réclamation client en assurance ?",
-    options: ["Une demande d'information sur un contrat", "Une expression de mécontentement adressée à l'assureur ou à l'intermédiaire", "Une demande de remboursement de prime", "Un sinistre déclaré par le client"],
-    correct: 1,
+    options: ["Une expression de mécontentement adressée à l'assureur ou à l'intermédiaire", "Un sinistre déclaré par le client", "Une demande de remboursement de prime", "Une demande d'information sur un contrat"], correct: 0,
     explication: "Une réclamation est toute expression de mécontentement d'un client. Les assureurs et intermédiaires ont l'obligation de traiter les réclamations dans des délais précis et de mettre en place une procédure adaptée."
   },
 ]

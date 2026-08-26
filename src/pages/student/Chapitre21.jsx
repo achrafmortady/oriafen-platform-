@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que l'assurance emprunteur ?",
-    options: ["Une assurance pour les banquiers", "Une assurance qui garantit le remboursement d'un crédit en cas de décès, invalidité ou incapacité de l'emprunteur", "Une assurance obligatoire pour tous les prêts", "Une assurance contre le surendettement"],
-    correct: 1,
+    options: ["Une assurance pour les banquiers", "Une assurance obligatoire pour tous les prêts", "Une assurance contre le surendettement", "Une assurance qui garantit le remboursement d'un crédit en cas de décès, invalidité ou incapacité de l'emprunteur"], correct: 3,
     explication: "L'assurance emprunteur garantit le remboursement du crédit immobilier ou à la consommation en cas de décès, perte totale et irréversible d'autonomie (PTIA), invalidité ou incapacité de travail de l'emprunteur."
   },
   {
     q: "Que permet la loi Lemoine (2022) en assurance emprunteur ?",
-    options: ["D'annuler son crédit immobilier à tout moment", "De changer d'assurance emprunteur à tout moment sans frais, dès la 1ère année", "De ne plus avoir besoin d'assurance emprunteur", "De réduire le taux d'intérêt de son prêt"],
-    correct: 1,
+    options: ["D'annuler son crédit immobilier à tout moment", "De changer d'assurance emprunteur à tout moment sans frais, dès la 1ère année", "De ne plus avoir besoin d'assurance emprunteur", "De réduire le taux d'intérêt de son prêt"], correct: 1,
     explication: "La loi Lemoine (2022) permet à tout emprunteur de changer d'assurance emprunteur à tout moment, sans attendre la date anniversaire et sans frais. Elle a aussi supprimé le questionnaire de santé pour les prêts < 200 000€ remboursés avant 60 ans."
   },
   {
     q: "Qu'est-ce que la garantie PTIA ?",
-    options: ["Protection Totale contre les Incidents d'Assurance", "Perte Totale et Irréversible d'Autonomie — l'emprunteur ne peut plus effectuer les actes de la vie courante", "Prêt à Taux Inférieur à l'Assurance", "Protection contre les Troubles de l'Incapacité à l'Activité"],
-    correct: 1,
+    options: ["Prêt à Taux Inférieur à l'Assurance", "Protection Totale contre les Incidents d'Assurance", "Perte Totale et Irréversible d'Autonomie — l'emprunteur ne peut plus effectuer les actes de la vie courante", "Protection contre les Troubles de l'Incapacité à l'Activité"], correct: 2,
     explication: "La garantie PTIA (Perte Totale et Irréversible d'Autonomie) couvre l'emprunteur qui se retrouve dans l'impossibilité absolue et définitive de pratiquer toute activité et a besoin d'assistance pour les actes de la vie courante."
   },
   {
     q: "La quotité en assurance emprunteur désigne :",
-    options: ["Le montant total de la prime annuelle", "Le pourcentage du capital emprunté couvert par l'assurance pour chaque co-emprunteur", "La durée de la couverture de l'assurance", "Le taux d'intérêt du crédit immobilier"],
-    correct: 1,
+    options: ["Le taux d'intérêt du crédit immobilier", "Le montant total de la prime annuelle", "La durée de la couverture de l'assurance", "Le pourcentage du capital emprunté couvert par l'assurance pour chaque co-emprunteur"], correct: 3,
     explication: "La quotité est le pourcentage du capital emprunté couvert par l'assurance pour chaque emprunteur. Pour deux co-emprunteurs, les quotités doivent totaliser 100% minimum. Exemple : 50/50, 70/30, 100/100."
   },
   {
     q: "Le taux d'assurance emprunteur est calculé sur :",
-    options: ["Le revenu mensuel de l'emprunteur", "Le capital initial ou le capital restant dû selon le contrat", "La valeur du bien immobilier uniquement", "Le nombre d'années de remboursement restantes"],
-    correct: 1,
+    options: ["Le capital initial ou le capital restant dû selon le contrat", "Le revenu mensuel de l'emprunteur", "La valeur du bien immobilier uniquement", "Le nombre d'années de remboursement restantes"], correct: 0,
     explication: "Le taux peut être calculé sur le capital initial (cotisation fixe) ou sur le capital restant dû (cotisation dégressive). La deuxième option est souvent plus avantageuse car les cotisations diminuent avec le remboursement du prêt."
   },
 ]

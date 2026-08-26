@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quelle est la différence entre le fonds euros et les unités de compte en assurance vie ?",
-    options: ["Il n'y a aucune différence", "Le fonds euros garantit le capital avec un rendement faible ; les UC sont investies sur les marchés sans garantie de capital mais avec un potentiel de rendement plus élevé", "Les UC garantissent un rendement fixe supérieur au fonds euros", "Le fonds euros est réservé aux contrats de moins de 5 ans"],
-    correct: 1,
+    options: ["Le fonds euros garantit le capital avec un rendement faible ; les UC sont investies sur les marchés sans garantie de capital mais avec un potentiel de rendement plus élevé", "Le fonds euros est réservé aux contrats de moins de 5 ans", "Il n'y a aucune différence", "Les UC garantissent un rendement fixe supérieur au fonds euros"], correct: 0,
     explication: "Le fonds euros offre une garantie du capital et un rendement annuel (effet cliquet). Les unités de compte sont des supports liés aux marchés financiers : le capital n'est pas garanti mais le potentiel de gain est plus élevé. Le contrat multisupport combine les deux."
   },
   {
     q: "Qu'est-ce que la loi Madelin en assurance vie ?",
-    options: ["Une loi sur la portabilité de l'assurance vie", "Un dispositif permettant aux travailleurs non salariés (TNS) de déduire leurs cotisations de retraite et prévoyance de leur revenu imposable", "Une loi sur la transmission du patrimoine", "Un contrat d'assurance vie collectif pour les PME"],
-    correct: 1,
+    options: ["Une loi sur la portabilité de l'assurance vie", "Une loi sur la transmission du patrimoine", "Un contrat d'assurance vie collectif pour les PME", "Un dispositif permettant aux travailleurs non salariés (TNS) de déduire leurs cotisations de retraite et prévoyance de leur revenu imposable"], correct: 3,
     explication: "La loi Madelin permet aux travailleurs non salariés (artisans, commerçants, professions libérales) de déduire de leur revenu imposable les cotisations versées sur des contrats de retraite, prévoyance et complémentaire santé."
   },
   {
     q: "Qu'est-ce que le droit de rachat en assurance vie ?",
-    options: ["Le droit de l'assureur de racheter le contrat", "La faculté pour le souscripteur de récupérer tout ou partie de l'épargne accumulée avant le terme du contrat", "Le droit de changer de bénéficiaire", "Le droit de suspendre les versements"],
-    correct: 1,
+    options: ["Le droit de suspendre les versements", "Le droit de changer de bénéficiaire", "La faculté pour le souscripteur de récupérer tout ou partie de l'épargne accumulée avant le terme du contrat", "Le droit de l'assureur de racheter le contrat"], correct: 2,
     explication: "Le rachat est le retrait total ou partiel de l'épargne sur un contrat d'assurance vie. Il est possible à tout moment (sauf exception). La fiscalité dépend de la durée du contrat — après 8 ans, des abattements s'appliquent."
   },
   {
     q: "Qu'est-ce que la contre-assurance décès en assurance vie ?",
-    options: ["Une assurance qui couvre l'assureur en cas de faillite", "Une garantie qui prévoit le versement d'un capital aux bénéficiaires si l'assuré décède avant le terme du contrat", "Un contrat qui rembourse les primes versées en cas de décès", "Une assurance complémentaire obligatoire"],
-    correct: 1,
+    options: ["Une assurance qui couvre l'assureur en cas de faillite", "Une garantie qui prévoit le versement d'un capital aux bénéficiaires si l'assuré décède avant le terme du contrat", "Un contrat qui rembourse les primes versées en cas de décès", "Une assurance complémentaire obligatoire"], correct: 1,
     explication: "La contre-assurance décès garantit qu'en cas de décès de l'assuré avant le terme, les bénéficiaires désignés recevront au minimum les primes versées (ou un capital défini). Elle protège les proches de l'assuré."
   },
   {
     q: "Quelle est la fiscalité des capitaux transmis en cas de décès dans une assurance vie souscrite avant 70 ans ?",
-    options: ["Soumis aux droits de succession classiques", "Exonérés jusqu'à 152 500€ par bénéficiaire, puis taxation à 20% jusqu'à 700 000€ et 31,25% au-delà", "Totalement exonérés quel que soit le montant", "Taxés à 30% dès le premier euro"],
-    correct: 1,
+    options: ["Exonérés jusqu'à 152 500€ par bénéficiaire, puis taxation à 20% jusqu'à 700 000€ et 31,25% au-delà", "Taxés à 30% dès le premier euro", "Totalement exonérés quel que soit le montant", "Soumis aux droits de succession classiques"], correct: 0,
     explication: "Pour les versements effectués avant 70 ans, chaque bénéficiaire bénéficie d'un abattement de 152 500€. Au-delà, le prélèvement est de 20% jusqu'à 700 000€ et 31,25% au-delà. C'est un avantage successoral majeur de l'assurance vie."
   },
 ]

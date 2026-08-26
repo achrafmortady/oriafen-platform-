@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Quelles sont les deux parties principales d'un contrat d'assurance ?",
-    options: ["L'assuré et le bénéficiaire", "Le souscripteur et l'assureur", "Le courtier et la compagnie", "L'ACPR et l'assureur"],
-    correct: 1,
+    options: ["Le souscripteur et l'assureur", "Le courtier et la compagnie", "L'assuré et le bénéficiaire", "L'ACPR et l'assureur"], correct: 0,
     explication: "Un contrat d'assurance est conclu entre le souscripteur (celui qui signe et paye la prime) et l'assureur (celui qui couvre le risque)."
   },
   {
     q: "Qu'est-ce que la prime d'assurance ?",
-    options: ["Le montant versé par l'assureur en cas de sinistre", "La cotisation payée par l'assuré en échange de la garantie de couverture", "Les frais de gestion du contrat", "La franchise payée lors d'un sinistre"],
-    correct: 1,
+    options: ["Les frais de gestion du contrat", "La cotisation payée par l'assuré en échange de la garantie de couverture", "Le montant versé par l'assureur en cas de sinistre", "La franchise payée lors d'un sinistre"], correct: 1,
     explication: "La prime est la contrepartie financière versée par le souscripteur à l'assureur. En échange, l'assureur s'engage à couvrir les risques définis dans le contrat."
   },
   {
     q: "Qu'est-ce que la déclaration du risque à la souscription ?",
-    options: ["Un document signé après un sinistre", "L'obligation pour le souscripteur de déclarer exactement sa situation et les risques à couvrir", "Un formulaire optionnel envoyé par l'assureur", "La liste des exclusions du contrat"],
-    correct: 1,
+    options: ["L'obligation pour le souscripteur de déclarer exactement sa situation et les risques à couvrir", "Un document signé après un sinistre", "Un formulaire optionnel envoyé par l'assureur", "La liste des exclusions du contrat"], correct: 0,
     explication: "Lors de la souscription, l'assuré doit déclarer tous les éléments permettant à l'assureur d'évaluer le risque. Une fausse déclaration peut entraîner la nullité du contrat."
   },
   {
     q: "Qu'est-ce qu'une exclusion de garantie ?",
-    options: ["Un risque couvert à prix réduit", "Un événement ou situation expressément exclu de la couverture du contrat", "Une garantie facultative ajoutée au contrat", "Le délai avant que la garantie ne prenne effet"],
-    correct: 1,
+    options: ["Une garantie facultative ajoutée au contrat", "Le délai avant que la garantie ne prenne effet", "Un événement ou situation expressément exclu de la couverture du contrat", "Un risque couvert à prix réduit"], correct: 2,
     explication: "Les exclusions sont les cas où l'assureur ne s'engage pas à indemniser. Elles doivent être clairement mentionnées dans le contrat."
   },
   {
     q: "Qu'est-ce que le délai de carence dans un contrat d'assurance ?",
-    options: ["Le délai maximum pour déclarer un sinistre", "La période suivant la souscription pendant laquelle certaines garanties ne s'appliquent pas encore", "Le délai de remboursement après un sinistre", "La durée minimale du contrat"],
-    correct: 1,
+    options: ["Le délai maximum pour déclarer un sinistre", "La période suivant la souscription pendant laquelle certaines garanties ne s'appliquent pas encore", "La durée minimale du contrat", "Le délai de remboursement après un sinistre"], correct: 1,
     explication: "Le délai de carence est une période après la souscription où certaines garanties sont suspendues. Il sert à éviter les souscriptions opportunistes."
   },
 ]

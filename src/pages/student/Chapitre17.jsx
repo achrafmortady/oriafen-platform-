@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Que signifie LCB-FT ?",
-    options: ["Loi de Contrôle Bancaire et Financier des Transactions", "Lutte Contre le Blanchiment de capitaux et le Financement du Terrorisme", "Liste des Courtiers en Bonne et Favorable Trajectoire", "Loi de Conformité Bancaire et Fiscale des Transactions"],
-    correct: 1,
+    options: ["Loi de Contrôle Bancaire et Financier des Transactions", "Lutte Contre le Blanchiment de capitaux et le Financement du Terrorisme", "Liste des Courtiers en Bonne et Favorable Trajectoire", "Loi de Conformité Bancaire et Fiscale des Transactions"], correct: 1,
     explication: "LCB-FT signifie Lutte Contre le Blanchiment de capitaux et le Financement du Terrorisme. C'est un dispositif légal qui oblige les professionnels financiers et de l'assurance à détecter et signaler les opérations suspectes."
   },
   {
     q: "Qu'est-ce que Tracfin ?",
-    options: ["Un logiciel de gestion des contrats d'assurance", "La cellule de renseignement financier française qui reçoit les déclarations de soupçon", "Un registre des intermédiaires en assurance", "Une directive européenne sur la conformité"],
-    correct: 1,
+    options: ["Un registre des intermédiaires en assurance", "Un logiciel de gestion des contrats d'assurance", "La cellule de renseignement financier française qui reçoit les déclarations de soupçon", "Une directive européenne sur la conformité"], correct: 2,
     explication: "Tracfin (Traitement du renseignement et action contre les circuits financiers clandestins) est la cellule française de renseignement financier. Les professionnels de l'assurance doivent lui déclarer les opérations suspectes."
   },
   {
     q: "La déclaration de soupçon est obligatoire quand :",
-    options: ["Un client demande un remboursement", "Un professionnel suspecte qu'une opération est liée au blanchiment ou au financement du terrorisme", "Un client refuse de s'identifier", "Un sinistre dépasse 10 000 euros"],
-    correct: 1,
+    options: ["Un sinistre dépasse 10 000 euros", "Un professionnel suspecte qu'une opération est liée au blanchiment ou au financement du terrorisme", "Un client demande un remboursement", "Un client refuse de s'identifier"], correct: 1,
     explication: "La déclaration de soupçon doit être faite à Tracfin dès qu'un professionnel suspecte ou a des raisons valables de suspecter qu'une opération pourrait être liée au blanchiment ou au financement du terrorisme."
   },
   {
     q: "La vigilance renforcée s'applique notamment aux :",
-    options: ["Tous les clients sans distinction", "Personnes politiquement exposées (PPE) et clients à haut risque", "Uniquement les clients étrangers", "Clients ayant eu un sinistre dans les 2 dernières années"],
-    correct: 1,
+    options: ["Personnes politiquement exposées (PPE) et clients à haut risque", "Clients ayant eu un sinistre dans les 2 dernières années", "Tous les clients sans distinction", "Uniquement les clients étrangers"], correct: 0,
     explication: "La vigilance renforcée s'applique aux personnes politiquement exposées (PPE), aux relations d'affaires à haut risque et aux opérations complexes ou inhabituelles. Elle implique des vérifications approfondies."
   },
   {
     q: "L'obligation de vigilance en assurance impose de :",
-    options: ["Refuser tous les clients qui paient en espèces", "Vérifier l'identité du client, comprendre l'objet de la relation et surveiller les opérations", "Uniquement vérifier l'identité à la souscription", "Signaler toutes les opérations à la police"],
-    correct: 1,
+    options: ["Signaler toutes les opérations à la police", "Refuser tous les clients qui paient en espèces", "Vérifier l'identité du client, comprendre l'objet de la relation et surveiller les opérations", "Uniquement vérifier l'identité à la souscription"], correct: 2,
     explication: "L'obligation de vigilance implique d'identifier et vérifier l'identité du client, de comprendre l'objet et la nature de la relation d'affaires, et d'exercer une surveillance continue des opérations."
   },
 ]

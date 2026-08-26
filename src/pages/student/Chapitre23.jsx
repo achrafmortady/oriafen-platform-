@@ -10,32 +10,27 @@ const SLIDE_URLS = Array.from({ length: TOTAL_SLIDES }, (_, i) =>
 const QUIZ = [
   {
     q: "Qu'est-ce que la complémentaire santé (mutuelle) ?",
-    options: ["Un remplaçant de la Sécurité Sociale", "Un contrat qui rembourse tout ou partie du reste à charge après intervention de la Sécurité Sociale", "Une assurance uniquement pour les hospitalisations", "Un contrat obligatoire pour tous les Français"],
-    correct: 1,
+    options: ["Un contrat qui rembourse tout ou partie du reste à charge après intervention de la Sécurité Sociale", "Une assurance uniquement pour les hospitalisations", "Un remplaçant de la Sécurité Sociale", "Un contrat obligatoire pour tous les Français"], correct: 0,
     explication: "La complémentaire santé intervient après la Sécurité Sociale pour rembourser le reste à charge du patient : consultations, médicaments, soins dentaires, optique, hospitalisation, etc."
   },
   {
     q: "Qu'est-ce que le ticket modérateur ?",
-    options: ["Un billet de transport médical remboursable", "La part des frais de santé restant à charge de l'assuré après remboursement de la Sécurité Sociale", "Les frais de dossier d'une mutuelle", "Le montant maximum remboursé par an"],
-    correct: 1,
+    options: ["Les frais de dossier d'une mutuelle", "Un billet de transport médical remboursable", "La part des frais de santé restant à charge de l'assuré après remboursement de la Sécurité Sociale", "Le montant maximum remboursé par an"], correct: 2,
     explication: "Le ticket modérateur est la partie des frais médicaux non remboursée par la Sécurité Sociale et qui reste à la charge de l'assuré. C'est ce que la complémentaire santé peut prendre en charge partiellement ou totalement."
   },
   {
     q: "La loi ANI (2013) oblige les entreprises à :",
-    options: ["Payer 100% des frais de santé de leurs salariés", "Proposer une complémentaire santé collective à tous leurs salariés avec au moins 50% de participation patronale", "Adhérer à une mutuelle nationale unique", "Rembourser uniquement les soins dentaires"],
-    correct: 1,
+    options: ["Payer 100% des frais de santé de leurs salariés", "Proposer une complémentaire santé collective à tous leurs salariés avec au moins 50% de participation patronale", "Adhérer à une mutuelle nationale unique", "Rembourser uniquement les soins dentaires"], correct: 1,
     explication: "Depuis le 1er janvier 2016, la loi ANI oblige toutes les entreprises privées à proposer une complémentaire santé collective à leurs salariés, avec une participation patronale d'au moins 50% de la cotisation."
   },
   {
     q: "Qu'est-ce que le 100% Santé (reste à charge zéro) ?",
-    options: ["Un contrat d'assurance sans cotisation", "Un dispositif permettant aux assurés d'accéder à des soins dentaires, optiques et auditifs sans reste à charge", "Un remboursement intégral de tous les soins médicaux", "Un contrat réservé aux personnes à faibles revenus"],
-    correct: 1,
+    options: ["Un contrat d'assurance sans cotisation", "Un dispositif permettant aux assurés d'accéder à des soins dentaires, optiques et auditifs sans reste à charge", "Un remboursement intégral de tous les soins médicaux", "Un contrat réservé aux personnes à faibles revenus"], correct: 1,
     explication: "Le 100% Santé est un dispositif réformant les secteurs dentaire, optique et auditif pour proposer des équipements sans reste à charge pour les assurés bénéficiant d'une complémentaire santé responsable."
   },
   {
     q: "La portabilité de la mutuelle d'entreprise permet :",
-    options: ["De changer de mutuelle librement à tout moment", "De conserver sa mutuelle collective pendant une période de chômage (maximum 12 mois)", "De transférer sa mutuelle à un autre employeur", "D'accéder aux soins à l'étranger sans frais"],
-    correct: 1,
+    options: ["D'accéder aux soins à l'étranger sans frais", "De transférer sa mutuelle à un autre employeur", "De changer de mutuelle librement à tout moment", "De conserver sa mutuelle collective pendant une période de chômage (maximum 12 mois)"], correct: 3,
     explication: "La portabilité (loi ANI) permet aux salariés qui perdent leur emploi de conserver leur mutuelle d'entreprise pendant leur période de chômage indemnisé, gratuitement, dans la limite de 12 mois."
   },
 ]
