@@ -1362,5 +1362,106 @@ export async function updateClientDeliverables(deliverableId, payload) {
   }
 }
 
+// ── Validation du site par le client (remarques structurées, lisibles par une IA) ──
+
+// Sections "traduites" en langage client — un client ne sait pas ce qu'est une "hero section"
+export const SITE_FEEDBACK_SECTIONS = [
+  { id: 'banniere',     label: 'Bannière principale (la grande image en haut avec le titre)' },
+  { id: 'presentation', label: 'Présentation / Qui sommes-nous' },
+  { id: 'services',     label: 'Vos services / types d\'assurance proposés' },
+  { id: 'couleurs',     label: 'Couleurs du site' },
+  { id: 'photos',       label: 'Photos / images utilisées' },
+  { id: 'textes',       label: 'Textes en général (fautes, formulations...)' },
+  { id: 'logo',         label: 'Logo' },
+  { id: 'contact',      label: 'Coordonnées / formulaire de contact' },
+  { id: 'autre',        label: 'Autre chose' },
+]
+
+// Toutes les remarques (tous rounds) pour un livrable — utilisé côté client (RLS: les siennes) et admin (toutes)
+export async function fetchDeliverableFeedback(deliverableId) {
+  if (!isConfigured || !deliverableId) return []
+  try {
+    const { data, error } = await supabase
+      .from('deliverable_feedback')
+      .select('*')
+      .eq('deliverable_id', deliverableId)
+      .order('round', { ascending: false })
+      .order('created_at', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchDeliverableFeedback error:', err?.message)
+    return []
+  }
+}
+
+// Le client valide la version actuelle du site — rien à changer
+export async function validateSiteDeliverable(deliverableId) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const { error } = await supabase
+      .from('client_deliverables')
+      .update({ site_review_status: 'valide', client_validated_at: new Date().toISOString() })
+      .eq('id', deliverableId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+// Le client soumet une ou plusieurs remarques structurées sur la version actuelle du site
+// items: [{ section, comment }]
+export async function submitSiteFeedback(deliverableId, round, items) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  if (!items?.length) return { success: false, error: 'Aucune remarque à envoyer.' }
+  try {
+    const rows = items.map(it => ({
+      deliverable_id: deliverableId,
+      kind: 'site',
+      round,
+      section: it.section,
+      comment: it.comment,
+    }))
+    const { error: insertErr } = await supabase.from('deliverable_feedback').insert(rows)
+    if (insertErr) throw insertErr
+    const { error: updateErr } = await supabase
+      .from('client_deliverables')
+      .update({ site_review_status: 'changements_demandes' })
+      .eq('id', deliverableId)
+    if (updateErr) throw updateErr
+    return { success: true }
+  } catch (err) {
+    console.warn('[api] submitSiteFeedback error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// Admin : marque une remarque traitée (avec réponse optionnelle)
+export async function updateFeedbackStatus(feedbackId, status, adminResponse) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const payload = { status, updated_at: new Date().toISOString() }
+    if (adminResponse !== undefined) payload.admin_response = adminResponse
+    const { error } = await supabase.from('deliverable_feedback').update(payload).eq('id', feedbackId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+// Admin : une nouvelle version du site a été envoyée — relance la review côté client (nouveau round)
+export async function sendNewSiteRevision(deliverableId, currentRound) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const { error } = await supabase
+      .from('client_deliverables')
+      .update({ site_review_status: 'en_attente', site_revision_round: (currentRound || 1) + 1 })
+      .eq('id', deliverableId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
 
 

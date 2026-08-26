@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -562,7 +562,110 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
               </div>
             )}
           </div>
+
+          {deliverable?.site_url && <SiteFeedbackPanel deliverable={deliverable} onSaved={onSaved} />}
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Remarques du client sur le site — vue admin/super_admin ──────────────────
+
+const MKT_FEEDBACK_STATUS_LABELS = {
+  nouveau:  { label: 'Nouveau',  cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+  en_cours: { label: 'En cours', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  fait:     { label: 'Traité',   cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+}
+const MKT_FEEDBACK_NEXT_STATUS = { nouveau: 'en_cours', en_cours: 'fait', fait: 'nouveau' }
+
+function SiteFeedbackPanel({ deliverable, onSaved }) {
+  const [feedback, setFeedback] = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [busySend, setBusySend] = useState(false)
+  const [copied, setCopied]     = useState(false)
+
+  const load = () => fetchDeliverableFeedback(deliverable.id).then(data => setFeedback(data))
+
+  useEffect(() => { load().finally(() => setLoading(false)) }, [deliverable.id])
+
+  const round = deliverable.site_revision_round || 1
+  const reviewStatus = deliverable.site_review_status || 'en_attente'
+  const currentRoundFeedback = feedback.filter(f => f.round === round)
+  const openCount = currentRoundFeedback.filter(f => f.status !== 'fait').length
+
+  const cycleStatus = async (item) => {
+    const next = MKT_FEEDBACK_NEXT_STATUS[item.status] ?? 'nouveau'
+    setFeedback(prev => prev.map(f => f.id === item.id ? { ...f, status: next } : f))
+    await updateFeedbackStatus(item.id, next)
+  }
+
+  const handleSendRevision = async () => {
+    setBusySend(true)
+    const res = await sendNewSiteRevision(deliverable.id, round)
+    setBusySend(false)
+    if (res.success) { onSaved(); load() }
+  }
+
+  const copyForAI = () => {
+    const lines = [
+      `Site à modifier : ${deliverable.site_url}`,
+      deliverable.lovable_project_id ? `Projet Lovable : ${deliverable.lovable_project_id}` : null,
+      `Version en révision : ${round}`,
+      '',
+      'Remarques du client :',
+      ...currentRoundFeedback.map(f => {
+        const label = SITE_FEEDBACK_SECTIONS.find(s => s.id === f.section)?.label ?? f.section
+        return `- [${label}] ${f.comment}`
+      }),
+    ].filter(Boolean).join('\n')
+    navigator.clipboard?.writeText(lines)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <div className="pt-3 border-t border-orias-border">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide">Retours du client sur le site (v{round})</p>
+        <span className={`status-badge border text-xs ${reviewStatus === 'valide' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : reviewStatus === 'changements_demandes' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
+          {reviewStatus === 'valide' ? '✅ Validé par le client' : reviewStatus === 'changements_demandes' ? `🛠️ ${openCount} remarque${openCount > 1 ? 's' : ''} à traiter` : '⏳ En attente de retour'}
+        </span>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400">Chargement…</p>
+      ) : currentRoundFeedback.length === 0 ? (
+        <p className="text-sm text-gray-400">Aucune remarque sur cette version pour l'instant.</p>
+      ) : (
+        <div className="space-y-2 mb-3">
+          {currentRoundFeedback.map(item => {
+            const label = SITE_FEEDBACK_SECTIONS.find(s => s.id === item.section)?.label ?? item.section
+            const sc = MKT_FEEDBACK_STATUS_LABELS[item.status] ?? MKT_FEEDBACK_STATUS_LABELS.nouveau
+            return (
+              <div key={item.id} className="bg-orias-bg rounded-xl p-3 border border-orias-border">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold text-gray-500">{label}</p>
+                    <p className="text-sm text-gray-800 mt-0.5">{item.comment}</p>
+                  </div>
+                  <button onClick={() => cycleStatus(item)} className={`status-badge border text-xs flex-shrink-0 ${sc.cls}`} title="Cliquer pour changer le statut">
+                    {sc.label}
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button onClick={copyForAI} disabled={currentRoundFeedback.length === 0} className="btn-outline-green text-xs px-3 py-2 disabled:opacity-50">
+          {copied ? '✓ Copié' : '📋 Copier pour l\'IA'}
+        </button>
+        <button onClick={handleSendRevision} disabled={busySend} className="btn-gold text-xs px-3 py-2">
+          {busySend ? '...' : '🚀 Nouvelle version envoyée au client'}
+        </button>
       </div>
     </div>
   )

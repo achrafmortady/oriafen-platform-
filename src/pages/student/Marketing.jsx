@@ -6,6 +6,10 @@ import {
   fetchMarketingStatus,
   submitBrandBrief,
   uploadBrandAsset,
+  SITE_FEEDBACK_SECTIONS,
+  fetchDeliverableFeedback,
+  validateSiteDeliverable,
+  submitSiteFeedback,
 } from '../../lib/api'
 
 const STYLE_OPTIONS = [
@@ -351,6 +355,181 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
   )
 }
 
+// ── Validation du site par le client ──────────────────────────
+
+const FEEDBACK_STATUS_LABELS = {
+  nouveau:  { label: 'Reçu',                bg: '#f3f4f6', color: '#6b7280' },
+  en_cours: { label: 'En cours de traitement', bg: '#fef3c7', color: '#d97706' },
+  fait:     { label: 'Traité ✓',            bg: '#d1fae5', color: '#10b981' },
+}
+
+function SiteReview({ deliverableId, round, reviewStatus, pushToast, onChanged }) {
+  const [mode, setMode] = useState('idle') // idle | choosing | reviewing-past
+  const [selectedSections, setSelectedSections] = useState({}) // { sectionId: comment }
+  const [submitting, setSubmitting] = useState(false)
+  const [myFeedback, setMyFeedback] = useState([])
+  const [loadingFeedback, setLoadingFeedback] = useState(true)
+
+  useEffect(() => {
+    if (!deliverableId) { setLoadingFeedback(false); return }
+    let cancelled = false
+    fetchDeliverableFeedback(deliverableId).then(data => { if (!cancelled) setMyFeedback(data) }).finally(() => { if (!cancelled) setLoadingFeedback(false) })
+    return () => { cancelled = true }
+  }, [deliverableId, reviewStatus, round])
+
+  const toggleSection = (id) => {
+    setSelectedSections(prev => {
+      const next = { ...prev }
+      if (id in next) delete next[id]
+      else next[id] = ''
+      return next
+    })
+  }
+
+  const handleSubmit = async () => {
+    const items = Object.entries(selectedSections)
+      .map(([section, comment]) => ({ section, comment: comment.trim() }))
+      .filter(it => it.comment)
+    if (!items.length) { pushToast('Merci de préciser au moins une remarque.', 'error'); return }
+    setSubmitting(true)
+    const res = await submitSiteFeedback(deliverableId, round, items)
+    setSubmitting(false)
+    if (res.success) {
+      pushToast('Vos remarques ont été envoyées à notre équipe — merci !', 'success')
+      setSelectedSections({})
+      setMode('idle')
+      onChanged()
+    } else {
+      pushToast(`Erreur : ${res.error ?? 'réessayez.'}`, 'error')
+    }
+  }
+
+  const handleValidate = async () => {
+    setSubmitting(true)
+    const res = await validateSiteDeliverable(deliverableId)
+    setSubmitting(false)
+    if (res.success) { pushToast('Merci, version validée ! 🎉', 'success'); onChanged() }
+    else pushToast(`Erreur : ${res.error ?? 'réessayez.'}`, 'error')
+  }
+
+  const currentRoundFeedback = myFeedback.filter(f => f.round === round)
+  const pastFeedback = myFeedback.filter(f => f.round !== round)
+
+  return (
+    <div style={{ marginTop:'18px', paddingTop:'18px', borderTop:'1px solid #e8e2d6' }}>
+      <p style={{ margin:'0 0 4px', fontSize:'11px', fontWeight:'600', letterSpacing:'1.5px', textTransform:'uppercase', color:'#c49a2a' }}>Version {round}</p>
+
+      {reviewStatus === 'valide' ? (
+        <div style={{ padding:'16px', borderRadius:'14px', background:'#f0fdf4', border:'1px solid rgba(16,185,129,0.2)' }}>
+          <p style={{ margin:0, fontSize:'13px', color:'#065f46', fontWeight:'600' }}>✅ Vous avez validé cette version.</p>
+          <button type="button" onClick={() => setMode('choosing')} style={{ marginTop:'10px', background:'none', border:'none', color:'#6b7280', fontSize:'12px', textDecoration:'underline', cursor:'pointer', padding:0 }}>
+            Finalement, un souci à signaler ?
+          </button>
+        </div>
+      ) : reviewStatus === 'changements_demandes' ? (
+        <div style={{ padding:'16px', borderRadius:'14px', background:'#fff7ed', border:'1px solid rgba(249,115,22,0.2)' }}>
+          <p style={{ margin:'0 0 10px', fontSize:'13px', color:'#9a3412', fontWeight:'600' }}>🛠️ Vos remarques ont été transmises — notre équipe s'en occupe.</p>
+          {!loadingFeedback && currentRoundFeedback.length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+              {currentRoundFeedback.map(f => {
+                const sectionLabel = SITE_FEEDBACK_SECTIONS.find(s => s.id === f.section)?.label ?? f.section
+                const sc = FEEDBACK_STATUS_LABELS[f.status] ?? FEEDBACK_STATUS_LABELS.nouveau
+                return (
+                  <div key={f.id} style={{ padding:'10px 12px', borderRadius:'10px', background:'#ffffff', border:'1px solid #f0e6d8' }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'10px' }}>
+                      <p style={{ margin:0, fontSize:'12px', fontWeight:'600', color:'#1a3d2b' }}>{sectionLabel}</p>
+                      <span style={{ padding:'2px 8px', borderRadius:'20px', fontSize:'10px', fontWeight:'700', background:sc.bg, color:sc.color, flexShrink:0 }}>{sc.label}</span>
+                    </div>
+                    <p style={{ margin:'4px 0 0', fontSize:'12px', color:'#6b7280' }}>{f.comment}</p>
+                    {f.admin_response && <p style={{ margin:'6px 0 0', fontSize:'11px', color:'#c49a2a' }}>↳ {f.admin_response}</p>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      ) : mode === 'idle' ? (
+        <div style={{ padding:'16px', borderRadius:'14px', background:'#fffdf5', border:'1px solid rgba(201,168,76,0.25)' }}>
+          <p style={{ margin:'0 0 12px', fontSize:'13px', color:'#1a3d2b', fontWeight:'600' }}>Que pensez-vous de cette version ?</p>
+          <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
+            <button type="button" onClick={handleValidate} disabled={submitting}
+              style={{ padding:'10px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer',
+                background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff' }}>
+              ✅ Je valide, c'est parfait
+            </button>
+            <button type="button" onClick={() => setMode('choosing')}
+              style={{ padding:'10px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', cursor:'pointer',
+                background:'#ffffff', color:'#1a3d2b', border:'1px solid #d1d5db' }}>
+              ✏️ Je veux des changements
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ padding:'16px', borderRadius:'14px', background:'#ffffff', border:'1px solid #e8e2d6' }}>
+          <p style={{ margin:'0 0 4px', fontSize:'13px', color:'#1a3d2b', fontWeight:'600' }}>Qu'est-ce qui doit changer ?</p>
+          <p style={{ margin:'0 0 14px', fontSize:'12px', color:'#9ca3af' }}>Cliquez sur ce qui vous concerne, puis expliquez avec vos mots — inutile d'être technique.</p>
+          <div style={{ display:'flex', flexWrap:'wrap', gap:'8px', marginBottom:'14px' }}>
+            {SITE_FEEDBACK_SECTIONS.map(s => (
+              <button key={s.id} type="button" onClick={() => toggleSection(s.id)}
+                style={{ padding:'8px 14px', borderRadius:'20px', fontSize:'12px', fontWeight:'600', cursor:'pointer',
+                  border: s.id in selectedSections ? '1px solid rgba(201,168,76,0.5)' : '1px solid #d1d5db',
+                  background: s.id in selectedSections ? 'linear-gradient(135deg,#1a3d2b,#2d6b45)' : '#ffffff',
+                  color: s.id in selectedSections ? '#ffffff' : '#6b7280',
+                }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {Object.keys(selectedSections).length > 0 && (
+            <div style={{ display:'flex', flexDirection:'column', gap:'10px', marginBottom:'14px' }}>
+              {Object.keys(selectedSections).map(id => (
+                <div key={id}>
+                  <label style={{ fontSize:'11px', fontWeight:'600', color:'#374151', display:'block', marginBottom:'4px' }}>
+                    {SITE_FEEDBACK_SECTIONS.find(s => s.id === id)?.label}
+                  </label>
+                  <textarea
+                    value={selectedSections[id]}
+                    onChange={e => setSelectedSections(prev => ({ ...prev, [id]: e.target.value }))}
+                    placeholder="Que voulez-vous changer ici ?"
+                    style={{ width:'100%', padding:'10px 12px', borderRadius:'10px', border:'1px solid #d1d5db', fontSize:'12px', fontFamily:"'Montserrat', sans-serif", outline:'none', minHeight:'55px', resize:'vertical' }}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+          <div style={{ display:'flex', gap:'10px' }}>
+            <button type="button" onClick={() => { setMode('idle'); setSelectedSections({}) }}
+              style={{ padding:'9px 16px', borderRadius:'10px', fontSize:'12px', fontWeight:'600', cursor:'pointer', background:'#ffffff', color:'#6b7280', border:'1px solid #d1d5db' }}>
+              Annuler
+            </button>
+            <button type="button" onClick={handleSubmit} disabled={submitting}
+              style={{ padding:'9px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer',
+                background:'linear-gradient(135deg,#c9a84c,#b8960a)', color:'#1a3d2b' }}>
+              {submitting ? 'Envoi…' : 'Envoyer mes remarques'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!loadingFeedback && pastFeedback.length > 0 && (
+        <details style={{ marginTop:'14px' }}>
+          <summary style={{ cursor:'pointer', fontSize:'11px', color:'#9ca3af' }}>Voir l'historique des versions précédentes</summary>
+          <div style={{ display:'flex', flexDirection:'column', gap:'8px', marginTop:'10px' }}>
+            {pastFeedback.map(f => {
+              const sectionLabel = SITE_FEEDBACK_SECTIONS.find(s => s.id === f.section)?.label ?? f.section
+              return (
+                <div key={f.id} style={{ padding:'8px 12px', borderRadius:'10px', background:'#fafafa', border:'1px solid #f0e6d8', fontSize:'11px', color:'#9ca3af' }}>
+                  <strong style={{ color:'#6b7280' }}>V{f.round} — {sectionLabel} :</strong> {f.comment}
+                </div>
+              )
+            })}
+          </div>
+        </details>
+      )}
+    </div>
+  )
+}
+
 // ── Statut de production (3b) ──────────────────────────────────
 
 function StatusStepper({ status }) {
@@ -373,7 +552,7 @@ function StatusStepper({ status }) {
   )
 }
 
-function StatusView({ brief, status }) {
+function StatusView({ brief, status, pushToast, onStatusChanged }) {
   return (
     <div style={{ display:'flex', flexDirection:'column', gap:'20px' }}>
       <SectionCard eyebrow="Votre brief" title={brief.cabinet_name}>
@@ -386,13 +565,22 @@ function StatusView({ brief, status }) {
       <SectionCard eyebrow="Suivi de production" title="Où en est votre projet">
         <StatusStepper status={status} />
         {status?.site_status === 'livre' && status?.site_url && (
-          <div style={{ marginTop:'18px', padding:'16px', borderRadius:'14px', background:'#f0fdf4', border:'1px solid rgba(16,185,129,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px' }}>
-            <p style={{ margin:0, fontSize:'13px', color:'#065f46' }}>🌐 Votre site est en ligne !</p>
-            <a href={status.site_url} target="_blank" rel="noopener noreferrer"
-              style={{ padding:'8px 18px', borderRadius:'10px', background:'#10b981', color:'#fff', fontSize:'12px', fontWeight:'700', textDecoration:'none' }}>
-              Voir le site →
-            </a>
-          </div>
+          <>
+            <div style={{ marginTop:'18px', padding:'16px', borderRadius:'14px', background:'#f0fdf4', border:'1px solid rgba(16,185,129,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px' }}>
+              <p style={{ margin:0, fontSize:'13px', color:'#065f46' }}>🌐 Votre site est en ligne !</p>
+              <a href={status.site_url} target="_blank" rel="noopener noreferrer"
+                style={{ padding:'8px 18px', borderRadius:'10px', background:'#10b981', color:'#fff', fontSize:'12px', fontWeight:'700', textDecoration:'none' }}>
+                Voir le site →
+              </a>
+            </div>
+            <SiteReview
+              deliverableId={status.deliverable_id}
+              round={status.site_revision_round || 1}
+              reviewStatus={status.site_review_status || 'en_attente'}
+              pushToast={pushToast}
+              onChanged={onStatusChanged}
+            />
+          </>
         )}
         <div style={{ marginTop:'18px', padding:'14px 16px', borderRadius:'14px', background:'#fefce8', border:'1px solid #fde68a', fontSize:'12px', color:'#78716c', display:'flex', gap:'10px', alignItems:'flex-start' }}>
           <span style={{flexShrink:0}}>ℹ️</span>
@@ -447,6 +635,11 @@ export default function Marketing() {
     setStatus(st)
   }
 
+  const refreshStatus = useCallback(async () => {
+    const st = await fetchMarketingStatus()
+    setStatus(st)
+  }, [])
+
   if (loading) {
     return (
       <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'60px' }}>
@@ -475,7 +668,9 @@ export default function Marketing() {
           </p>
         </div>
 
-        {brief ? <StatusView brief={brief} status={status} /> : <BriefForm userId={user.id} profile={profile} pushToast={pushToast} onSubmitted={handleSubmitted} />}
+        {brief
+          ? <StatusView brief={brief} status={status} pushToast={pushToast} onStatusChanged={refreshStatus} />
+          : <BriefForm userId={user.id} profile={profile} pushToast={pushToast} onSubmitted={handleSubmitted} />}
       </div>
     </>
   )
