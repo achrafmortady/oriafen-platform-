@@ -10,7 +10,10 @@ import {
   fetchDeliverableFeedback,
   validateSiteDeliverable,
   submitSiteFeedback,
+  fetchDeliverableFiles,
+  DELIVERABLE_FILE_KIND_LABELS,
 } from '../../lib/api'
+import { CheckCircleIcon, XCircleIcon, ClockIcon, EditIcon, UploadIcon, DownloadIcon, FileIcon } from '../../components/Icons'
 
 const STYLE_OPTIONS = [
   { id: 'prestige',   label: 'Prestige',   desc: 'Élégant, classique, rassurant' },
@@ -31,10 +34,10 @@ const INSURANCE_TYPES = [
 ]
 
 const DELIVERABLE_STEPS = [
-  { key: 'brand_kit_status', label: 'Brand kit',    emoji: '🎨' },
-  { key: 'site_status',      label: 'Site internet', emoji: '🌐' },
-  { key: 'social_status',    label: 'Réseaux sociaux', emoji: '📱' },
-  { key: 'ads_status',       label: 'Créatifs pub',  emoji: '📣' },
+  { key: 'brand_kit_status', label: 'Brand kit' },
+  { key: 'site_status',      label: 'Site internet' },
+  { key: 'social_status',    label: 'Réseaux sociaux' },
+  { key: 'ads_status',       label: 'Créatifs pub' },
 ]
 
 const STATUS_CONFIG = {
@@ -55,7 +58,9 @@ function Toast({ toasts, onDismiss }) {
           pointerEvents:'auto', color: t.type==='success' ? '#10b981' : t.type==='error' ? '#ef4444' : '#f59e0b',
           fontFamily:"'Montserrat', sans-serif", fontSize:'13px',
         }}>
-          <span style={{flexShrink:0}}>{t.type==='success'?'✅':t.type==='error'?'❌':'⚠️'}</span>
+          <span style={{flexShrink:0, display:'flex', alignItems:'center'}}>
+            {t.type==='success' ? <CheckCircleIcon className="w-4 h-4" /> : t.type==='error' ? <XCircleIcon className="w-4 h-4" /> : <ClockIcon className="w-4 h-4" />}
+          </span>
           <p style={{flex:1, margin:0, lineHeight:'1.4'}}>{t.message}</p>
           <button onClick={()=>onDismiss(t.id)} style={{background:'none',border:'none',cursor:'pointer',opacity:0.5,flexShrink:0,color:'inherit',fontSize:'14px'}}>✕</button>
         </div>
@@ -292,13 +297,13 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
               <div style={{ marginTop:'12px', display:'flex', flexWrap:'wrap', gap:'10px', alignItems:'center' }}>
                 <input ref={logoInputRef} type="file" accept=".png,.jpg,.jpeg,.svg,.pdf,.webp" style={{ display:'none' }} onChange={handleLogoFile} />
                 <button type="button" onClick={() => logoInputRef.current?.click()} disabled={uploadingLogo}
-                  style={{ padding:'9px 16px', borderRadius:'10px', fontSize:'12px', fontWeight:'600', border:'none', cursor: uploadingLogo ? 'not-allowed' : 'pointer',
+                  style={{ display:'flex', alignItems:'center', gap:'6px', padding:'9px 16px', borderRadius:'10px', fontSize:'12px', fontWeight:'600', border:'none', cursor: uploadingLogo ? 'not-allowed' : 'pointer',
                     background: uploadingLogo ? '#f3f4f6' : 'linear-gradient(135deg, #1a4a2e, #2d6b45)', color: uploadingLogo ? '#9ca3af' : '#fff', fontFamily:"'Montserrat', sans-serif" }}>
-                  {uploadingLogo ? 'Envoi…' : '📤 Envoyer le logo'}
+                  <UploadIcon className="w-3.5 h-3.5" /> {uploadingLogo ? 'Envoi…' : 'Envoyer le logo'}
                 </button>
                 <input type="text" value={logoUrl} onChange={e => setLogoUrl(e.target.value)} placeholder="ou collez un lien vers votre logo"
                   style={{ flex:1, minWidth:'220px', padding:'9px 14px', borderRadius:'10px', border:'1px solid #d1d5db', fontSize:'12px', fontFamily:"'Montserrat', sans-serif", outline:'none' }} />
-                {logoUrl && <span style={{ fontSize:'11px', color:'#10b981' }}>✓ prêt</span>}
+                {logoUrl && <span style={{ fontSize:'11px', color:'#10b981' }}>prêt</span>}
               </div>
             )}
           </div>
@@ -310,15 +315,16 @@ function BriefForm({ userId, profile, pushToast, onSubmitted }) {
               <div style={{ marginTop:'12px' }}>
                 <input ref={photosInputRef} type="file" accept=".png,.jpg,.jpeg,.webp" multiple style={{ display:'none' }} onChange={handlePhotosFiles} />
                 <button type="button" onClick={() => photosInputRef.current?.click()} disabled={uploadingPhotos}
-                  style={{ padding:'9px 16px', borderRadius:'10px', fontSize:'12px', fontWeight:'600', border:'none', cursor: uploadingPhotos ? 'not-allowed' : 'pointer',
+                  style={{ display:'flex', alignItems:'center', gap:'6px', padding:'9px 16px', borderRadius:'10px', fontSize:'12px', fontWeight:'600', border:'none', cursor: uploadingPhotos ? 'not-allowed' : 'pointer',
                     background: uploadingPhotos ? '#f3f4f6' : 'linear-gradient(135deg, #1a4a2e, #2d6b45)', color: uploadingPhotos ? '#9ca3af' : '#fff', fontFamily:"'Montserrat', sans-serif" }}>
-                  {uploadingPhotos ? 'Envoi…' : '📤 Envoyer des photos'}
+                  <UploadIcon className="w-3.5 h-3.5" /> {uploadingPhotos ? 'Envoi…' : 'Envoyer des photos'}
                 </button>
                 {photosUrls.length > 0 && (
                   <div style={{ display:'flex', flexWrap:'wrap', gap:'8px', marginTop:'12px' }}>
                     {photosUrls.map(p => (
                       <div key={p.url} style={{ display:'flex', alignItems:'center', gap:'6px', padding:'6px 10px', borderRadius:'10px', background:'#f8f9fa', border:'1px solid #e8e2d6', fontSize:'11px' }}>
-                        <span>🖼️ {p.name}</span>
+                        <FileIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{p.name}</span>
                         <button type="button" onClick={() => removePhoto(p.url)} style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444' }}>✕</button>
                       </div>
                     ))}
@@ -408,7 +414,7 @@ function SiteReview({ deliverableId, round, reviewStatus, pushToast, onChanged }
     setSubmitting(true)
     const res = await validateSiteDeliverable(deliverableId)
     setSubmitting(false)
-    if (res.success) { pushToast('Merci, version validée ! 🎉', 'success'); onChanged() }
+    if (res.success) { pushToast('Merci, version validée !', 'success'); onChanged() }
     else pushToast(`Erreur : ${res.error ?? 'réessayez.'}`, 'error')
   }
 
@@ -421,14 +427,18 @@ function SiteReview({ deliverableId, round, reviewStatus, pushToast, onChanged }
 
       {reviewStatus === 'valide' ? (
         <div style={{ padding:'16px', borderRadius:'14px', background:'#f0fdf4', border:'1px solid rgba(16,185,129,0.2)' }}>
-          <p style={{ margin:0, fontSize:'13px', color:'#065f46', fontWeight:'600' }}>✅ Vous avez validé cette version.</p>
+          <p style={{ margin:0, fontSize:'13px', color:'#065f46', fontWeight:'600', display:'flex', alignItems:'center', gap:'8px' }}>
+            <CheckCircleIcon className="w-4 h-4" /> Vous avez validé cette version.
+          </p>
           <button type="button" onClick={() => setMode('choosing')} style={{ marginTop:'10px', background:'none', border:'none', color:'#6b7280', fontSize:'12px', textDecoration:'underline', cursor:'pointer', padding:0 }}>
             Finalement, un souci à signaler ?
           </button>
         </div>
       ) : reviewStatus === 'changements_demandes' ? (
         <div style={{ padding:'16px', borderRadius:'14px', background:'#fff7ed', border:'1px solid rgba(249,115,22,0.2)' }}>
-          <p style={{ margin:'0 0 10px', fontSize:'13px', color:'#9a3412', fontWeight:'600' }}>🛠️ Vos remarques ont été transmises — notre équipe s'en occupe.</p>
+          <p style={{ margin:'0 0 10px', fontSize:'13px', color:'#9a3412', fontWeight:'600', display:'flex', alignItems:'center', gap:'8px' }}>
+            <ClockIcon className="w-4 h-4" /> Vos remarques ont été transmises — notre équipe s'en occupe.
+          </p>
           {!loadingFeedback && currentRoundFeedback.length > 0 && (
             <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
               {currentRoundFeedback.map(f => {
@@ -453,14 +463,14 @@ function SiteReview({ deliverableId, round, reviewStatus, pushToast, onChanged }
           <p style={{ margin:'0 0 12px', fontSize:'13px', color:'#1a3d2b', fontWeight:'600' }}>Que pensez-vous de cette version ?</p>
           <div style={{ display:'flex', gap:'10px', flexWrap:'wrap' }}>
             <button type="button" onClick={handleValidate} disabled={submitting}
-              style={{ padding:'10px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer',
+              style={{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', border:'none', cursor:'pointer',
                 background:'linear-gradient(135deg,#10b981,#059669)', color:'#fff' }}>
-              ✅ Je valide, c'est parfait
+              <CheckCircleIcon className="w-4 h-4" /> Je valide, c'est parfait
             </button>
             <button type="button" onClick={() => setMode('choosing')}
-              style={{ padding:'10px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', cursor:'pointer',
+              style={{ display:'flex', alignItems:'center', gap:'8px', padding:'10px 20px', borderRadius:'10px', fontSize:'12px', fontWeight:'700', cursor:'pointer',
                 background:'#ffffff', color:'#1a3d2b', border:'1px solid #d1d5db' }}>
-              ✏️ Je veux des changements
+              <EditIcon className="w-4 h-4" /> Je veux des changements
             </button>
           </div>
         </div>
@@ -540,8 +550,7 @@ function StatusStepper({ status }) {
         const sc = STATUS_CONFIG[val] ?? STATUS_CONFIG.a_faire
         return (
           <div key={step.key} style={{ padding:'18px', borderRadius:'16px', border:`1px solid ${sc.border}`, background: val === 'a_faire' ? '#fafafa' : sc.bg + '22', textAlign:'center' }}>
-            <p style={{ fontSize:'26px', margin:'0 0 8px' }}>{step.emoji}</p>
-            <p style={{ margin:'0 0 8px', fontWeight:'700', fontSize:'13px', color:'#1a3d2b' }}>{step.label}</p>
+            <p style={{ margin:'0 0 10px', fontWeight:'700', fontSize:'13px', color:'#1a3d2b' }}>{step.label}</p>
             <span style={{ padding:'4px 12px', borderRadius:'20px', fontSize:'11px', fontWeight:'600', background:sc.bg, color:sc.color, border:`1px solid ${sc.border}` }}>
               {sc.label}
             </span>
@@ -549,6 +558,55 @@ function StatusStepper({ status }) {
         )
       })}
     </div>
+  )
+}
+
+// ── Fichiers et créas envoyés par l'équipe ──────────────────────
+
+function ReceivedFiles({ deliverableId }) {
+  const [files, setFiles] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!deliverableId) { setLoading(false); return }
+    let cancelled = false
+    fetchDeliverableFiles(deliverableId).then(data => { if (!cancelled) setFiles(data) }).finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [deliverableId])
+
+  if (loading) return null
+  if (files.length === 0) {
+    return (
+      <SectionCard eyebrow="Vos documents" title="Fichiers reçus">
+        <p style={{ margin:0, fontSize:'13px', color:'#9ca3af' }}>
+          Dès que notre équipe vous envoie un document ou une création, vous le retrouverez ici.
+        </p>
+      </SectionCard>
+    )
+  }
+
+  return (
+    <SectionCard eyebrow="Vos documents" title="Fichiers reçus">
+      <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+        {files.map(f => (
+          <div key={f.id} style={{ display:'flex', alignItems:'center', gap:'12px', padding:'12px 14px', borderRadius:'12px', background:'#fafafa', border:'1px solid #e8e2d6' }}>
+            <div style={{ width:'34px', height:'34px', borderRadius:'10px', background:'#f0fdf4', border:'1px solid rgba(16,185,129,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:'#10b981' }}>
+              <FileIcon className="w-4 h-4" />
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <p style={{ margin:0, fontSize:'13px', fontWeight:'600', color:'#1a3d2b' }}>{f.label}</p>
+              <p style={{ margin:'2px 0 0', fontSize:'11px', color:'#9ca3af' }}>
+                {DELIVERABLE_FILE_KIND_LABELS[f.kind] ?? f.kind} — {new Date(f.created_at).toLocaleDateString('fr-FR')}
+              </p>
+            </div>
+            <a href={f.file_url} target="_blank" rel="noopener noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 14px', borderRadius:'10px', background:'#1a3d2b', color:'#fff', fontSize:'11px', fontWeight:'700', textDecoration:'none', flexShrink:0 }}>
+              <DownloadIcon className="w-3.5 h-3.5" /> Télécharger
+            </a>
+          </div>
+        ))}
+      </div>
+    </SectionCard>
   )
 }
 
@@ -567,7 +625,7 @@ function StatusView({ brief, status, pushToast, onStatusChanged }) {
         {status?.site_status === 'livre' && status?.site_url && (
           <>
             <div style={{ marginTop:'18px', padding:'16px', borderRadius:'14px', background:'#f0fdf4', border:'1px solid rgba(16,185,129,0.2)', display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:'10px' }}>
-              <p style={{ margin:0, fontSize:'13px', color:'#065f46' }}>🌐 Votre site est en ligne !</p>
+              <p style={{ margin:0, fontSize:'13px', color:'#065f46', fontWeight:'600' }}>Votre site est en ligne.</p>
               <a href={status.site_url} target="_blank" rel="noopener noreferrer"
                 style={{ padding:'8px 18px', borderRadius:'10px', background:'#10b981', color:'#fff', fontSize:'12px', fontWeight:'700', textDecoration:'none' }}>
                 Voir le site →
@@ -582,11 +640,12 @@ function StatusView({ brief, status, pushToast, onStatusChanged }) {
             />
           </>
         )}
-        <div style={{ marginTop:'18px', padding:'14px 16px', borderRadius:'14px', background:'#fefce8', border:'1px solid #fde68a', fontSize:'12px', color:'#78716c', display:'flex', gap:'10px', alignItems:'flex-start' }}>
-          <span style={{flexShrink:0}}>ℹ️</span>
+        <div style={{ marginTop:'18px', padding:'14px 16px', borderRadius:'14px', background:'#fefce8', border:'1px solid #fde68a', fontSize:'12px', color:'#78716c' }}>
           <p style={{margin:0, lineHeight:'1.6'}}>Une question sur votre projet ? Contactez votre conseiller via l'onglet Support.</p>
         </div>
       </SectionCard>
+
+      {status?.deliverable_id && <ReceivedFiles deliverableId={status.deliverable_id} />}
     </div>
   )
 }

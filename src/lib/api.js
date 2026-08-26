@@ -1463,5 +1463,68 @@ export async function sendNewSiteRevision(deliverableId, currentRound) {
   }
 }
 
+// ── Fichiers / créas envoyés au client via la plateforme (pas WhatsApp) ──
+
+export const DELIVERABLE_FILE_KIND_LABELS = {
+  brand_kit: 'Brand kit',
+  site:      'Site internet',
+  social:    'Réseaux sociaux',
+  ads:       'Publicités',
+  document:  'Document',
+  autre:     'Autre',
+}
+
+// Toutes les fichiers/créas envoyés pour un livrable — client (RLS : les siens) et admin (tous)
+export async function fetchDeliverableFiles(deliverableId) {
+  if (!isConfigured || !deliverableId) return []
+  try {
+    const { data, error } = await supabase
+      .from('deliverable_files')
+      .select('*')
+      .eq('deliverable_id', deliverableId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchDeliverableFiles error:', err?.message)
+    return []
+  }
+}
+
+// Admin : envoie un fichier/créa au client — upload vers le bucket "documents" puis enregistrement de la ligne
+export async function sendDeliverableFile(deliverableId, { kind, label, file }) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const ext  = (file.name.split('.').pop() || 'bin').toLowerCase()
+    const path = `deliverables/${deliverableId}/${kind}/${Date.now()}.${ext}`
+    const { error: storageErr } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
+    if (storageErr) throw storageErr
+    const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
+    const { error: insertErr } = await supabase.from('deliverable_files').insert({
+      deliverable_id: deliverableId,
+      kind,
+      label: label?.trim() || file.name,
+      file_url: pub?.publicUrl,
+      file_name: file.name,
+    })
+    if (insertErr) throw insertErr
+    return { success: true }
+  } catch (err) {
+    console.warn('[api] sendDeliverableFile error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// Admin : retire un fichier envoyé par erreur
+export async function deleteDeliverableFile(fileId) {
+  if (!isConfigured) return { success: false, error: 'Non configuré.' }
+  try {
+    const { error } = await supabase.from('deliverable_files').delete().eq('id', fileId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
 
 

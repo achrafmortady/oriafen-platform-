@@ -2,9 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
-import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon } from '../../components/Icons'
+import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon, StarIcon, UploadIcon, DownloadIcon, FileIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -22,6 +22,7 @@ const FINAL_DOCS_CATALOGUE = [
 const NAV_ITEMS = [
   { id: 'clients',    label: 'Clients',         icon: <UsersIcon className="w-4 h-4" /> },
   { id: 'leads',      label: 'CRM',             icon: <TargetIcon className="w-4 h-4" /> },
+  { id: 'marketing',  label: 'Marketing',        icon: <StarIcon className="w-4 h-4" /> },
   { id: 'dossiers',   label: 'Dossiers',         icon: <EyeIcon className="w-4 h-4" /> },
   { id: 'formation',  label: 'Formation',        icon: <BookIcon className="w-4 h-4" /> },
   { id: 'notifs',     label: 'Notifications',    icon: <BellIcon className="w-4 h-4" /> },
@@ -458,7 +459,7 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
         <div className="bg-orias-green px-6 py-5 sticky top-0 z-10">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-bold text-white text-lg">🎨 {brief.cabinet_name}</h3>
+              <h3 className="font-bold text-white text-lg">{brief.cabinet_name}</h3>
               <p className="text-green-300 text-sm">Brief marketing reçu le {new Date(brief.created_at).toLocaleDateString('fr-FR')}</p>
             </div>
             <button onClick={onClose} className="text-green-300 hover:text-white transition-colors"><XIcon className="w-6 h-6" /></button>
@@ -515,13 +516,13 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
             <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-2">Actifs existants</p>
             <div className="flex flex-wrap gap-2 text-sm">
               {brief.a_un_logo
-                ? <a href={brief.logo_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green font-medium hover:underline">📎 Logo fourni</a>
+                ? <a href={brief.logo_url} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green font-medium hover:underline">Logo fourni</a>
                 : <span className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-400 text-xs">Pas de logo existant</span>}
               {photos.length > 0
-                ? photos.map((p, i) => <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green font-medium hover:underline">🖼️ Photo {i + 1}</a>)
+                ? photos.map((p, i) => <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-orias-green font-medium hover:underline">Photo {i + 1}</a>)
                 : <span className="px-3 py-1.5 rounded-lg bg-gray-100 text-gray-400 text-xs">Pas de photos existantes</span>}
-              {brief.instagram_existant && <span className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-gray-700">📷 {brief.instagram_existant}</span>}
-              {brief.facebook_existant && <span className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-gray-700">👤 {brief.facebook_existant}</span>}
+              {brief.instagram_existant && <span className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-gray-700">Instagram : {brief.instagram_existant}</span>}
+              {brief.facebook_existant && <span className="px-3 py-1.5 rounded-lg bg-orias-bg border border-orias-border text-gray-700">Facebook : {brief.facebook_existant}</span>}
               {brief.reseaux_a_creer && <span className="px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-700">À créer si absents</span>}
             </div>
           </div>
@@ -563,9 +564,97 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
             )}
           </div>
 
+          {deliverable && <DeliverableFilesPanel deliverableId={deliverable.id} />}
+
           {deliverable?.site_url && <SiteFeedbackPanel deliverable={deliverable} onSaved={onSaved} />}
         </div>
       </div>
+    </div>
+  )
+}
+
+// ── Envoi de documents / créas au client — via la plateforme, pas WhatsApp ──
+
+const DELIVERABLE_FILE_KIND_OPTIONS = Object.entries(DELIVERABLE_FILE_KIND_LABELS)
+
+function DeliverableFilesPanel({ deliverableId }) {
+  const [files, setFiles]     = useState([])
+  const [loading, setLoading] = useState(true)
+  const [kind, setKind]       = useState('document')
+  const [label, setLabel]     = useState('')
+  const [sending, setSending] = useState(false)
+  const [error, setError]     = useState('')
+  const fileInputRef = useRef(null)
+
+  const load = () => fetchDeliverableFiles(deliverableId).then(data => setFiles(data))
+
+  useEffect(() => { load().finally(() => setLoading(false)) }, [deliverableId])
+
+  const handlePick = () => {
+    if (!label.trim()) { setError('Donnez un nom à ce fichier avant de l\'envoyer (ex : "Logo final", "Post Instagram 1").'); return }
+    setError('')
+    fileInputRef.current?.click()
+  }
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setSending(true)
+    const res = await sendDeliverableFile(deliverableId, { kind, label, file })
+    setSending(false)
+    if (res.success) { setLabel(''); load() }
+    else setError(res.error || 'Erreur lors de l\'envoi.')
+  }
+
+  const handleDelete = async (fileId) => {
+    setFiles(prev => prev.filter(f => f.id !== fileId))
+    await deleteDeliverableFile(fileId)
+  }
+
+  return (
+    <div className="pt-3 border-t border-orias-border">
+      <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-3">Envoyer un document ou une création au client</p>
+
+      <div className="bg-orias-bg rounded-xl p-3 border border-orias-border space-y-2 mb-3">
+        <div className="grid grid-cols-2 gap-2">
+          <select value={kind} onChange={e => setKind(e.target.value)} className="input-field text-sm py-2">
+            {DELIVERABLE_FILE_KIND_OPTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <input value={label} onChange={e => setLabel(e.target.value)} placeholder="Nom du fichier (ex : Logo final)" className="input-field text-sm py-2" />
+        </div>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFile} />
+        <button onClick={handlePick} disabled={sending} className="btn-gold w-full flex items-center justify-center gap-2 text-sm disabled:opacity-70">
+          <UploadIcon className="w-4 h-4" /> {sending ? 'Envoi…' : 'Choisir et envoyer le fichier'}
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-gray-400">Chargement…</p>
+      ) : files.length === 0 ? (
+        <p className="text-sm text-gray-400">Aucun fichier envoyé pour l'instant.</p>
+      ) : (
+        <div className="space-y-2">
+          {files.map(f => (
+            <div key={f.id} className="flex items-center gap-3 bg-white rounded-xl p-2.5 border border-orias-border">
+              <div className="w-8 h-8 rounded-lg bg-orias-green/10 border border-orias-green/20 flex items-center justify-center flex-shrink-0 text-orias-green">
+                <FileIcon className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-800 truncate">{f.label}</p>
+                <p className="text-xs text-gray-400">{DELIVERABLE_FILE_KIND_LABELS[f.kind] ?? f.kind} — {new Date(f.created_at).toLocaleDateString('fr-FR')}</p>
+              </div>
+              <a href={f.file_url} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg text-gray-400 hover:text-orias-green hover:bg-orias-green/10 transition-colors flex-shrink-0" title="Voir">
+                <DownloadIcon className="w-4 h-4" />
+              </a>
+              <button onClick={() => handleDelete(f.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors flex-shrink-0" title="Retirer">
+                <XIcon className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -629,7 +718,7 @@ function SiteFeedbackPanel({ deliverable, onSaved }) {
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide">Retours du client sur le site (v{round})</p>
         <span className={`status-badge border text-xs ${reviewStatus === 'valide' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : reviewStatus === 'changements_demandes' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-gray-100 text-gray-500 border-gray-200'}`}>
-          {reviewStatus === 'valide' ? '✅ Validé par le client' : reviewStatus === 'changements_demandes' ? `🛠️ ${openCount} remarque${openCount > 1 ? 's' : ''} à traiter` : '⏳ En attente de retour'}
+          {reviewStatus === 'valide' ? 'Validé par le client' : reviewStatus === 'changements_demandes' ? `${openCount} remarque${openCount > 1 ? 's' : ''} à traiter` : 'En attente de retour'}
         </span>
       </div>
 
@@ -661,10 +750,10 @@ function SiteFeedbackPanel({ deliverable, onSaved }) {
 
       <div className="flex flex-wrap gap-2">
         <button onClick={copyForAI} disabled={currentRoundFeedback.length === 0} className="btn-outline-green text-xs px-3 py-2 disabled:opacity-50">
-          {copied ? '✓ Copié' : '📋 Copier pour l\'IA'}
+          {copied ? '✓ Copié' : 'Copier pour l\'IA'}
         </button>
         <button onClick={handleSendRevision} disabled={busySend} className="btn-gold text-xs px-3 py-2">
-          {busySend ? '...' : '🚀 Nouvelle version envoyée au client'}
+          {busySend ? '...' : 'Nouvelle version envoyée au client'}
         </button>
       </div>
     </div>
@@ -822,11 +911,11 @@ function ClientsSection({ isSuperAdmin }) {
                       <span className="text-xs text-gray-300">—</span>
                     ) : briefsByUser[client.id] ? (
                       <button onClick={() => setBriefModalTarget(client)} className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors">
-                        ✓ Brief reçu
+                        Brief reçu
                       </button>
                     ) : (
                       <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">
-                        ⏳ En attente
+                        En attente
                       </span>
                     )}
                   </td>
@@ -1002,7 +1091,7 @@ function ClientsSection({ isSuperAdmin }) {
                   <div>
                     <p className="text-xs text-gray-500 font-medium">Marketing (site & communication)</p>
                     <p className={`text-sm font-semibold ${briefsByUser[selected.id] ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {briefsByUser[selected.id] ? '✓ Brief reçu' : '⏳ En attente du brief client'}
+                      {briefsByUser[selected.id] ? 'Brief reçu' : 'En attente du brief client'}
                     </p>
                   </div>
                   {briefsByUser[selected.id] && (
@@ -1031,6 +1120,152 @@ function ClientsSection({ isSuperAdmin }) {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  )
+}
+
+// ── Section Marketing dédiée (admin & super_admin) — briefs, suivi, envoi de fichiers ──
+
+function MarketingSection({ isSuperAdmin }) {
+  const [clients, setClients]   = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [search, setSearch]     = useState('')
+  const [briefsByUser, setBriefsByUser] = useState({})
+  const [filesCountByDeliverable, setFilesCountByDeliverable] = useState({})
+  const [briefModalTarget, setBriefModalTarget] = useState(null)
+
+  const loadClients = () => fetchAllClients().then(data => setClients(data))
+  const loadBriefs = async () => {
+    const data = await fetchAdminMarketingBriefs()
+    const map = {}
+    data.forEach(b => { map[b.user_id] = b })
+    setBriefsByUser(map)
+    const deliverables = data.map(b => b.client_deliverables?.[0]).filter(Boolean)
+    const counts = {}
+    await Promise.all(deliverables.map(async d => {
+      const files = await fetchDeliverableFiles(d.id)
+      counts[d.id] = files.length
+    }))
+    setFilesCountByDeliverable(counts)
+  }
+
+  useEffect(() => {
+    Promise.all([loadClients(), loadBriefs()]).finally(() => setLoading(false))
+  }, [])
+
+  const marketingClients = clients.filter(c => c.hasMarketing)
+  const filtered = marketingClients.filter(c => `${c.nom} ${c.prenom}`.toLowerCase().includes(search.toLowerCase()))
+
+  const briefReceivedCount = marketingClients.filter(c => briefsByUser[c.id]).length
+
+  if (loading) {
+    return <div className="card p-10 text-center text-gray-400">Chargement…</div>
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="card p-4 flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-48">
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="input-field pl-9 py-2.5 text-sm"
+            placeholder="Rechercher un client..."
+          />
+        </div>
+        <span className="text-sm text-gray-500">{marketingClients.length} client{marketingClients.length > 1 ? 's' : ''} avec pack Marketing</span>
+        <span className="text-sm text-gray-500 ml-auto">{briefReceivedCount} brief{briefReceivedCount > 1 ? 's' : ''} reçu{briefReceivedCount > 1 ? 's' : ''}</span>
+      </div>
+
+      {marketingClients.length === 0 ? (
+        <div className="card p-10 text-center">
+          <StarIcon className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+          <p className="text-gray-500 font-medium">Aucun client avec un pack incluant le Marketing pour l'instant.</p>
+        </div>
+      ) : (
+        <div className="card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-orias-border bg-orias-bg">
+                  <th className="text-left px-5 py-3.5 font-semibold text-gray-600">Client</th>
+                  <th className="text-left px-4 py-3.5 font-semibold text-gray-600">Brief</th>
+                  <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden md:table-cell">Brand kit</th>
+                  <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden md:table-cell">Site</th>
+                  <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Instagram</th>
+                  <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden lg:table-cell">Ads</th>
+                  <th className="text-left px-4 py-3.5 font-semibold text-gray-600 hidden sm:table-cell">Fichiers envoyés</th>
+                  <th className="text-right px-5 py-3.5 font-semibold text-gray-600">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((client, i) => {
+                  const brief = briefsByUser[client.id]
+                  const deliverable = brief?.client_deliverables?.[0]
+                  const filesCount = deliverable ? (filesCountByDeliverable[deliverable.id] ?? 0) : 0
+                  return (
+                    <tr key={client.id} className={`border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors ${i % 2 === 0 ? '' : 'bg-orias-bg/20'}`}>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-orias-green/10 border border-orias-green/20 flex items-center justify-center text-sm font-bold text-orias-green flex-shrink-0">
+                            {client.prenom[0]}{client.nom[0]}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-800">{client.prenom} {client.nom}</p>
+                            <p className="text-xs text-gray-400 hidden sm:block">{client.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-4">
+                        {brief ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Reçu</span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200">En attente</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-4 hidden md:table-cell">
+                        <span className={`status-badge border text-xs ${mktStatusCls(deliverable?.brand_kit_status ?? 'a_faire')}`}>{MKT_STATUS_OPTIONS.find(([v]) => v === (deliverable?.brand_kit_status ?? 'a_faire'))?.[1]}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden md:table-cell">
+                        <span className={`status-badge border text-xs ${mktStatusCls(deliverable?.site_status ?? 'a_faire')}`}>{MKT_STATUS_OPTIONS.find(([v]) => v === (deliverable?.site_status ?? 'a_faire'))?.[1]}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <span className={`status-badge border text-xs ${mktStatusCls(deliverable?.social_status ?? 'a_faire')}`}>{MKT_STATUS_OPTIONS.find(([v]) => v === (deliverable?.social_status ?? 'a_faire'))?.[1]}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <span className={`status-badge border text-xs ${mktStatusCls(deliverable?.ads_status ?? 'a_faire')}`}>{MKT_STATUS_OPTIONS.find(([v]) => v === (deliverable?.ads_status ?? 'a_faire'))?.[1]}</span>
+                      </td>
+                      <td className="px-4 py-4 hidden sm:table-cell text-sm text-gray-600">
+                        {deliverable ? `${filesCount} fichier${filesCount > 1 ? 's' : ''}` : '—'}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          {brief ? (
+                            <button onClick={() => setBriefModalTarget(client)} className="btn-outline-green text-xs px-3 py-1.5">
+                              Ouvrir
+                            </button>
+                          ) : (
+                            <span className="text-xs text-gray-300">Brief non reçu</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {briefModalTarget && briefsByUser[briefModalTarget.id] && (
+        <MarketingBriefModal
+          brief={briefsByUser[briefModalTarget.id]}
+          onClose={() => setBriefModalTarget(null)}
+          onSaved={loadBriefs}
+        />
       )}
     </div>
   )
@@ -3472,6 +3707,7 @@ export default function AdminDashboard() {
     switch (activeTab) {
       case 'clients':   return <ClientsSection isSuperAdmin={isSuperAdmin} />
       case 'leads':     return <CRMSection />
+      case 'marketing': return <MarketingSection isSuperAdmin={isSuperAdmin} />
       case 'dossiers':  return <DossierSection />
       case 'formation': return <FormationTrackingSection />
       case 'notifs':    return <NotificationsSection />
