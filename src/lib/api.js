@@ -18,6 +18,30 @@ function applyUnlockLogic(units) {
   })
 }
 
+// Heures acquises dans une unité à partir des chapitres individuellement terminés
+// (chapter_progress) — permet de refléter une progression partielle, pas seulement
+// une unité 100% terminée.
+function hoursFromCompletedChapters(unit, chapterIdSet) {
+  return unit.chapters.reduce((sum, ch, idx) => {
+    const chapterId = `${unit.id}.${idx + 1}`
+    return chapterIdSet.has(chapterId) ? sum + ch.hours : sum
+  }, 0)
+}
+
+const TOTAL_FORMATION_HOURS = FORMATION_UNITS.reduce((s, u) => s + u.totalHours, 0)
+
+// % de progression globale de la formation à partir des chapitres terminés (chapter_progress)
+// + des unités confirmées terminées côté formation_progress (au cas où une unité a été
+// marquée complète sans repasser par chaque chapitre individuellement).
+function computeProgressionPercent(chapterIdSet, formationRows) {
+  const completedHours = FORMATION_UNITS.reduce((sum, unit) => {
+    const row = formationRows?.find(r => r.unit_number === unit.id)
+    const chapterHours = hoursFromCompletedChapters(unit, chapterIdSet)
+    return sum + (row?.completed ? unit.totalHours : chapterHours)
+  }, 0)
+  return Math.round((completedHours / TOTAL_FORMATION_HOURS) * 100)
+}
+
 // Normalise raw DB status to UI status
 function normDocStatus(raw) {
   switch (raw) {
@@ -338,21 +362,23 @@ export async function updateDocumentStatus(docId, status) {
 export async function fetchFormationProgress(userId) {
   if (!isConfigured) return applyUnlockLogic(FORMATION_UNITS)
   try {
-    const { data, error } = await supabase
-      .from('formation_progress').select('*').eq('user_id', userId)
+    const [{ data, error }, chapterIdSet] = await Promise.all([
+      supabase.from('formation_progress').select('*').eq('user_id', userId),
+      fetchChapterProgress(userId),
+    ])
     if (error) return applyUnlockLogic(FORMATION_UNITS)
-    // Nouvel étudiant sans données → U1 disponible, reste verrouillé, tout à 0h
-    if (!data?.length) return FORMATION_UNITS.map((unit, idx) => ({
-      ...unit,
-      completedHours: 0,
-      status: idx === 0 ? 'in_progress' : 'locked'
-    }))
 
+    // Les heures acquises viennent des chapitres individuellement terminés (persistant,
+    // même en cours d'unité) — une unité n'a pas besoin d'être finie à 100% pour que
+    // la progression avance. `formation_progress` ne sert plus qu'à confirmer qu'une
+    // unité est bien marquée "terminée" (tous ses chapitres faits).
     const merged = FORMATION_UNITS.map(unit => {
-      const row = data.find(r => r.unit_number === unit.id)
-      if (!row) return unit
-      const status = row.completed ? 'completed' : row.hours_completed > 0 ? 'in_progress' : 'locked'
-      return { ...unit, completedHours: row.hours_completed, status }
+      const row = data?.find(r => r.unit_number === unit.id)
+      const chapterHours = hoursFromCompletedChapters(unit, chapterIdSet)
+      const completed = row?.completed || chapterHours >= unit.totalHours
+      const completedHours = completed ? unit.totalHours : chapterHours
+      const status = completed ? 'completed' : (completedHours > 0 || row) ? 'in_progress' : 'locked'
+      return { ...unit, completedHours, status }
     })
     return applyUnlockLogic(merged)
   } catch (err) {
@@ -559,7 +585,7 @@ export async function fetchAllClients(includeCancelled = true) {
     }))
   }
   try {
-    const [{ data: users }, { data: pendingDocs }] = await Promise.all([
+    const [{ data: users }, { data: pendingDocs }, { data: chapterRows }] = await Promise.all([
       supabase
         .from('users')
         .select('id, email, full_name, role, pack_id, created_at, dossiers(id, dossier_number, current_step, status), formation_progress(unit_number, completed), exam_results(score, passed), packs(name, category, price_ht, payment_type)')
@@ -569,11 +595,21 @@ export async function fetchAllClients(includeCancelled = true) {
         .from('documents')
         .select('user_id')
         .eq('status', 'en_attente'),
+      // chapter_progress référence auth.users (pas public.users) → ne peut pas être imbriqué
+      // dans le select ci-dessus, on le récupère à part pour calculer la progression réelle
+      // (chapitres terminés individuellement), pas seulement les unités 100% finies.
+      supabase.from('chapter_progress').select('user_id, chapter_id'),
     ])
 
     const pendingByUser = {}
     ;(pendingDocs || []).forEach(d => {
       pendingByUser[d.user_id] = (pendingByUser[d.user_id] || 0) + 1
+    })
+
+    const chaptersByUser = {}
+    ;(chapterRows || []).forEach(r => {
+      if (!chaptersByUser[r.user_id]) chaptersByUser[r.user_id] = new Set()
+      chaptersByUser[r.user_id].add(r.chapter_id)
     })
 
     if (!users?.length) return []
@@ -587,7 +623,7 @@ export async function fetchAllClients(includeCancelled = true) {
         pack:           u.packs?.name ?? 'Essentiel',
         packId:         u.pack_id ?? null,
         hasMarketing:   ['marketing', 'combine'].includes(u.packs?.category),
-        progression:    Math.round(((u.formation_progress?.filter(p => p.completed)?.length ?? 0) / 5) * 100),
+        progression:    computeProgressionPercent(chaptersByUser[u.id] ?? new Set(), u.formation_progress),
         statut:         dossier?.status ?? 'En cours',
         activite:       'récemment',
         email:          u.email,
