@@ -15,11 +15,24 @@ function formatDate(d) {
   return new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+function formatDuration(fromStr, toStr) {
+  if (!fromStr || !toStr) return ''
+  const ms = new Date(toStr).getTime() - new Date(fromStr).getTime()
+  if (ms < 0) return ''
+  const minutes = Math.round(ms / 60000)
+  if (minutes < 60) return `${minutes} min`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} h`
+  const days = Math.round(hours / 24)
+  return `${days} j`
+}
+
 function MesMessages() {
   const { user } = useAuth()
   const [tickets, setTickets] = useState([])
   const [messages, setMessages] = useState([])
   const [loading, setLoading] = useState(true)
+  const [expandedId, setExpandedId] = useState(null)
 
   const load = () => {
     Promise.all([fetchMyTickets(), fetchMyMessages()]).then(([t, m]) => {
@@ -59,41 +72,69 @@ function MesMessages() {
       {items.map(item => {
         if (item.type === 'message') {
           const m = item.data
+          const key = `msg-${m.id}`
+          const isOpen = expandedId === key
           return (
-            <div key={`msg-${m.id}`} className="rounded-xl border border-orias-gold/30 bg-orias-gold/5 p-4">
-              <div className="flex items-center justify-between gap-2 mb-1.5">
-                <span className="text-xs font-bold text-orias-gold uppercase tracking-wide">Message de l'équipe Oriafen</span>
-                <span className="text-xs text-gray-400">{formatDate(m.created_at)}</span>
-              </div>
-              <p className="text-sm text-gray-800 whitespace-pre-wrap">{m.message}</p>
+            <div key={key} className="rounded-xl border border-orias-gold/30 bg-orias-gold/5 overflow-hidden">
+              <button
+                onClick={() => setExpandedId(isOpen ? null : key)}
+                className="w-full text-left px-4 py-3 flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <span className="text-xs font-bold text-orias-gold uppercase tracking-wide">Message de l'équipe Oriafen</span>
+                  {!isOpen && <p className="text-sm text-gray-700 truncate mt-0.5">{m.message}</p>}
+                </div>
+                <span className="text-xs text-gray-400 flex-shrink-0">{formatDate(m.created_at)}</span>
+              </button>
+              {isOpen && (
+                <div className="px-4 pb-4">
+                  <p className="text-sm text-gray-800 whitespace-pre-wrap">{m.message}</p>
+                </div>
+              )}
             </div>
           )
         }
         const t = item.data
+        const key = `ticket-${t.id}`
+        const isOpen = expandedId === key
         const statusStyle = TICKET_STATUS_STYLES[t.status] || TICKET_STATUS_STYLES.nouveau
+        const duration = t.response ? formatDuration(t.created_at, t.updated_at) : ''
         return (
-          <div key={`ticket-${t.id}`} className="rounded-xl border border-orias-border overflow-hidden">
-            <div className="bg-orias-bg px-4 py-3 flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-semibold text-gray-800 text-sm">{t.subject}</span>
+          <div key={key} className="rounded-xl border border-orias-border overflow-hidden">
+            <button
+              onClick={() => setExpandedId(isOpen ? null : key)}
+              className="w-full text-left bg-orias-bg px-4 py-3 flex items-center justify-between gap-2 flex-wrap"
+            >
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <span className="font-semibold text-gray-800 text-sm truncate">{t.subject}</span>
                 {t.category && TICKET_CATEGORY_LABELS[t.category] && (
-                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orias-green/10 text-orias-green">{TICKET_CATEGORY_LABELS[t.category]}</span>
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orias-green/10 text-orias-green flex-shrink-0">{TICKET_CATEGORY_LABELS[t.category]}</span>
                 )}
               </div>
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusStyle.cls}`}>{statusStyle.label}</span>
-            </div>
-            <div className="p-4 space-y-3">
-              <div>
-                <p className="text-xs text-gray-400 mb-1">{formatDate(t.created_at)} — vous</p>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{t.message}</p>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusStyle.cls}`}>{statusStyle.label}</span>
+                <ChevronDownIcon className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
               </div>
-              {t.response && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-                  <p className="text-xs text-emerald-600 font-semibold mb-1">Réponse de l'équipe Oriafen</p>
-                  <p className="text-sm text-emerald-800 whitespace-pre-wrap">{t.response}</p>
+            </button>
+            {isOpen && (
+              <div className="p-4 space-y-3">
+                <div>
+                  <p className="text-xs text-gray-400 mb-1">Envoyé le {formatDate(t.created_at)} — vous</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{t.message}</p>
                 </div>
-              )}
-            </div>
+                {t.response ? (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                    <p className="text-xs text-emerald-600 font-semibold mb-1">
+                      Réponse de l'équipe Oriafen — {formatDate(t.updated_at)}
+                      {duration && <span className="font-normal text-emerald-500"> (traité en {duration})</span>}
+                    </p>
+                    <p className="text-sm text-emerald-800 whitespace-pre-wrap">{t.response}</p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-600 font-medium">En attente de réponse de notre équipe.</p>
+                )}
+              </div>
+            )}
           </div>
         )
       })}

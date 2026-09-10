@@ -8,6 +8,7 @@ import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, u
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
+import NotificationBell from '../../components/NotificationBell'
 import { supabase } from '../../lib/supabase'
 
 const FINAL_DOCS_CATALOGUE = [
@@ -3746,22 +3747,25 @@ export default function AdminDashboard() {
               <div className="hidden md:block h-6 w-px bg-white/20" />
               <span className="hidden md:block text-green-300 text-sm font-medium">Administration</span>
             </div>
-            <div className="hidden md:flex items-center gap-4">
-              {!isSuperAdmin && (
-                <button onClick={() => setShowReportIssue(true)} className="flex items-center gap-2 text-amber-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10 border border-amber-300/30">
-                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  Signaler un problème
+            <div className="flex items-center gap-2">
+              <NotificationBell audience="admin" onNavigate={handleTabClick} dark />
+              <div className="hidden md:flex items-center gap-4">
+                {!isSuperAdmin && (
+                  <button onClick={() => setShowReportIssue(true)} className="flex items-center gap-2 text-amber-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10 border border-amber-300/30">
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Signaler un problème
+                  </button>
+                )}
+                <span className="text-white font-semibold text-sm">{user?.name}</span>
+                <button onClick={handleLogout} className="flex items-center gap-2 text-green-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10">
+                  <LogoutIcon className="w-4 h-4" />
+                  Déconnexion
                 </button>
-              )}
-              <span className="text-white font-semibold text-sm">{user?.name}</span>
-              <button onClick={handleLogout} className="flex items-center gap-2 text-green-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10">
-                <LogoutIcon className="w-4 h-4" />
-                Déconnexion
+              </div>
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg text-green-300 hover:text-white hover:bg-white/10">
+                {mobileMenuOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
               </button>
             </div>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="md:hidden p-2 rounded-lg text-green-300 hover:text-white hover:bg-white/10">
-              {mobileMenuOpen ? <XIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
-            </button>
           </div>
         </div>
 

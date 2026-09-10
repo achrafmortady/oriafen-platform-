@@ -9,6 +9,7 @@ import FormationCommerciale from './FormationCommerciale'
 import MesDocuments from './MesDocuments'
 import Support from './Support'
 import Marketing from './Marketing'
+import NotificationBell from '../../components/NotificationBell'
 import { fetchMarketingAccess } from '../../lib/api'
 
 
@@ -91,6 +92,7 @@ export default function StudentDashboard() {
 
             {/* Desktop: user + logout */}
             <div style={{ display:'flex', alignItems:'center', gap:'16px' }}>
+              <NotificationBell audience="client" userId={user?.id} onNavigate={handleNav} dark />
               {/* User info */}
               <div style={{ textAlign:'right', display:'flex', flexDirection:'column' }}>
                 <span style={{ color:'#fff', fontWeight:'600', fontSize:'13px', fontFamily:"'Montserrat', sans-serif" }}>{user?.name}</span>

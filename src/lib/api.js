@@ -1387,6 +1387,87 @@ export function subscribeToMyCommunications(userId, callback) {
   return () => supabase.removeChannel(channel)
 }
 
+// ── Centre de notifications (cloche) ──────────────────────────
+
+export async function fetchMyNotifications() {
+  if (!isConfigured) return []
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('audience', 'client')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(30)
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchMyNotifications error:', err?.message)
+    return []
+  }
+}
+
+export async function fetchAdminNotifications() {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('audience', 'admin')
+      .order('created_at', { ascending: false })
+      .limit(30)
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchAdminNotifications error:', err?.message)
+    return []
+  }
+}
+
+export async function markNotificationRead(id) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('id', id)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function markAllNotificationsRead(audience) {
+  if (!isConfigured) return { success: true }
+  try {
+    let query = supabase.from('notifications').update({ read_at: new Date().toISOString() }).eq('audience', audience).is('read_at', null)
+    if (audience === 'client') {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return { success: false, error: 'Non authentifié.' }
+      query = query.eq('user_id', user.id)
+    }
+    const { error } = await query
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export function subscribeToNotifications(audience, userId, callback) {
+  if (!isConfigured) return () => {}
+  const filter = audience === 'client' && userId ? `user_id=eq.${userId}` : undefined
+  const channel = supabase
+    .channel(`notifications-realtime-${Math.random().toString(36).slice(2)}`)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'notifications', ...(filter ? { filter } : {}) },
+      payload => {
+        if (payload.new?.audience === audience) callback(payload.new)
+      }
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
 // ── Marketing — onboarding & suivi (brand_briefs / client_deliverables) ──
 
 // Whether this client's pack includes marketing (web ou combiné) — controls tab visibility
