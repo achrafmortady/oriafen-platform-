@@ -1,7 +1,105 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { FAQ_ITEMS } from '../../data/mockData'
 import { WhatsAppIcon, ChevronDownIcon, CalendarIcon, MessageIcon } from '../../components/Icons'
-import { submitSupportTicket } from '../../lib/api'
+import { submitSupportTicket, fetchMyTickets, fetchMyMessages, markMessageRead, subscribeToMyCommunications, TICKET_CATEGORY_LABELS } from '../../lib/api'
+import { useAuth } from '../../context/AuthContext'
+
+const TICKET_STATUS_STYLES = {
+  nouveau:  { label: 'En attente de réponse', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  en_cours: { label: 'En cours de traitement', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  resolu:   { label: 'Répondu', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+}
+
+function formatDate(d) {
+  if (!d) return ''
+  return new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function MesMessages() {
+  const { user } = useAuth()
+  const [tickets, setTickets] = useState([])
+  const [messages, setMessages] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  const load = () => {
+    Promise.all([fetchMyTickets(), fetchMyMessages()]).then(([t, m]) => {
+      setTickets(t)
+      setMessages(m)
+      setLoading(false)
+      // Marque les messages non lus comme lus une fois affichés
+      m.filter(msg => !msg.read_at).forEach(msg => markMessageRead(msg.id))
+    })
+  }
+
+  useEffect(() => {
+    load()
+    const unsubscribe = subscribeToMyCommunications(user?.id, () => load())
+    return unsubscribe
+  }, [user?.id])
+
+  const items = [
+    ...tickets.map(t => ({ type: 'ticket', date: t.created_at, data: t })),
+    ...messages.map(m => ({ type: 'message', date: m.created_at, data: m })),
+  ].sort((a, b) => new Date(b.date) - new Date(a.date))
+
+  if (loading) {
+    return <div className="text-center py-8 text-gray-400 text-sm">Chargement de vos échanges...</div>
+  }
+
+  if (items.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-400 text-sm">
+        Aucun échange pour l'instant. Utilisez le formulaire ci-dessous pour nous écrire.
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map(item => {
+        if (item.type === 'message') {
+          const m = item.data
+          return (
+            <div key={`msg-${m.id}`} className="rounded-xl border border-orias-gold/30 bg-orias-gold/5 p-4">
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className="text-xs font-bold text-orias-gold uppercase tracking-wide">Message de l'équipe Oriafen</span>
+                <span className="text-xs text-gray-400">{formatDate(m.created_at)}</span>
+              </div>
+              <p className="text-sm text-gray-800 whitespace-pre-wrap">{m.message}</p>
+            </div>
+          )
+        }
+        const t = item.data
+        const statusStyle = TICKET_STATUS_STYLES[t.status] || TICKET_STATUS_STYLES.nouveau
+        return (
+          <div key={`ticket-${t.id}`} className="rounded-xl border border-orias-border overflow-hidden">
+            <div className="bg-orias-bg px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-gray-800 text-sm">{t.subject}</span>
+                {t.category && TICKET_CATEGORY_LABELS[t.category] && (
+                  <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-orias-green/10 text-orias-green">{TICKET_CATEGORY_LABELS[t.category]}</span>
+                )}
+              </div>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${statusStyle.cls}`}>{statusStyle.label}</span>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <p className="text-xs text-gray-400 mb-1">{formatDate(t.created_at)} — vous</p>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">{t.message}</p>
+              </div>
+              {t.response && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  <p className="text-xs text-emerald-600 font-semibold mb-1">Réponse de l'équipe Oriafen</p>
+                  <p className="text-sm text-emerald-800 whitespace-pre-wrap">{t.response}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function FAQItem({ item }) {
   const [open, setOpen] = useState(false)
@@ -24,7 +122,7 @@ function FAQItem({ item }) {
 }
 
 export default function Support() {
-  const [form, setForm] = useState({ sujet: '', message: '', priority: 'normal' })
+  const [form, setForm] = useState({ sujet: '', message: '', priority: 'normal', category: '' })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -33,11 +131,11 @@ export default function Support() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
-    const result = await submitSupportTicket({ subject: form.sujet, message: form.message, priority: form.priority })
+    const result = await submitSupportTicket({ subject: form.sujet, message: form.message, priority: form.priority, category: form.category })
     setSubmitting(false)
     if (result.success) {
       setSubmitted(true)
-      setTimeout(() => { setSubmitted(false); setForm({ sujet: '', message: '', priority: 'normal' }) }, 4000)
+      setTimeout(() => { setSubmitted(false); setForm({ sujet: '', message: '', priority: 'normal', category: '' }) }, 4000)
     } else {
       setError(result.error || 'Erreur lors de l\'envoi. Réessayez ou contactez-nous sur WhatsApp.')
     }
@@ -45,6 +143,12 @@ export default function Support() {
 
   return (
     <div className="space-y-6">
+      <div className="card p-6">
+        <h2 className="section-title">Mes messages</h2>
+        <p className="section-subtitle">Suivi de vos échanges avec l'équipe Oriafen</p>
+        <MesMessages />
+      </div>
+
       <div className="card p-6">
         <h2 className="section-title">Support & Assistance</h2>
         <p className="section-subtitle">Notre équipe est là pour vous accompagner</p>
@@ -163,6 +267,21 @@ export default function Support() {
                   <option value="low">Faible</option>
                 </select>
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Concerne</label>
+              <select
+                value={form.category}
+                onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
+                className="input-field"
+              >
+                <option value="">Sélectionner...</option>
+                <option value="dossier">Mon dossier ORIAS</option>
+                <option value="formation">Formation IAS1</option>
+                <option value="marketing">Marketing & communication</option>
+                <option value="facturation">Facturation</option>
+                <option value="autre">Autre</option>
+              </select>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>

@@ -1227,7 +1227,7 @@ export const TICKET_STATUS_LABELS = {
   resolu:   'Résolu',
 }
 
-export async function submitSupportTicket({ subject, message, priority = 'normal' }) {
+export async function submitSupportTicket({ subject, message, priority = 'normal', category }) {
   if (!isConfigured) return { success: true }
   try {
     const { data: { user } } = await supabase.auth.getUser()
@@ -1238,6 +1238,7 @@ export async function submitSupportTicket({ subject, message, priority = 'normal
       subject,
       message,
       priority,
+      category: category || null,
     })
     return { success: !error, error: error?.message }
   } catch (err) {
@@ -1303,6 +1304,84 @@ export function subscribeToSupportTickets(callback) {
           ticket: payload.new ?? payload.old ?? null,
         })
       }
+    )
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+export const TICKET_CATEGORY_LABELS = {
+  formation:  'Formation IAS1',
+  marketing:  'Marketing & communication',
+  dossier:    'Dossier ORIAS',
+  facturation: 'Facturation',
+  autre:      'Autre',
+}
+
+// ── Espace communication du client (mes tickets + messages reçus) ────────
+
+export async function fetchMyTickets() {
+  if (!isConfigured) return []
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const { data, error } = await supabase
+      .from('support_tickets')
+      .select('*')
+      .eq('created_by', user.id)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchMyTickets error:', err?.message)
+    return []
+  }
+}
+
+export async function fetchMyMessages() {
+  if (!isConfigured) return []
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    const { data, error } = await supabase
+      .from('client_messages')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchMyMessages error:', err?.message)
+    return []
+  }
+}
+
+export async function markMessageRead(messageId) {
+  if (!isConfigured) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('client_messages')
+      .update({ read_at: new Date().toISOString() })
+      .eq('id', messageId)
+      .is('read_at', null)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export function subscribeToMyCommunications(userId, callback) {
+  if (!isConfigured || !userId) return () => {}
+  const channel = supabase
+    .channel(`my-comms-realtime-${Math.random().toString(36).slice(2)}`)
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'support_tickets', filter: `created_by=eq.${userId}` },
+      payload => callback({ source: 'ticket', event: payload.eventType, row: payload.new ?? payload.old ?? null })
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'client_messages', filter: `user_id=eq.${userId}` },
+      payload => callback({ source: 'message', event: payload.eventType, row: payload.new ?? payload.old ?? null })
     )
     .subscribe()
   return () => supabase.removeChannel(channel)
