@@ -573,6 +573,42 @@ export async function fetchFinanceSummary() {
 
 // ── Admin: clients ────────────────────────────────────────────
 
+// ── Messagerie admin → client ────────────────────────────────
+
+export async function sendAdminMessage({ recipientId, message, broadcast }) {
+  if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
+  const text = (message || '').trim()
+  if (!text) return { success: false, error: 'Message vide.' }
+
+  try {
+    if (broadcast) {
+      const { data: clients, error: clientsErr } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'student')
+      if (clientsErr) throw clientsErr
+      if (!clients || clients.length === 0) return { success: false, error: 'Aucun client actif.' }
+
+      const rows = clients.map(c => ({ user_id: c.id, message: text, broadcast: true }))
+      const { error } = await supabase.from('client_messages').insert(rows)
+      if (error) throw error
+      return { success: true, count: rows.length }
+    }
+
+    if (!recipientId) return { success: false, error: 'Destinataire requis.' }
+    const { error } = await supabase.from('client_messages').insert({
+      user_id: recipientId,
+      message: text,
+      broadcast: false,
+    })
+    if (error) throw error
+    return { success: true, count: 1 }
+  } catch (err) {
+    console.error('sendAdminMessage error:', err)
+    return { success: false, error: err.message || 'Erreur lors de l\'envoi.' }
+  }
+}
+
 export async function fetchAllClients(includeCancelled = true) {
   if (!isConfigured) {
     // Simulate a couple of clients with pending doc notifications

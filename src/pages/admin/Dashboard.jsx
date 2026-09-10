@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon, StarIcon, UploadIcon, DownloadIcon, FileIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS, sendAdminMessage } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -3239,6 +3239,8 @@ function NotificationsSection() {
   const [recipient, setRecipient] = useState('')
   const [message, setMessage] = useState('')
   const [sent, setSent] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [allClients, setAllClients] = useState([])
 
   const [tickets, setTickets] = useState([])
@@ -3266,8 +3268,20 @@ function NotificationsSection() {
     return unsubscribe
   }, [])
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault()
+    setSending(true)
+    setSendError('')
+    const result = await sendAdminMessage({
+      recipientId: tab === 'individual' ? recipient : null,
+      message,
+      broadcast: tab === 'broadcast',
+    })
+    setSending(false)
+    if (!result.success) {
+      setSendError(result.error || 'Erreur lors de l\'envoi.')
+      return
+    }
     setSent(true)
     setTimeout(() => { setSent(false); setMessage(''); setRecipient('') }, 3000)
   }
@@ -3345,11 +3359,12 @@ function NotificationsSection() {
                 required
               />
             </div>
-            <button type="submit" className="btn-gold w-full flex items-center justify-center gap-2">
+            {sendError && <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{sendError}</p>}
+            <button type="submit" disabled={sending} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-60">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
               </svg>
-              Envoyer le message
+              {sending ? 'Envoi en cours...' : 'Envoyer le message'}
             </button>
           </form>
         )}
