@@ -1286,10 +1286,10 @@ function AdminSendDocPanel({ clientId }) {
     try {
       const ext = (file.name.split(".").pop() || "bin").toLowerCase()
       const path = `received/${clientId}/${Date.now()}.${ext}`
-      const { error: storageErr } = await _supabase.storage.from("documents").upload(path, file, { upsert: true })
+      const { error: storageErr } = await supabase.storage.from("documents").upload(path, file, { upsert: true })
       if (storageErr) throw storageErr
-      const { data: { signedUrl } } = await _supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
-      await _supabase.from("client_received_docs").insert({
+      const { data: { signedUrl } } = await supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
+      await supabase.from("client_received_docs").insert({
         user_id: clientId, file_url: signedUrl, file_name: file.name, label: label.trim(), type
       })
       setSent(true)
@@ -1355,11 +1355,11 @@ function AdminSendFinalDocPanel({ clientId }) {
     try {
       const ext = (file.name.split(".").pop() || "bin").toLowerCase()
       const path = `final/${clientId}/${Date.now()}.${ext}`
-      const { error: storageErr } = await _supabase.storage.from("documents").upload(path, file, { upsert: true })
+      const { error: storageErr } = await supabase.storage.from("documents").upload(path, file, { upsert: true })
       if (storageErr) throw storageErr
-      const { data: { signedUrl } } = await _supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
+      const { data: { signedUrl } } = await supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
       const finalType = isCustom ? customLabel.trim() : docType
-      await _supabase.from("client_final_docs").upsert(
+      await supabase.from("client_final_docs").upsert(
         { user_id: clientId, doc_type: finalType, file_url: signedUrl, file_name: file.name },
         { onConflict: "user_id,doc_type" }
       )
@@ -1377,7 +1377,7 @@ function AdminSendFinalDocPanel({ clientId }) {
   const handleAutoLivret = async () => {
     setSending(true)
     try {
-      const { data: userData } = await _supabase.from("users").select("full_name, created_at").eq("id", clientId).single()
+      const { data: userData } = await supabase.from("users").select("full_name, created_at").eq("id", clientId).single()
       const studentName = userData?.full_name || "Étudiant"
       const enrolledAt  = userData?.created_at || new Date().toISOString()
       const { generateLivretHTML } = await import("../../lib/livret")
@@ -1385,10 +1385,10 @@ function AdminSendFinalDocPanel({ clientId }) {
       const blob = new Blob([html], { type: "text/html" })
       const fileName = `Livret_IAS1_${studentName.replace(/\s+/g,"_")}.html`
       const path = `final/${clientId}/${Date.now()}_livret.html`
-      const { error: storageErr } = await _supabase.storage.from("documents").upload(path, blob, { upsert: true, contentType: "text/html" })
+      const { error: storageErr } = await supabase.storage.from("documents").upload(path, blob, { upsert: true, contentType: "text/html" })
       if (storageErr) throw storageErr
-      const { data: { signedUrl } } = await _supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
-      await _supabase.from("client_final_docs").upsert(
+      const { data: { signedUrl } } = await supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
+      await supabase.from("client_final_docs").upsert(
         { user_id: clientId, doc_type: "attestation_ias1", file_url: signedUrl, file_name: fileName },
         { onConflict: "user_id,doc_type" }
       )
