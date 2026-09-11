@@ -968,6 +968,23 @@ export async function fetchUpcomingAppointments() {
   }
 }
 
+export async function fetchAppointmentsInRange(startISO, endISO) {
+  if (!isConfigured) return []
+  try {
+    const { data, error } = await supabase
+      .from('lead_appointments')
+      .select('*, leads(id, first_name, last_name, email, phone, status)')
+      .gte('scheduled_at', startISO)
+      .lte('scheduled_at', endISO)
+      .order('scheduled_at', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchAppointmentsInRange error:', err?.message)
+    return []
+  }
+}
+
 // ── Tâches (rappels / actions à faire) ──────────────────────────
 
 export async function fetchLeadTasks(leadId) {

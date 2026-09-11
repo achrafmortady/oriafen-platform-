@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon, StarIcon, UploadIcon, DownloadIcon, FileIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, TICKET_CATEGORY_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS, sendAdminMessage } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, fetchAppointmentsInRange, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, TICKET_CATEGORY_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS, sendAdminMessage } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -2615,6 +2615,134 @@ function LeadCard({ lead, onStatusChange, onSaveNotes, onOpen }) {
   )
 }
 
+// Vue Calendrier — vue secondaire mensuelle des rendez-vous, en complément
+// de la vue Agenda (liste priorisée qui reste la vue principale).
+function CalendarView({ onOpenLead }) {
+  const [cursor, setCursor] = useState(() => { const d = new Date(); d.setDate(1); return d })
+  const [appointments, setAppointments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selectedDay, setSelectedDay] = useState(null)
+
+  const monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1)
+  const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0, 23, 59, 59)
+  // Grille commençant le lundi
+  const gridStart = new Date(monthStart)
+  const startOffset = (monthStart.getDay() + 6) % 7
+  gridStart.setDate(monthStart.getDate() - startOffset)
+  const gridEnd = new Date(monthEnd)
+  const endOffset = (7 - ((monthEnd.getDay() + 6) % 7) - 1) % 7
+  gridEnd.setDate(monthEnd.getDate() + endOffset)
+
+  useEffect(() => {
+    setLoading(true)
+    setSelectedDay(null)
+    fetchAppointmentsInRange(gridStart.toISOString(), gridEnd.toISOString()).then(data => {
+      setAppointments(data)
+      setLoading(false)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cursor])
+
+  const days = []
+  for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+    days.push(new Date(d))
+  }
+
+  const apptsByDay = {}
+  appointments.forEach(a => {
+    if (!a.scheduled_at) return
+    const key = new Date(a.scheduled_at).toDateString()
+    if (!apptsByDay[key]) apptsByDay[key] = []
+    apptsByDay[key].push(a)
+  })
+
+  const today = new Date()
+  const monthLabel = cursor.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  const dayItems = selectedDay ? (apptsByDay[selectedDay.toDateString()] || []) : []
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))} className="p-2 rounded-lg border border-orias-border hover:bg-orias-bg">
+          <ChevronDownIcon className="w-4 h-4 rotate-90" />
+        </button>
+        <span className="font-bold text-orias-green capitalize">{monthLabel}</span>
+        <button onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))} className="p-2 rounded-lg border border-orias-border hover:bg-orias-bg">
+          <ChevronDownIcon className="w-4 h-4 -rotate-90" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12 text-gray-400">Chargement du calendrier...</div>
+      ) : (
+        <>
+          <div className="grid grid-cols-7 gap-1.5">
+            {['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'].map(d => (
+              <div key={d} className="text-center text-xs font-bold text-gray-400 uppercase pb-1">{d}</div>
+            ))}
+            {days.map(d => {
+              const inMonth = d.getMonth() === cursor.getMonth()
+              const isToday = d.toDateString() === today.toDateString()
+              const dayAppts = apptsByDay[d.toDateString()] || []
+              const isSelected = selectedDay && d.toDateString() === selectedDay.toDateString()
+              return (
+                <button
+                  key={d.toISOString()}
+                  onClick={() => setSelectedDay(dayAppts.length > 0 ? d : null)}
+                  className={`aspect-square rounded-xl p-1.5 flex flex-col items-start text-left border transition-colors
+                    ${isSelected ? 'border-orias-gold bg-orias-gold/10' : 'border-orias-border'}
+                    ${!inMonth ? 'opacity-30' : ''}
+                    ${dayAppts.length > 0 ? 'hover:bg-orias-bg cursor-pointer' : 'cursor-default'}`}
+                >
+                  <span className={`text-xs font-semibold ${isToday ? 'w-5 h-5 rounded-full bg-orias-green text-white flex items-center justify-center' : 'text-gray-600'}`}>
+                    {d.getDate()}
+                  </span>
+                  {dayAppts.length > 0 && (
+                    <div className="flex flex-wrap gap-0.5 mt-auto">
+                      {dayAppts.slice(0, 3).map(a => (
+                        <span key={a.id} className={`w-1.5 h-1.5 rounded-full ${isOverdue(a.scheduled_at) && a.status === 'planifie' ? 'bg-red-500' : 'bg-orias-gold'}`} />
+                      ))}
+                      {dayAppts.length > 3 && <span className="text-[9px] text-gray-400">+{dayAppts.length - 3}</span>}
+                    </div>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {selectedDay && (
+            <div className="space-y-2">
+              <div className="text-xs font-bold text-gray-400 uppercase tracking-wide">
+                {selectedDay.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </div>
+              {dayItems.map(a => {
+                const fullName = `${a.leads?.first_name || ''} ${a.leads?.last_name || ''}`.trim() || '—'
+                return (
+                  <div key={a.id} onClick={() => onOpenLead(a.lead_id)} className="card p-3 flex items-center justify-between cursor-pointer hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center flex-shrink-0">
+                        <CalendarIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm text-gray-900">{fullName}</div>
+                        <div className="text-xs text-gray-500">{APPOINTMENT_TYPE_LABELS[a.type] || a.type} · {a.leads?.phone || a.leads?.email || ''}</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-gray-800">{new Date(a.scheduled_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+                      <div className="text-[10px] text-gray-400">{APPOINTMENT_STATUS_LABELS[a.status]}</div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 // Vue Agenda — tous les rendez-vous et tâches à venir, tous leads confondus,
 // regroupés Aujourd'hui / Cette semaine / Plus tard, avec badge "En retard".
 function AgendaView({ onOpenLead }) {
@@ -3038,9 +3166,10 @@ function CRMSection() {
         <div className="flex rounded-xl border border-orias-border overflow-hidden flex-shrink-0">
           <button onClick={() => setView('kanban')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'kanban' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Kanban</button>
           <button onClick={() => setView('agenda')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'agenda' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Agenda</button>
+          <button onClick={() => setView('calendrier')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'calendrier' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Calendrier</button>
           <button onClick={() => setView('liste')} className={`px-4 py-2 text-sm font-semibold transition-colors ${view === 'liste' ? 'bg-orias-green text-white' : 'text-gray-600 hover:bg-orias-bg'}`}>Liste</button>
         </div>
-        {view !== 'agenda' && (
+        {view !== 'agenda' && view !== 'calendrier' && (
           <>
             <div className="relative flex-1 min-w-[180px]">
               <SearchIcon className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -3087,6 +3216,13 @@ function CRMSection() {
       {/* Agenda view */}
       {view === 'agenda' && (
         <AgendaView onOpenLead={setSelectedLeadId} />
+      )}
+
+      {/* Calendar view (secondaire) */}
+      {view === 'calendrier' && (
+        <div className="card p-6">
+          <CalendarView onOpenLead={setSelectedLeadId} />
+        </div>
       )}
 
       {/* List view */}
