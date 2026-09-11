@@ -779,26 +779,30 @@ export async function fetchClientDocuments(userId) {
 
 // ── Leads CRM ─────────────────────────────────────────────────
 
-export const LEAD_STATUSES = ['nouveau', 'rdv_pris', 'qualifie', 'engage', 'client', 'perdu']
+export const LEAD_STATUSES = ['nouveau', 'rdv_pris', 'qualifie', 'a_relancer', 'engage', 'client', 'injoignable', 'perdu']
 
 export const LEAD_STATUS_LABELS = {
-  nouveau:   'Nouveau',
-  rdv_pris:  'RDV pris',
-  qualifie:  'Qualifié',
-  engage:    'Engagé (Commit)',
-  client:    'Client',
-  perdu:     'Perdu',
+  nouveau:      'Nouveau',
+  rdv_pris:     'RDV pris',
+  qualifie:     'Qualifié',
+  a_relancer:   'Intéressé – à relancer',
+  engage:       'Engagé (Commit)',
+  client:       'Client',
+  injoignable:  'Injoignable',
+  perdu:        'Perdu',
 }
 
 // Pondération du potentiel par étape — même logique que les pipelines HubSpot
 // (10% / 30% / 50% / 80% / 100% gagné / 0% perdu), utilisée pour le "montant pondéré".
 export const STAGE_WEIGHTS = {
-  nouveau:  0.1,
-  rdv_pris: 0.3,
-  qualifie: 0.5,
-  engage:   0.8,
-  client:   1,
-  perdu:    0,
+  nouveau:      0.1,
+  rdv_pris:     0.3,
+  qualifie:     0.5,
+  a_relancer:   0.25,
+  engage:       0.8,
+  client:       1,
+  injoignable:  0.05,
+  perdu:        0,
 }
 
 export const LEAD_SOURCE_LABELS = {

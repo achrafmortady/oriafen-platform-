@@ -1921,12 +1921,14 @@ function FormationTrackingSection() {
 }
 
 const STATUS_BADGE_STYLES = {
-  nouveau:  'bg-blue-100 text-blue-700 border-blue-200',
-  rdv_pris: 'bg-purple-100 text-purple-700 border-purple-200',
-  qualifie: 'bg-amber-100 text-amber-700 border-amber-200',
-  engage:   'bg-orange-100 text-orange-700 border-orange-200',
-  client:   'bg-emerald-100 text-emerald-700 border-emerald-200',
-  perdu:    'bg-gray-100 text-gray-500 border-gray-200',
+  nouveau:     'bg-blue-100 text-blue-700 border-blue-200',
+  rdv_pris:    'bg-purple-100 text-purple-700 border-purple-200',
+  qualifie:    'bg-amber-100 text-amber-700 border-amber-200',
+  a_relancer:  'bg-teal-100 text-teal-700 border-teal-200',
+  engage:      'bg-orange-100 text-orange-700 border-orange-200',
+  client:      'bg-emerald-100 text-emerald-700 border-emerald-200',
+  injoignable: 'bg-red-100 text-red-600 border-red-200',
+  perdu:       'bg-gray-100 text-gray-500 border-gray-200',
 }
 
 const SOURCE_BADGE_STYLES = {
