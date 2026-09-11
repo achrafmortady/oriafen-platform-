@@ -24,6 +24,10 @@ const TYPE_ICON = {
   message: '💬',
   ticket_response: '💬',
   ticket_new: '🔔',
+  appointment_soon: '📅',
+  appointment_overdue: '⏰',
+  task_soon: '✅',
+  task_overdue: '⚠️',
 }
 
 /**
@@ -84,21 +88,24 @@ export default function NotificationBell({ audience, userId, onNavigate, dark = 
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(o => !o)}
-        className={`relative p-2 rounded-lg transition-colors ${btnColor}`}
+        className={`relative p-2.5 rounded-xl transition-colors ${btnColor} ${unreadCount > 0 ? (dark ? 'bg-white/10' : 'bg-orias-gold/10') : ''}`}
         title="Notifications"
       >
-        <BellIcon className="w-5 h-5" />
+        <BellIcon className="w-7 h-7" />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 bg-orias-gold text-orias-green text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
+          <>
+            <span className="absolute -top-1 -right-1 inline-flex h-5 w-5 animate-ping rounded-full bg-orias-gold opacity-60" />
+            <span className="absolute -top-1 -right-1 bg-orias-gold text-orias-green text-[11px] font-extrabold w-5 h-5 rounded-full flex items-center justify-center shadow-lg ring-2 ring-white">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          </>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white rounded-2xl shadow-2xl border border-orias-border overflow-hidden z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-orias-border bg-orias-bg">
-            <span className="font-bold text-sm text-orias-green">Notifications</span>
+        <div className="absolute right-0 mt-2 w-96 max-w-[92vw] bg-white rounded-2xl shadow-2xl border border-orias-border overflow-hidden z-50">
+          <div className="flex items-center justify-between px-4 py-3.5 border-b border-orias-border bg-orias-bg">
+            <span className="font-extrabold text-base text-orias-green">🔔 Notifications</span>
             <div className="flex items-center gap-2">
               {unreadCount > 0 && (
                 <button onClick={handleMarkAllRead} className="text-xs font-semibold text-orias-gold hover:underline">
@@ -120,12 +127,12 @@ export default function NotificationBell({ audience, userId, onNavigate, dark = 
                 <button
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className={`w-full text-left flex items-start gap-3 px-4 py-3 border-b border-orias-border/60 last:border-0 transition-colors hover:bg-orias-bg ${!item.read_at ? 'bg-orias-gold/5' : ''}`}
+                  className={`w-full text-left flex items-start gap-3 px-4 py-3.5 border-b border-orias-border/60 last:border-0 transition-colors hover:bg-orias-bg ${!item.read_at ? 'bg-orias-gold/5' : ''}`}
                 >
-                  <span className="text-lg flex-shrink-0">{TYPE_ICON[item.type] || '🔔'}</span>
+                  <span className="text-2xl flex-shrink-0">{TYPE_ICON[item.type] || '🔔'}</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      {!item.read_at && <span className="w-1.5 h-1.5 rounded-full bg-orias-gold flex-shrink-0" />}
+                      {!item.read_at && <span className="w-2 h-2 rounded-full bg-orias-gold flex-shrink-0" />}
                       <p className={`text-sm truncate ${!item.read_at ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{item.title}</p>
                     </div>
                     {item.body && <p className="text-xs text-gray-500 truncate mt-0.5">{item.body}</p>}
