@@ -442,6 +442,13 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // nouvelle logique de filtrage, juste un déclenchement externe.
  useEffect(()=>{if(presetRequest?.preset)preset(presetRequest.preset)},[presetRequest]);
  useEffect(()=>{
+  // Ce polling suppose un backend WhatsApp local (server/, voir .gitignore)
+  // lancé sur la machine du développeur — jamais accessible depuis un
+  // déploiement hébergé (Vercel Preview). Le try/catch plus bas rend déjà
+  // l'échec silencieux, mais on évite ici toute tentative réseau hors
+  // localhost : aucune connexion vers un quelconque backend "live" ne doit
+  // jamais partir du navigateur sur une Preview.
+  if (!['localhost','127.0.0.1','[::1]'].includes(location.hostname)) return;
   let cancelled=false;
   async function pollWhatsappLeads(){
    try{
