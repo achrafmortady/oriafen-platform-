@@ -641,7 +641,7 @@ function StatusView({ brief, status, pushToast, onStatusChanged }) {
           </>
         )}
         <div style={{ marginTop:'18px', padding:'14px 16px', borderRadius:'14px', background:'#fefce8', border:'1px solid #fde68a', fontSize:'12px', color:'#78716c' }}>
-          <p style={{margin:0, lineHeight:'1.6'}}>Une question sur votre projet ? Contactez votre conseiller via l'onglet Support.</p>
+          <p style={{margin:0, lineHeight:'1.6'}}>Une question sur votre projet ? Contactez votre conseiller via l'onglet Mes échanges.</p>
         </div>
       </SectionCard>
 

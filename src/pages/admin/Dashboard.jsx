@@ -1,10 +1,11 @@
+import ClientSendHistoryPanel from '../../components/ClientSendHistoryPanel'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import Logo from '../../components/Logo'
 import { LogoutIcon, UsersIcon, TrendingUpIcon, AwardIcon, BellIcon, MenuIcon, XIcon, EyeIcon, EditIcon, MessageIcon, SearchIcon, CheckCircleIcon, ClockIcon, BookIcon, TargetIcon, PhoneIcon, CalendarIcon, StarIcon, UploadIcon, DownloadIcon, FileIcon } from '../../components/Icons'
 import { FORMATION_UNITS } from '../../data/mockData'
-import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, fetchAppointmentsInRange, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, TICKET_CATEGORY_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS, sendAdminMessage } from '../../lib/api'
+import { fetchAllClients, createClient, updateClientInfo, deleteClientAccount, updateDossierStep, fetchClientDocumentsWithDetails, updateDocumentStatusWithReason, fetchPacks, markPaymentPaid, fetchFinanceSummary, fetchClientPayments, createAdminAccount, cancelClientDossier, reactivateClientDossier, fetchLeads, updateLeadStatus, updateLeadNotes, updateLeadInfo, subscribeToLeads, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_SOURCE_LABELS, STAGE_WEIGHTS, fetchLeadActivity, addLeadNote, logQuickActivity, setLeadPack, setLeadPricing, convertLeadToClient, fetchLeadAppointments, addLeadAppointment, updateAppointmentStatus, fetchUpcomingAppointments, fetchAppointmentsInRange, APPOINTMENT_TYPE_LABELS, APPOINTMENT_STATUS_LABELS, fetchLeadTasks, addLeadTask, toggleTaskDone, fetchUpcomingTasks, fetchAdmins, toggleUserBlocked, deleteAdminAccount, submitAdminTicket, fetchSupportTickets, updateTicketStatus, subscribeToSupportTickets, TICKET_STATUS_LABELS, TICKET_CATEGORY_LABELS, fetchAdminMarketingBriefs, updateClientDeliverables, SITE_FEEDBACK_SECTIONS, fetchDeliverableFeedback, updateFeedbackStatus, sendNewSiteRevision, fetchDeliverableFiles, sendDeliverableFile, deleteDeliverableFile, DELIVERABLE_FILE_KIND_LABELS, sendAdminMessage, recordClientSend } from '../../lib/api'
 import { openLivret } from '../../lib/livret'
 import { REQUIRED_DOCUMENTS } from '../../data/mockData'
 import ProgressBar from '../../components/ProgressBar'
@@ -565,7 +566,7 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
             )}
           </div>
 
-          {deliverable && <DeliverableFilesPanel deliverableId={deliverable.id} />}
+          {deliverable && <DeliverableFilesPanel deliverableId={deliverable.id} userId={brief.user_id} />}
 
           {deliverable?.site_url && <SiteFeedbackPanel deliverable={deliverable} onSaved={onSaved} />}
         </div>
@@ -578,7 +579,7 @@ function MarketingBriefModal({ brief, onClose, onSaved }) {
 
 const DELIVERABLE_FILE_KIND_OPTIONS = Object.entries(DELIVERABLE_FILE_KIND_LABELS)
 
-function DeliverableFilesPanel({ deliverableId }) {
+function DeliverableFilesPanel({ deliverableId, userId }) {
   const [files, setFiles]     = useState([])
   const [loading, setLoading] = useState(true)
   const [kind, setKind]       = useState('document')
@@ -602,7 +603,7 @@ function DeliverableFilesPanel({ deliverableId }) {
     e.target.value = ''
     if (!file) return
     setSending(true)
-    const res = await sendDeliverableFile(deliverableId, { kind, label, file })
+    const res = await sendDeliverableFile(deliverableId, userId, { kind, label, file })
     setSending(false)
     if (res.success) { setLabel(''); load() }
     else setError(res.error || 'Erreur lors de l\'envoi.')
@@ -1102,6 +1103,7 @@ function ClientsSection({ isSuperAdmin }) {
                   )}
                 </div>
               )}
+              <ClientSendHistoryPanel clientId={selected.id} />
               <div className="flex gap-2 pt-2">
                 <button
                   onClick={() => window.open(`https://wa.me/?text=Bonjour%20${encodeURIComponent(selected.prenom)}%2C%20`, '_blank')}
@@ -1290,8 +1292,18 @@ function AdminSendDocPanel({ clientId }) {
       const { error: storageErr } = await supabase.storage.from("documents").upload(path, file, { upsert: true })
       if (storageErr) throw storageErr
       const { data: { signedUrl } } = await supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
-      await supabase.from("client_received_docs").insert({
+      const { data: sentDoc, error: insertErr } = await supabase.from("client_received_docs").insert({
         user_id: clientId, file_url: signedUrl, file_name: file.name, label: label.trim(), type
+      }).select("id").single()
+      if (insertErr) throw insertErr
+      await recordClientSend({
+        userId: clientId,
+        kind: 'document',
+        title: label.trim(),
+        fileName: file.name,
+        fileUrl: signedUrl,
+        sourceTable: 'client_received_docs',
+        sourceId: sentDoc.id,
       })
       setSent(true)
       setLabel("")
@@ -1360,10 +1372,20 @@ function AdminSendFinalDocPanel({ clientId }) {
       if (storageErr) throw storageErr
       const { data: { signedUrl } } = await supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
       const finalType = isCustom ? customLabel.trim() : docType
-      await supabase.from("client_final_docs").upsert(
+      const { data: sentDoc, error: upsertErr } = await supabase.from("client_final_docs").upsert(
         { user_id: clientId, doc_type: finalType, file_url: signedUrl, file_name: file.name },
         { onConflict: "user_id,doc_type" }
-      )
+      ).select("id").single()
+      if (upsertErr) throw upsertErr
+      await recordClientSend({
+        userId: clientId,
+        kind: 'final_document',
+        title: finalType,
+        fileName: file.name,
+        fileUrl: signedUrl,
+        sourceTable: 'client_final_docs',
+        sourceId: sentDoc.id,
+      })
       setSent(true)
       setCustomLabel("")
       setTimeout(() => setSent(false), 3000)
@@ -1389,10 +1411,20 @@ function AdminSendFinalDocPanel({ clientId }) {
       const { error: storageErr } = await supabase.storage.from("documents").upload(path, blob, { upsert: true, contentType: "text/html" })
       if (storageErr) throw storageErr
       const { data: { signedUrl } } = await supabase.storage.from("documents").createSignedUrl(path, 365 * 24 * 3600)
-      await supabase.from("client_final_docs").upsert(
+      const { data: sentDoc, error: upsertErr } = await supabase.from("client_final_docs").upsert(
         { user_id: clientId, doc_type: "attestation_ias1", file_url: signedUrl, file_name: fileName },
         { onConflict: "user_id,doc_type" }
-      )
+      ).select("id").single()
+      if (upsertErr) throw upsertErr
+      await recordClientSend({
+        userId: clientId,
+        kind: 'final_document',
+        title: 'Attestation IAS1',
+        fileName,
+        fileUrl: signedUrl,
+        sourceTable: 'client_final_docs',
+        sourceId: sentDoc.id,
+      })
       setSent(true)
       setTimeout(() => setSent(false), 3000)
     } catch(err) {

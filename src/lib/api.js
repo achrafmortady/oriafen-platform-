@@ -1745,7 +1745,7 @@ export async function fetchDeliverableFiles(deliverableId) {
 }
 
 // Admin : envoie un fichier/créa au client — upload vers le bucket "documents" puis enregistrement de la ligne
-export async function sendDeliverableFile(deliverableId, { kind, label, file }) {
+export async function sendDeliverableFile(deliverableId, userId, { kind, label, file }) {
   if (!isConfigured) return { success: false, error: 'Non configuré.' }
   try {
     const ext  = (file.name.split('.').pop() || 'bin').toLowerCase()
@@ -1753,14 +1753,23 @@ export async function sendDeliverableFile(deliverableId, { kind, label, file }) 
     const { error: storageErr } = await supabase.storage.from('documents').upload(path, file, { upsert: true })
     if (storageErr) throw storageErr
     const { data: pub } = supabase.storage.from('documents').getPublicUrl(path)
-    const { error: insertErr } = await supabase.from('deliverable_files').insert({
+    const { data: deliverableFile, error: insertErr } = await supabase.from('deliverable_files').insert({
       deliverable_id: deliverableId,
       kind,
       label: label?.trim() || file.name,
       file_url: pub?.publicUrl,
       file_name: file.name,
-    })
+    }).select('id').single()
     if (insertErr) throw insertErr
+    await recordClientSend({
+      userId,
+      kind: 'marketing_file',
+      title: label?.trim() || file.name,
+      fileName: file.name,
+      fileUrl: pub?.publicUrl,
+      sourceTable: 'deliverable_files',
+      sourceId: deliverableFile.id,
+    })
     return { success: true }
   } catch (err) {
     console.warn('[api] sendDeliverableFile error:', err?.message)
@@ -1781,3 +1790,441 @@ export async function deleteDeliverableFile(fileId) {
 
 
 
+// Add to src/lib/api.js
+
+export async function recordClientSend({
+  userId,
+  kind,
+  title = null,
+  message = null,
+  fileName = null,
+  fileUrl = null,
+  sourceTable = null,
+  sourceId = null,
+  responseRequired = true,
+}) {
+  if (!isConfigured) return { success: true, id: `demo-${Date.now()}` }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase
+      .from('client_send_history')
+      .insert({
+        user_id: userId,
+        kind,
+        title,
+        message,
+        file_name: fileName,
+        file_url: fileUrl,
+        source_table: sourceTable,
+        source_id: sourceId,
+        response_required: responseRequired,
+        sent_by: user?.id || null,
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    return { success: true, id: data.id }
+  } catch (err) {
+    console.warn('[api] recordClientSend error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// Champs opened_at / reminded_at / important / last_activity_at : ajoutés par
+// la migration locale/test 20260916_test_local_tracking_columns.sql (pas
+// encore en prod — voir README "Activation future"). Lecture défensive via
+// `?? null` / `?? false` pour rester compatible tant que ces colonnes
+// n'existent pas encore côté live (select('*') ignore simplement les
+// colonnes absentes, aucune erreur).
+function normalizeTrackedSends(rows = []) {
+  return rows.map(row => {
+    const replies = (row.client_send_replies || []).map(reply => ({
+      id: reply.id,
+      message: reply.message,
+      createdAt: reply.created_at,
+    }))
+    return {
+      id: row.id,
+      kind: row.kind,
+      title: row.title,
+      message: row.message,
+      fileName: row.file_name,
+      fileUrl: row.file_url,
+      sourceTable: row.source_table,
+      sourceId: row.source_id,
+      responseRequired: row.response_required,
+      sentAt: row.sent_at,
+      seenAt: row.client_seen_at,
+      clientSeenAt: row.client_seen_at, // conservé pour compat avec le code existant
+      openedAt: row.opened_at ?? null,
+      remindedAt: row.reminded_at ?? null,
+      important: row.important ?? false,
+      lastActivityAt: row.last_activity_at ?? null,
+      // row.replied_at (colonne migration 20260916_test_local_tracking_columns.sql) n'est
+      // peuplée par aucun trigger pour l'instant — on garde la dérivation depuis
+      // client_send_replies en repli tant qu'elle reste vide.
+      repliedAt: row.replied_at ?? (replies.length ? replies[replies.length - 1].createdAt : null),
+      replies,
+    }
+  })
+}
+
+export async function fetchClientSendHistory(userId) {
+  if (!isConfigured || !userId) return []
+  try {
+    const { data, error } = await supabase
+      .from('client_send_history')
+      .select('*, client_send_replies(id, message, created_at)')
+      .eq('user_id', userId)
+      .order('sent_at', { ascending: false })
+    if (error) throw error
+    return normalizeTrackedSends(data)
+  } catch (err) {
+    console.warn('[api] fetchClientSendHistory error:', err?.message)
+    return []
+  }
+}
+
+export async function fetchMySendHistory() {
+  if (!isConfigured) return []
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return []
+    return fetchClientSendHistory(user.id)
+  } catch (err) {
+    return []
+  }
+}
+
+export async function replyToTrackedSend(sendId, message) {
+  if (!isConfigured) return { success: true }
+  const text = (message || '').trim()
+  if (!text) return { success: false, error: 'Réponse vide.' }
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Non authentifié.' }
+    const { error } = await supabase.from('client_send_replies').insert({
+      send_id: sendId,
+      user_id: user.id,
+      message: text,
+    })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export function subscribeToClientSendHistory(userId, callback) {
+  if (!isConfigured || !userId) return () => {}
+  const channel = supabase
+    .channel(`client-send-history-${userId}-${Math.random().toString(36).slice(2)}`)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'client_send_history', filter: `user_id=eq.${userId}` }, callback)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'client_send_replies', filter: `user_id=eq.${userId}` }, callback)
+    .subscribe()
+  return () => supabase.removeChannel(channel)
+}
+
+export function subscribeToMySendHistory(userId, callback) {
+  return subscribeToClientSendHistory(userId, callback)
+}
+
+// ================================================================
+// PRÉPARATION ACTIVATION FUTURE — tout ce qui suit est dormant tant que
+// isConfigured est false (toujours le cas dans cette checkout isolée, voir
+// src/lib/supabase.js) et/ou tant que les migrations locales/test listées
+// dans supabase/migrations/20260916_* n'ont pas été validées puis promues
+// en prod. Rien ici n'est appelé automatiquement par l'UI existante.
+// Voir README.md → "Activation future" pour l'ordre recommandé.
+// ================================================================
+
+// ── Tracking avancé des envois (seen / opened / reminded / important) ──
+// Complète client_send_history (déjà utilisée par recordClientSend /
+// fetchClientSendHistory ci-dessus) sans dupliquer ces fonctions.
+// Nécessite supabase/migrations/20260916_test_local_tracking_columns.sql
+// (colonnes opened_at, reminded_at, important, last_activity_at, status).
+
+export async function markSendSeen(sendId) {
+  if (!isConfigured || !sendId) return { success: true }
+  try {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('client_send_history')
+      .update({ client_seen_at: now, last_activity_at: now })
+      .eq('id', sendId)
+      .is('client_seen_at', null)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function markSendOpened(sendId) {
+  if (!isConfigured || !sendId) return { success: true }
+  try {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('client_send_history')
+      .update({ opened_at: now, client_seen_at: now, last_activity_at: now })
+      .eq('id', sendId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function markSendReminded(sendId) {
+  if (!isConfigured || !sendId) return { success: true }
+  try {
+    const now = new Date().toISOString()
+    const { error } = await supabase
+      .from('client_send_history')
+      .update({ reminded_at: now, last_activity_at: now })
+      .eq('id', sendId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function setSendImportant(sendId, important) {
+  if (!isConfigured || !sendId) return { success: true }
+  try {
+    const { error } = await supabase
+      .from('client_send_history')
+      .update({ important: Boolean(important) })
+      .eq('id', sendId)
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+// ── Notifications (création) ────────────────────────────────
+// Schéma live CONFIRMÉ (2026-09-16) pour public.notifications :
+//   id, audience, user_id, type, title, body, link_tab, related_id,
+//   read_at, created_at
+// — colonnes déjà lues/mises à jour plus haut par fetchMyNotifications /
+// fetchAdminNotifications / markNotificationRead / markAllNotificationsRead
+// / subscribeToNotifications (fonctions de lecture non modifiées ici).
+// Important : la colonne est `body` (pas `message`) et `related_id` (pas
+// `source_id`) ; il n'existe PAS de colonne `source_table`. `link_tab`
+// sert à indiquer au client vers quel onglet naviguer au clic.
+export async function createNotification({
+  audience,
+  userId = null,
+  type = null,
+  title = null,
+  body = null,
+  linkTab = null,
+  relatedId = null,
+}) {
+  if (!isConfigured) return { success: true, id: `demo-notif-${Date.now()}` }
+  if (!audience) return { success: false, error: 'audience requise (client|admin).' }
+  try {
+    const { data, error } = await supabase
+      .from('notifications')
+      .insert({
+        audience,
+        user_id: userId,
+        type,
+        title,
+        body,
+        link_tab: linkTab,
+        related_id: relatedId,
+      })
+      .select('id')
+      .single()
+    if (error) throw error
+    return { success: true, id: data.id }
+  } catch (err) {
+    console.warn('[api] createNotification error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// ── Journal d'activité (activity_log) ───────────────────────
+// Distinct de src/local/activityLog.js (localStorage, clientId = lead.id,
+// déjà utilisé aujourd'hui par le CRM local) — celui-ci cible la future
+// table Supabase `activity_log` (acteur/entité/metadata). Ne pas fusionner
+// les deux conventions sans revoir tous les appelants du local.
+// Nécessite supabase/migrations/20260916_test_local_activity_log.sql.
+export const ACTIVITY_ACTION_TYPES = [
+  'login',
+  'message_seen',
+  'document_opened',
+  'document_rejected',
+  'document_replaced',
+  'reply_sent',
+  'reminder_sent',
+  'notification_seen',
+]
+
+export async function logActivity({
+  clientId,
+  actorType,
+  actorId = null,
+  actionType,
+  entityType = null,
+  entityId = null,
+  metadata = null,
+}) {
+  if (!isConfigured) return { success: true }
+  if (!clientId || !actorType || !actionType) {
+    return { success: false, error: 'clientId, actorType et actionType requis.' }
+  }
+  try {
+    const { error } = await supabase.from('activity_log').insert({
+      client_id: clientId,
+      actor_type: actorType,
+      actor_id: actorId,
+      action_type: actionType,
+      entity_type: entityType,
+      entity_id: entityId,
+      metadata,
+    })
+    return { success: !error, error: error?.message }
+  } catch (err) {
+    return { success: false, error: err?.message }
+  }
+}
+
+export async function fetchActivityLog(clientId) {
+  if (!isConfigured || !clientId) return []
+  try {
+    const { data, error } = await supabase
+      .from('activity_log')
+      .select('*')
+      .eq('client_id', clientId)
+      .order('created_at', { ascending: false })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchActivityLog error:', err?.message)
+    return []
+  }
+}
+
+// ── Historique / versioning des documents (document_versions) ──
+// Nécessite supabase/migrations/20260916_test_local_document_versions.sql.
+// Ne touche PAS à la contrainte UNIQUE(user_id, category) existante sur
+// public.documents (voir audit — conservée telle quelle pour l'instant).
+export async function fetchDocumentVersions(userId, category) {
+  if (!isConfigured || !userId || !category) return []
+  try {
+    const { data, error } = await supabase
+      .from('document_versions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('category', category)
+      .order('version_number', { ascending: true })
+    if (error) throw error
+    return data ?? []
+  } catch (err) {
+    console.warn('[api] fetchDocumentVersions error:', err?.message)
+    return []
+  }
+}
+
+// ── Rejet de document avec audit + notification ────────────────
+// Réutilise updateDocumentStatusWithReason() (conservée intacte plus haut)
+// et y ajoute rejected_at / rejected_by, l'archivage de la version rejetée
+// dans document_versions, la notification client et une entrée
+// activity_log. `doc` attendu : { id, userId, category, categoryLabel,
+// fileName, fileUrl, uploadedAt }.
+export async function rejectDocumentWithAudit(doc, reason, rejectedBy = null) {
+  const statusResult = await updateDocumentStatusWithReason(doc.id, 'manquant', reason)
+  if (!statusResult.success) return statusResult
+  if (!isConfigured) return { success: true }
+
+  const now = new Date().toISOString()
+  try {
+    await supabase
+      .from('documents')
+      .update({ rejected_at: now, rejected_by: rejectedBy })
+      .eq('id', doc.id)
+
+    await supabase.from('document_versions').insert({
+      document_id: doc.id,
+      user_id: doc.userId,
+      category: doc.category,
+      file_name: doc.fileName,
+      file_url: doc.fileUrl,
+      status: 'manquant',
+      rejection_reason: reason || null,
+      uploaded_at: doc.uploadedAt,
+      rejected_at: now,
+      rejected_by: rejectedBy,
+      is_current: false,
+    })
+
+    await createNotification({
+      audience: 'client',
+      userId: doc.userId,
+      type: 'document_rejected',
+      title: 'Document refusé',
+      body: reason
+        ? `Votre document a été refusé. Motif : ${reason}`
+        : 'Votre document a été refusé.',
+      linkTab: 'documents',
+      relatedId: doc.id,
+    })
+
+    await logActivity({
+      clientId: doc.userId,
+      actorType: 'admin',
+      actorId: rejectedBy,
+      actionType: 'document_rejected',
+      entityType: 'document',
+      entityId: doc.id,
+      metadata: { category: doc.category, reason },
+    })
+
+    return { success: true }
+  } catch (err) {
+    console.warn('[api] rejectDocumentWithAudit error:', err?.message)
+    return { success: false, error: err?.message }
+  }
+}
+
+// ── Remplacement de document avec conservation d'historique ────
+// Réutilise uploadDocumentFile() (conservée intacte plus haut, gère déjà le
+// remise en 'en_attente') et archive la version précédente avant l'upsert.
+// `previousDoc` (optionnel) : { id, fileName, fileUrl, status,
+// rejectionReason, uploadedAt, rejectedAt, rejectedBy }.
+export async function replaceDocumentWithVersioning(userId, categoryId, categoryLabel, file, previousDoc = null) {
+  if (isConfigured && previousDoc?.id) {
+    try {
+      await supabase.from('document_versions').insert({
+        document_id: previousDoc.id,
+        user_id: userId,
+        category: categoryId,
+        file_name: previousDoc.fileName,
+        file_url: previousDoc.fileUrl,
+        status: previousDoc.status,
+        rejection_reason: previousDoc.rejectionReason || null,
+        uploaded_at: previousDoc.uploadedAt,
+        rejected_at: previousDoc.rejectedAt || null,
+        rejected_by: previousDoc.rejectedBy || null,
+        is_current: false,
+      })
+    } catch (err) {
+      console.warn('[api] replaceDocumentWithVersioning archive error:', err?.message)
+    }
+  }
+
+  const result = await uploadDocumentFile(userId, categoryId, categoryLabel, file)
+
+  if (isConfigured && result.success) {
+    await logActivity({
+      clientId: userId,
+      actorType: 'client',
+      actorId: userId,
+      actionType: 'document_replaced',
+      entityType: 'document',
+      entityId: result.doc?.id || null,
+      metadata: { category: categoryId },
+    })
+  }
+
+  return result
+}

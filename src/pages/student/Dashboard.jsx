@@ -16,9 +16,8 @@ import { fetchMarketingAccess } from '../../lib/api'
 const BASE_NAV_ITEMS = [
   { id: 'dossier',     label: 'Mon Dossier',  short: 'Dossier' },
   { id: 'formation',   label: 'Formation IAS1', short: 'IAS1' },
-  { id: 'commercial',  label: 'Vente & Scripts', short: 'Vente' },
   { id: 'documents',   label: 'Documents',    short: 'Documents' },
-  { id: 'support',     label: 'Support',      short: 'Support' },
+  { id: 'support',     label: 'Mes échanges', short: 'Échanges' },
 ]
 
 const MARKETING_NAV_ITEM = { id: 'marketing', label: 'Mon site & communication', short: 'Marketing' }
@@ -51,7 +50,7 @@ export default function StudentDashboard() {
       case 'formation':  return <MaFormation />
       case 'commercial': return <FormationCommerciale />
       case 'documents':  return <MesDocuments />
-      case 'support':    return <Support />
+      case 'support':    return <Support onNavigate={handleNav} />
       default:           return <MonDossier />
     }
   }

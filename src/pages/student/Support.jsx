@@ -3,6 +3,7 @@ import { FAQ_ITEMS } from '../../data/mockData'
 import { WhatsAppIcon, ChevronDownIcon, CalendarIcon, MessageIcon } from '../../components/Icons'
 import { submitSupportTicket, fetchMyTickets, fetchMyMessages, markMessageRead, subscribeToMyCommunications, TICKET_CATEGORY_LABELS } from '../../lib/api'
 import { useAuth } from '../../context/AuthContext'
+import { getClientSends, replyToClientSend, subscribeToClientTracking } from '../../local/clientTrackingStore'
 
 const TICKET_STATUS_STYLES = {
   nouveau:  { label: 'En attente de réponse', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -68,7 +69,7 @@ function MesMessages() {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {items.map(item => {
         if (item.type === 'message') {
           const m = item.data
@@ -142,6 +143,80 @@ function MesMessages() {
   )
 }
 
+const LOCAL_SEND_STATUS = {
+  waiting: { label: 'En attente de réponse', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  replied: { label: 'Répondu', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  no_response_required: { label: 'Information', cls: 'bg-orias-bg text-gray-600 border-orias-border' },
+}
+
+function LocalTrackedCommunications({ onNavigate }) {
+  const [items, setItems] = useState(() => getClientSends(6))
+  const [drafts, setDrafts] = useState({})
+  const [sendingId, setSendingId] = useState(null)
+
+  useEffect(() => subscribeToClientTracking(() => setItems(getClientSends(6))), [])
+
+  const sendReply = (item) => {
+    const message = (drafts[item.id] || '').trim()
+    if (!message || sendingId === item.id || item.status === 'replied') return
+    setSendingId(item.id)
+    if (replyToClientSend(item.id, message)) {
+      setDrafts(prev => ({ ...prev, [item.id]: '' }))
+    }
+    setSendingId(null)
+  }
+
+  return (
+    <div className="space-y-3">
+      {items.map(item => {
+        const status = LOCAL_SEND_STATUS[item.status] || LOCAL_SEND_STATUS.waiting
+        return (
+          <article key={item.id} className="rounded-2xl border border-[#e8e2d6] bg-white p-5 space-y-3 shadow-[0_4px_18px_rgba(26,61,43,0.04)]">
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orias-gold">{item.kind}</span>
+                <h3 className="font-bold text-orias-green mt-1">{item.title}</h3>
+              </div>
+              <time className="text-xs text-gray-400 flex-shrink-0">{item.sentAt}</time>
+            </div>
+            {item.message && <p className="text-sm text-gray-700 whitespace-pre-wrap">{item.message}</p>}
+            {item.fileName && (
+              <button type="button" onClick={() => onNavigate?.('documents')} className="inline-flex items-center gap-2 rounded-xl bg-orias-bg border border-orias-border px-3 py-2 text-sm font-medium text-orias-green hover:bg-orias-green/10 transition-colors">
+                <span className="text-orias-gold" aria-hidden="true">▣</span>{item.fileName}
+              </button>
+            )}
+            <span className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full border ${status.cls}`}>{status.label}</span>
+            {item.response && (
+              <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
+                <p className="text-xs text-emerald-700 font-semibold mb-1">Votre réponse · {item.response.respondedAt}</p>
+                <p className="text-sm text-emerald-900 whitespace-pre-wrap">{item.response.message}</p>
+              </div>
+            )}
+            {item.responseRequired && item.status !== 'replied' && (
+              <div className="border-t border-orias-border pt-3">
+                <textarea
+                  value={drafts[item.id] || ''}
+                  onChange={e => setDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                  rows={2}
+                  className="input-field text-sm resize-none border-[#e8e2d6] focus:border-orias-gold"
+                  placeholder="Écrire une réponse à l'équipe…"
+                />
+                <button
+                  onClick={() => sendReply(item)}
+                  disabled={sendingId === item.id || !(drafts[item.id] || '').trim()}
+                  className="btn-green mt-2 text-sm shadow-sm disabled:opacity-50"
+                >
+                  {sendingId === item.id ? 'Envoi…' : 'Répondre'}
+                </button>
+              </div>
+            )}
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
 function FAQItem({ item }) {
   const [open, setOpen] = useState(false)
   return (
@@ -162,7 +237,7 @@ function FAQItem({ item }) {
   )
 }
 
-export default function Support() {
+export default function Support({ onNavigate }) {
   const [form, setForm] = useState({ sujet: '', message: '', priority: 'normal', category: '' })
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -184,9 +259,43 @@ export default function Support() {
 
   return (
     <div className="space-y-6">
+      <section>
+        <div style={{
+          background: 'linear-gradient(135deg, #3d604d 0%, #1a3d2b 100%)',
+          borderRadius: '20px',
+          padding: '30px 34px',
+          boxShadow: '0 4px 24px rgba(26,61,43,0.14)',
+          border: '1px solid rgba(201,168,76,0.18)',
+        }}>
+          <div style={{ height: '2px', background: 'linear-gradient(90deg, transparent, #c9a84c, transparent)', marginBottom: '22px', borderRadius: '2px' }} />
+          <p style={{ margin: 0, color: '#c9a84c', fontSize: '10px', fontWeight: 700, letterSpacing: '1.6px', textTransform: 'uppercase', fontFamily: "'Montserrat', sans-serif" }}>
+            Espace client
+          </p>
+          <h2 style={{ margin: '8px 0 6px', color: '#fff', fontSize: '30px', fontWeight: 400, letterSpacing: '0.5px', fontFamily: "'Cormorant Garamond', Georgia, serif" }}>
+            Mes échanges
+          </h2>
+          <p style={{ margin: 0, color: 'rgba(255,255,255,0.68)', fontSize: '13px', fontWeight: 300, fontFamily: "'Montserrat', sans-serif" }}>
+            Retrouvez ici vos messages, documents et réponses avec l’équipe Oriafen.
+          </p>
+          <p style={{ margin: '16px 0 0', color: 'rgba(255,255,255,0.42)', fontSize: '10px', fontFamily: "'Montserrat', sans-serif" }}>
+            Démonstration locale · données fictives
+          </p>
+        </div>
+        <div style={{ marginTop: '22px' }}>
+          <LocalTrackedCommunications onNavigate={onNavigate} />
+        </div>
+      </section>
+
       <div className="card p-6">
-        <h2 className="section-title">Mes messages</h2>
-        <p className="section-subtitle">Suivi de vos échanges avec l'équipe Oriafen</p>
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-9 h-9 rounded-full bg-orias-gold/10 flex items-center justify-center">
+            <MessageIcon className="w-4 h-4 text-orias-gold" />
+          </div>
+          <div>
+            <h3 className="font-bold text-orias-green text-lg">Demandes de support</h3>
+            <p className="text-xs text-gray-500">Vos échanges avec l’équipe de support</p>
+          </div>
+        </div>
         <MesMessages />
       </div>
 

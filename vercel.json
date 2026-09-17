@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "dist-local",
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]

@@ -6,3 +6,13 @@ dist
 
 # Local Netlify folder
 .netlify
+
+# Local WhatsApp backend (server/)
+server/.env
+server/data/leads.json
+
+server/node_modules/
+supabase/migrations/
+dist-local/
+
+server/
