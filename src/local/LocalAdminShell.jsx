@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import LocalCRM from './LocalCRM'
 import LocalClientsOverview from './LocalClientsOverview'
+import { AdminMarketingPanel } from './LocalMarketing'
 import Logo from '../components/Logo'
 import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon } from '../components/Icons'
 import { stages, seed, today, normalizeLeadsStage } from './model'
@@ -111,6 +112,7 @@ export default function LocalAdminShell() {
       )
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} />
+    if (activeTab === 'marketing') return <AdminMarketingPanel />
     return <LocalAdminPlaceholder tab={activeTab} />
   }
 

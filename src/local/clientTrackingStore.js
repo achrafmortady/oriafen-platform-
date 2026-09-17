@@ -310,7 +310,7 @@ export function addClientNotification(clientId, { kind = 'Document', title, mess
     id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     dedupeKey,
     clientId,
-    type: kind === 'Document' ? 'document' : 'message',
+    type: kind === 'Document' ? 'document' : kind === 'Marketing' ? 'marketing' : 'message',
     kind,
     title,
     content: message,
@@ -341,7 +341,11 @@ export function replyToClientSend(sendId, message) {
 
   Object.keys(data).forEach(clientId => {
     data[clientId] = data[clientId].map(item => {
-      if (item.id !== sendId || !item.responseRequired || item.status === 'replied') return item
+      // senderType==='client' est exclu ici : un envoi initié par le client
+      // lui-même (ex: demande de support — voir createClientSupportRequest)
+      // attend une réponse de l'ÉQUIPE, jamais du client — c'est
+      // respondToClientRequest qui gère ce cas, avec response.author='Équipe'.
+      if (item.id !== sendId || item.senderType === 'client' || !item.responseRequired || item.status === 'replied') return item
       updated = true
       const repliedAt = nowLabel()
       return {
@@ -355,6 +359,77 @@ export function replyToClientSend(sendId, message) {
   })
 
   if (updated) writeAll(data)
+  return updated
+}
+
+// SUPPORT (feedback #9) : le client peut ouvrir une nouvelle demande (sujet +
+// description), distincte d'une simple réponse à un envoi de l'équipe.
+// Réutilise exactement le même store/flux (cloche, "Mes échanges", fiche
+// admin) — aucun système parallèle. senderType:'client' + responseRequired:
+// true la fait apparaître "En attente de réponse" côté équipe tant qu'elle
+// n'a pas répondu (voir respondToClientRequest).
+export function createClientSupportRequest(clientId, { subject, message }) {
+  const title = (subject || '').trim()
+  const clean = (message || '').trim()
+  if (!clientId || !title || !clean) return null
+  const data = readAll()
+  if (!data[clientId]) data[clientId] = mockItems(clientId)
+  const item = normalizeItem({
+    id: `support-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    clientId,
+    type: 'support',
+    kind: 'Support',
+    senderType: 'client',
+    title,
+    content: clean,
+    message: clean,
+    sentAt: nowLabel(),
+    responseRequired: true,
+    status: 'waiting',
+  })
+  data[clientId] = [...data[clientId], item]
+  writeAll(data)
+  logActivity(clientId, { author: 'Client', action: 'Demande de support envoyée', detail: title })
+  return item
+}
+
+// Réponse de l'équipe à une demande initiée par le CLIENT (l'inverse de
+// replyToClientSend, qui gère la réponse du client à un envoi de l'équipe).
+// response.author distingue les deux cas à l'affichage (badge "Équipe" vs
+// "Client") — par défaut 'client' pour ne rien changer au rendu existant des
+// réponses déjà enregistrées avant ce champ.
+export function respondToClientRequest(sendId, message) {
+  const cleanMessage = (message || '').trim()
+  if (!cleanMessage) return false
+  const data = readAll()
+  let updated = false
+  let clientId = null
+
+  Object.keys(data).forEach(cid => {
+    data[cid] = data[cid].map(item => {
+      if (item.id !== sendId || item.senderType !== 'client' || !item.responseRequired || item.status === 'replied') return item
+      updated = true
+      clientId = cid
+      const repliedAt = nowLabel()
+      return {
+        ...item,
+        status: 'replied',
+        repliedAt,
+        lastActivityAt: repliedAt,
+        response: { message: cleanMessage, respondedAt: repliedAt, author: 'Équipe' },
+      }
+    })
+  })
+
+  if (updated) {
+    writeAll(data)
+    addClientNotification(clientId, {
+      kind: 'Support',
+      title: 'Nouvelle réponse support',
+      message: cleanMessage,
+      important: true,
+    })
+  }
   return updated
 }
 

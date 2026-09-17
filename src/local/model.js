@@ -50,5 +50,16 @@ export function seed(){return Array.from({length:24},(_,i)=>{
   const payments=paymentValidated?buildMockPaymentRows(packRef,finalPrice):[];
   if(payments.length)payments[0]={...payments[0],status:'paid'};
   const convertedAt=paymentValidated?formatNowLabel(createdAt):null;
-  return {id:i+1,name:['Amine','Lina','Nora','Sami','Inès','Adam','Maya','Rayan'][i%8]+' Exemple '+(Math.floor(i/8)+1),email:`prospect${i+1}@example.invalid`,phone:'Non renseigné',city:['Casablanca','Rabat','Tanger'][i%3],stage,owner:owners[i%3],source:sources[i%5],value:12000+(i%5)*3000,pack:packRef.name,packId:packRef.id,pricingMode,discountPercent,basePrice,finalPrice,paymentValidated,convertedAt,payments,message:DEMO_MESSAGES[i%DEMO_MESSAGES.length],due:d.toISOString().slice(0,10),action:i%3===0?'Rendez-vous découverte':'Relancer le prospect',done:false,appointments:[],tasks:[],activity:[{text:'Prospect fictif créé pour la démonstration',at:formatNowLabel(createdAt)}]}})}
+  return {id:i+1,name:['Amine','Lina','Nora','Sami','Inès','Adam','Maya','Rayan'][i%8]+' Exemple '+(Math.floor(i/8)+1),email:`prospect${i+1}@example.invalid`,phone:'Non renseigné',city:['Casablanca','Rabat','Tanger'][i%3],stage,owner:owners[i%3],source:sources[i%5],value:12000+(i%5)*3000,pack:packRef.name,packId:packRef.id,pricingMode,discountPercent,basePrice,finalPrice,paymentValidated,convertedAt,payments,message:DEMO_MESSAGES[i%DEMO_MESSAGES.length],due:d.toISOString().slice(0,10),action:i%3===0?'Rendez-vous découverte':'Relancer le prospect',done:false,appointments:[],tasks:[],createdAt:createdAt.getTime(),activity:[{text:'Prospect fictif créé pour la démonstration',at:formatNowLabel(createdAt)}]}})}
+
+// Recent-first (createdAt DESC) — utilisé par la vue Kanban (feedback #4 :
+// un nouveau prospect doit apparaître en tête de sa colonne d'étape,
+// indépendamment du tri choisi par l'utilisateur dans la vue Liste). Ne
+// modifie jamais l'ordre des étapes elles-mêmes, seulement l'ordre des
+// cartes à l'intérieur d'une même étape. `createdAt` manquant (données
+// anciennes en localStorage sans ce champ) est traité comme le plus ancien,
+// jamais placé arbitrairement en tête.
+export function sortRecentFirst(leads) {
+  return [...leads].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
+}
 export function selectLeads(leads,{search='',stage='',owner='',source='',overdue=false,sort='name',desc=false}) {return leads.filter(l=>(!search||`${l.name} ${l.email} ${l.city}`.toLowerCase().includes(search.toLowerCase()))&&(!stage||l.stage===stage)&&(!owner||l.owner===owner)&&(!source||l.source===source)&&(!overdue||(!l.done&&l.due<today))).sort((a,b)=>(typeof a[sort]==='number'?a[sort]-b[sort]:String(a[sort]).localeCompare(String(b[sort]),'fr'))*(desc?-1:1))}

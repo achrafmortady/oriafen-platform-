@@ -15,3 +15,28 @@
 .paystatus{border-radius:999px;padding:3px 7px;font-size:9px;font-weight:700}
 .paystatus.paid{color:#167344;background:#dcfce7}
 .paystatus.pending{color:#8a6821;background:#fff8e7}
+
+/* Lisibilité CRM (feedback #1) : statut, prochaine action, dates/urgences
+   et nom de prospect plus visibles au premier coup d'oeil, sans redesign. */
+.statuslabel{font-size:12px;font-weight:800;letter-spacing:.1px}
+.actionlabel{display:block;font-size:13px;font-weight:800;color:#22412c}
+.late .actionlabel,button.late .actionlabel{color:#99613d}
+.cardname{font-size:14px;font-weight:800;color:#1a3d2b}
+.person b{font-weight:800}
+.relance-hint{display:block;margin-top:6px;font-size:11px;font-weight:700;color:#8a6821}
+.relance-hint.late{color:#a13636}
+p.relance-hint{margin-top:4px}
+.column-head h3 span{font-weight:700}
+
+/* RDV effectué (feedback #5) */
+.rdv-done-btn{margin-top:6px;padding:5px 9px;font-size:10px;border:1px solid #bcdcc4;border-radius:7px;background:#eef8f0;color:#1f6b3d}
+.rdv-next-outcome{margin:14px 0;padding:12px;border:1px solid #e8dec2;border-radius:8px;background:#fbf6e8}
+.rdv-next-outcome>small{font-weight:700;color:#7a5a1c}
+.rdv-next-outcome .twocol{margin-top:8px}
+
+/* Relance (feedback #6) */
+.relance-box{border-top:3px solid #8a6821}
+
+/* Support — réponse de l'équipe à une demande client (feedback #9) */
+.admin-reply-box{margin-top:10px;padding-top:10px;border-top:1px dashed #dce3dd}
+.admin-reply-box textarea{width:100%;min-height:60px;resize:vertical;margin-bottom:6px}

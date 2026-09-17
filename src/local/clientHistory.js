@@ -104,12 +104,17 @@ export function addManualComment(clientId, text) {
 // changement. Aucun appel réseau/Supabase ici — à l'appelant de persister
 // le résultat (localStorage) comme il le fait déjà pour toute autre
 // mutation locale de `leads`.
-export function applyStatusChange(leads, clientId, newStage) {
+// reason (optionnel) : raison de la perte, saisie côté fiche prospect quand
+// newStage === 'Perdu' — ajoutée à la même entrée d'historique (une seule
+// entrée pour le changement de statut, jamais une deuxième entrée séparée).
+export function applyStatusChange(leads, clientId, newStage, reason = null) {
   const current = leads.find(l => l.id === clientId)
   const oldStage = current?.stage || 'Inconnu'
   if (oldStage === newStage) return leads
+  const cleanReason = (reason || '').trim()
+  const text = `Statut changé : ${oldStage} -> ${newStage}${cleanReason ? ` — Raison : ${cleanReason}` : ''}`
   return leads.map(l => l.id === clientId
-    ? { ...l, stage: newStage, activity: [{ text: `Statut changé : ${oldStage} -> ${newStage}`, at: formatNowLabel() }, ...(l.activity || [])] }
+    ? { ...l, stage: newStage, ...(cleanReason ? { lossReason: newStage === 'Perdu' ? cleanReason : l.lossReason } : {}), activity: [{ text, at: formatNowLabel() }, ...(l.activity || [])] }
     : l)
 }
 

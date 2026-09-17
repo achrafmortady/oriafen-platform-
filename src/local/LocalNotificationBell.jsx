@@ -6,6 +6,8 @@ const TYPE_ICON = {
   message: '💬',
   fichier: '📥',
   document: '📥',
+  marketing: '🎯',
+  support: '🛟',
 }
 
 /**
@@ -49,7 +51,8 @@ export default function LocalNotificationBell({ clientId, onNavigate, dark = fal
   const handleItemClick = (item) => {
     if (!item.seenAt) markClientSendSeen(item.id)
     setOpen(false)
-    onNavigate?.(item.type === 'document' ? 'documents' : 'support')
+    const target = item.type === 'document' ? 'documents' : item.type === 'marketing' ? 'marketing' : 'support'
+    onNavigate?.(target)
   }
 
   const handleMarkAllRead = () => {
