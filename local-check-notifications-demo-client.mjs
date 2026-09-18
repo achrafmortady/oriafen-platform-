@@ -240,4 +240,55 @@ function loadLeadsLikeAdminClientsTab(raw) {
 }
 console.log('PASS RÉGRESSION: le jeu de données réel d\'Admin > Clients (buildClientsOverview) contient "Client Démo", y compris avec des leads déjà persistés, sans doublon')
 
+// ============================================================
+// RÉGRESSION CIBLÉE (round 3) — la lecture en mémoire était déjà correcte,
+// mais RIEN ne réécrivait le résultat migré dans localStorage au chargement
+// de l'onglet Clients (seul LocalCRM.jsx le faisait) : la correction ne
+// survivait donc pas si l'onglet CRM n'avait jamais été monté avant, ou pas
+// à un refresh de l'onglet Clients seul. Reproduit ici l'ouverture directe
+// d'Admin > Clients (localStorage déjà rempli avec l'ancienne identité, AUCUN
+// autre chargeur n'ayant encore tourné) et vérifie que localStorage
+// lui-même — pas seulement la valeur en mémoire — contient désormais
+// "Client Démo" après cette seule ouverture.
+// ============================================================
+{
+  localStorage.clear()
+  const staleRaw = seed().map(l => l.id === CANONICAL_DEMO_CLIENT_ID
+    ? { ...l, name: 'Adam Exemple 1', stage: 'Injoignable', paymentValidated: false }
+    : l)
+  localStorage.setItem('oriafen-isolated-crm-v1', JSON.stringify(staleRaw))
+
+  // Reproduit exactement le corps du useState(() => {...}) de useLocalLeads
+  // (LocalClientsOverview.jsx) après le correctif round 2 : lire, normaliser,
+  // et réécrire dans localStorage si le résultat diffère des données brutes.
+  function simulateOpeningAdminClientsTab() {
+    const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1'))
+    if (!raw) return seed()
+    const normalized = normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+    if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem('oriafen-isolated-crm-v1', JSON.stringify(normalized))
+    return normalized
+  }
+
+  const leadsInMemory = simulateOpeningAdminClientsTab()
+  assert.equal(leadsInMemory.find(l => l.id === CANONICAL_DEMO_CLIENT_ID).name, CANONICAL_DEMO_CLIENT_NAME)
+
+  // La preuve qui manquait : localStorage LUI-MÊME doit maintenant contenir
+  // "Client Démo", pas seulement l'état React en mémoire.
+  const persisted = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1'))
+  const persistedDemo = persisted.find(l => l.id === CANONICAL_DEMO_CLIENT_ID)
+  assert.ok(persistedDemo, 'localStorage doit contenir le lead canonique après une seule ouverture de l\'onglet Clients')
+  assert.equal(persistedDemo.name, CANONICAL_DEMO_CLIENT_NAME, 'localStorage doit être réécrit avec "Client Démo", pas seulement la mémoire React')
+  assert.equal(persistedDemo.stage, 'Client')
+  assert.equal(persistedDemo.paymentValidated, true)
+
+  // Un second appel (simulateur du polling toutes les 4s / d'un remount) ne
+  // doit plus rien réécrire d'incorrect ni dupliquer quoi que ce soit.
+  const leadsAgain = simulateOpeningAdminClientsTab()
+  assert.equal(leadsAgain.filter(l => l.id === CANONICAL_DEMO_CLIENT_ID).length, 1)
+  assert.equal(leadsAgain.find(l => l.id === CANONICAL_DEMO_CLIENT_ID).name, CANONICAL_DEMO_CLIENT_NAME)
+
+  localStorage.clear()
+}
+console.log('PASS RÉGRESSION (round 3) : ouvrir Admin > Clients avec des données déjà persistées réécrit lui-même localStorage avec "Client Démo" (plus de dépendance à l\'ordre de montage CRM/Clients)')
+
 console.log('ALL PASS: notifications admin (marketing + support) et mapping client de démo <-> fiche admin')

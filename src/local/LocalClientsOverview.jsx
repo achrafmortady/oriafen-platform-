@@ -56,12 +56,38 @@ function normalizeLoadedLeads(raw) {
   return normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
 }
 
+// Round 2 du correctif : la lecture en mémoire était déjà corrigée (React
+// affichait bien "Client Démo"), mais RIEN ne réécrivait le résultat migré
+// dans localStorage au chargement (seul LocalCRM.jsx le fait, via son
+// propre effet) — l'onglet Clients dépendait donc silencieusement du fait
+// que l'onglet CRM ait déjà été monté au moins une fois dans CETTE session
+// pour que la correction soit persistée. Si un testeur ouvrait/rafraîchissait
+// directement l'onglet Clients (ou si CRM ne montait jamais), la correction
+// restait uniquement en mémoire React et ne survivait pas à un refresh —
+// undistinguishable en apparence d'un "fix qui ne marche pas". Ce hook
+// réécrit maintenant lui-même la version migrée dans localStorage dès
+// qu'elle diffère des données brutes, exactement comme LocalCRM.jsx : plus
+// aucune dépendance à l'ordre de montage entre les trois chargeurs.
 function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
-    try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); return raw ? normalizeLoadedLeads(raw) : seed() } catch { return seed() }
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
+      if (!raw) return seed()
+      const normalized = normalizeLoadedLeads(raw)
+      if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+      return normalized
+    } catch { return seed() }
   })
   useEffect(() => {
-    const refresh = () => { try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); setLeads(raw ? normalizeLoadedLeads(raw) : seed()) } catch { /* ignore */ } }
+    const refresh = () => {
+      try {
+        const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
+        if (!raw) { setLeads(seed()); return }
+        const normalized = normalizeLoadedLeads(raw)
+        if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+        setLeads(normalized)
+      } catch { /* ignore */ }
+    }
     window.addEventListener('storage', refresh)
     const timer = setInterval(refresh, 4000)
     return () => { window.removeEventListener('storage', refresh); clearInterval(timer) }
