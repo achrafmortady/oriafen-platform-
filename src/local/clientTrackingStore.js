@@ -1,4 +1,5 @@
 import { logActivity } from './activityLog'
+import { addAdminNotification } from './adminNotificationsStore'
 
 const STORAGE_KEY = 'oriafen-client-tracking-v1'
 const CHANGE_EVENT = 'oriafen-client-tracking-change'
@@ -368,7 +369,10 @@ export function replyToClientSend(sendId, message) {
 // admin) — aucun système parallèle. senderType:'client' + responseRequired:
 // true la fait apparaître "En attente de réponse" côté équipe tant qu'elle
 // n'a pas répondu (voir respondToClientRequest).
-export function createClientSupportRequest(clientId, { subject, message }) {
+// clientName (optionnel) : uniquement pour le libellé de la notification
+// admin ci-dessous — jamais stocké sur l'item lui-même (qui reste identifié
+// par clientId, comme tout le reste du store).
+export function createClientSupportRequest(clientId, { subject, message }, clientName = null) {
   const title = (subject || '').trim()
   const clean = (message || '').trim()
   if (!clientId || !title || !clean) return null
@@ -390,6 +394,21 @@ export function createClientSupportRequest(clientId, { subject, message }) {
   data[clientId] = [...data[clientId], item]
   writeAll(data)
   logActivity(clientId, { author: 'Client', action: 'Demande de support envoyée', detail: title })
+
+  // Notification ADMIN : exactement UNE par demande (dedupeKey = id de
+  // l'item, qui n'existe qu'une fois) — même garde-fou que la notification
+  // marketing ci-dessus (marketingStore.createModificationRequest).
+  addAdminNotification({
+    type: 'support',
+    title: `Nouvelle demande de support — ${clientName || 'Client'}`,
+    message: title,
+    clientId,
+    clientName,
+    context: { tab: 'clients', clientId },
+    important: true,
+    dedupeKey: `admin-notif:support-request:${item.id}`,
+  })
+
   return item
 }
 

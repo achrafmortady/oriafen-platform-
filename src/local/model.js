@@ -1,6 +1,18 @@
-import { LOCAL_PACKS, computeFinalPrice } from './packsData.js'
+import { LOCAL_PACKS, findPackById, computeFinalPrice } from './packsData.js'
 import { formatNowLabel } from './dateUtils.js'
 import { buildMockPaymentRows } from './conversion.js'
+
+// Client de démo CANONIQUE (feedback session 2026-09-18, "client demo is
+// not mapped to admin client data") — UN SEUL id/nom, partagé par TOUS les
+// stores locaux (leads/CRM, documentsStore, associateDocuments,
+// marketingStore, clientTrackingStore) au lieu d'un id "6" épars et d'un nom
+// "Client Démo" recréé séparément côté espace client (voir ClientSpace,
+// LocalCRM.jsx) sans lien avec aucun lead admin réel. L'id est choisi égal à
+// celui déjà utilisé par ClientSpace avant ce correctif (6) pour ne rien
+// casser côté données déjà en localStorage chez un testeur.
+export const CANONICAL_DEMO_CLIENT_ID = 6
+export const CANONICAL_DEMO_CLIENT_NAME = 'Client Démo'
+export const CANONICAL_DEMO_CLIENT_PACK_ID = 'combine-acceleration' // "Pack Accélération"
 
 // "RDV pris" retiré comme étape CRM (le rendez-vous reste une fonctionnalité
 // à part entière : lead.appointments[], Rendez-vous en fiche Prospect,
@@ -50,7 +62,51 @@ export function seed(){return Array.from({length:24},(_,i)=>{
   const payments=paymentValidated?buildMockPaymentRows(packRef,finalPrice):[];
   if(payments.length)payments[0]={...payments[0],status:'paid'};
   const convertedAt=paymentValidated?formatNowLabel(createdAt):null;
-  return {id:i+1,name:['Amine','Lina','Nora','Sami','Inès','Adam','Maya','Rayan'][i%8]+' Exemple '+(Math.floor(i/8)+1),email:`prospect${i+1}@example.invalid`,phone:'Non renseigné',city:['Casablanca','Rabat','Tanger'][i%3],stage,owner:owners[i%3],source:sources[i%5],value:12000+(i%5)*3000,pack:packRef.name,packId:packRef.id,pricingMode,discountPercent,basePrice,finalPrice,paymentValidated,convertedAt,payments,message:DEMO_MESSAGES[i%DEMO_MESSAGES.length],due:d.toISOString().slice(0,10),action:i%3===0?'Rendez-vous découverte':'Relancer le prospect',done:false,appointments:[],tasks:[],createdAt:createdAt.getTime(),activity:[{text:'Prospect fictif créé pour la démonstration',at:formatNowLabel(createdAt)}]}})}
+  const lead={id:i+1,name:['Amine','Lina','Nora','Sami','Inès','Adam','Maya','Rayan'][i%8]+' Exemple '+(Math.floor(i/8)+1),email:`prospect${i+1}@example.invalid`,phone:'Non renseigné',city:['Casablanca','Rabat','Tanger'][i%3],stage,owner:owners[i%3],source:sources[i%5],value:12000+(i%5)*3000,pack:packRef.name,packId:packRef.id,pricingMode,discountPercent,basePrice,finalPrice,paymentValidated,convertedAt,payments,message:DEMO_MESSAGES[i%DEMO_MESSAGES.length],due:d.toISOString().slice(0,10),action:i%3===0?'Rendez-vous découverte':'Relancer le prospect',done:false,appointments:[],tasks:[],createdAt:createdAt.getTime(),activity:[{text:'Prospect fictif créé pour la démonstration',at:formatNowLabel(createdAt)}]};
+  return lead.id===CANONICAL_DEMO_CLIENT_ID?applyCanonicalDemoClientIdentity(lead):lead;
+})}
+
+// Champs d'identité forcés sur le lead canonique — préserve tout le reste
+// (activity, appointments, tasks, owner, source, value, message, due...) :
+// seule l'identité "qui est ce client" est standardisée, jamais son
+// historique CRM. Réutilisée à la fois à la génération (seed) et en
+// migration non destructive (normalizeCanonicalDemoClient, pour un lead
+// déjà présent en localStorage avant ce correctif).
+function applyCanonicalDemoClientIdentity(lead) {
+  const pack = findPackById(CANONICAL_DEMO_CLIENT_PACK_ID)
+  const pricingMode = lead.pricingMode === 'ht' ? 'ht' : 'ttc'
+  const discountPercent = 0
+  const basePrice = pack ? (pricingMode === 'ht' ? pack.priceHt : pack.priceTtc) : lead.basePrice
+  const finalPrice = pack ? computeFinalPrice(pack, pricingMode, discountPercent) : lead.finalPrice
+  const paymentValidated = true
+  const payments = lead.paymentValidated && lead.payments?.length ? lead.payments : buildMockPaymentRows(pack, finalPrice)
+  if (payments.length && payments[0].status !== 'paid') payments[0] = { ...payments[0], status: 'paid' }
+  return {
+    ...lead,
+    name: CANONICAL_DEMO_CLIENT_NAME,
+    stage: 'Client',
+    pack: pack?.name || lead.pack,
+    packId: CANONICAL_DEMO_CLIENT_PACK_ID,
+    pricingMode,
+    discountPercent,
+    basePrice,
+    finalPrice,
+    paymentValidated,
+    convertedAt: lead.convertedAt || formatNowLabel(),
+    payments,
+  }
+}
+
+// Migration non destructive (même convention que normalizeLeadsStage
+// ci-dessus) : un testeur avec des leads déjà en localStorage avant ce
+// correctif n'a pas le lead #6 à l'identité canonique — cette fonction le
+// corrige sans jamais toucher aux autres leads ni à l'historique du lead #6
+// (activity/appointments/tasks conservés tels quels).
+export function normalizeCanonicalDemoClient(leads) {
+  return (leads || []).map(l => l && l.id === CANONICAL_DEMO_CLIENT_ID && l.name !== CANONICAL_DEMO_CLIENT_NAME
+    ? applyCanonicalDemoClientIdentity(l)
+    : l)
+}
 
 // Recent-first (createdAt DESC) — utilisé par la vue Kanban (feedback #4 :
 // un nouveau prospect doit apparaître en tête de sa colonne d'étape,

@@ -6,7 +6,7 @@ import { toDisplayDateSafe } from './dateUtils'
 import { findPackById } from './packsData'
 import ProgressBar from '../components/ProgressBar'
 import { UsersIcon, XCircleIcon, ClockIcon, AwardIcon, SearchIcon, EyeIcon, XIcon, MessageIcon } from '../components/Icons'
-import { getClientSends, subscribeToClientTracking, getAdminSendStatus } from './clientTrackingStore'
+import { getClientSends, subscribeToClientTracking, getAdminSendStatus, respondToClientRequest } from './clientTrackingStore'
 import { subscribeToActivityLog } from './activityLog'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getClientDocuments, subscribeToDocuments, rejectDocument, validateDocument } from './documentsStore'
@@ -102,9 +102,25 @@ function InfoField({ label, value }) {
 // ── Reproduit exactement ClientSendHistoryPanel (src/components/ClientSendHistoryPanel.jsx,
 // composant live, Supabase) — même JSX/classes — mais alimenté par
 // clientTrackingStore.js (store local) au lieu de fetchClientSendHistory().
+//
+// Correctif (feedback "support/messages/notifications flow is unclear") :
+// ce panneau était en LECTURE SEULE — une demande de support initiée par le
+// client (senderType:'client', ex: "＋ Nouvelle demande" côté espace client)
+// n'avait aucun moyen d'être traitée depuis l'onglet "Clients" (l'endroit
+// naturel où l'admin gère un client déjà converti) ; il fallait passer par
+// l'onglet CRM > fiche prospect. Ajoute la même zone de réponse que
+// ClientSendTracking (LocalCRM.jsx), réutilisant respondToClientRequest —
+// même thread (sendId précis), jamais de nouveau système.
 function LocalClientSendHistoryPanel({ clientId }) {
   const [items, setItems] = useState(() => getClientSends(clientId))
+  const [replyDrafts, setReplyDrafts] = useState({})
   useEffect(() => subscribeToClientTracking(() => setItems(getClientSends(clientId))), [clientId])
+
+  const sendReply = (itemId) => {
+    const msg = (replyDrafts[itemId] || '').trim()
+    if (!msg) return
+    if (respondToClientRequest(itemId, msg)) setReplyDrafts(prev => ({ ...prev, [itemId]: '' }))
+  }
 
   const waiting = items.filter(item => item.responseRequired && !item.response).length
   const answered = items.filter(item => !!item.response).length
@@ -135,6 +151,9 @@ function LocalClientSendHistoryPanel({ clientId }) {
                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                 : 'bg-amber-50 text-amber-700 border-amber-200'
             const adminStatus = getAdminSendStatus(item)
+            const fromClient = item.senderType === 'client'
+            const awaitingAdminReply = fromClient && item.responseRequired && !item.response
+            const responseAuthor = item.response?.author === 'Équipe' ? "Réponse envoyée par l'équipe" : 'Réponse du client'
 
             return (
               <div key={item.id} className="rounded-xl border border-orias-border overflow-hidden">
@@ -142,6 +161,7 @@ function LocalClientSendHistoryPanel({ clientId }) {
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full border ${fromClient ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-orias-green/10 text-orias-green border-orias-green/20'}`}>{fromClient ? 'Client' : 'Équipe Oriafen'}</span>
                         <span className="text-xs font-semibold uppercase tracking-wide text-orias-gold">{item.kind}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${statusCls}`}>{statusLabel}</span>
                         <span className="text-[10px] px-2 py-0.5 rounded-full border bg-white text-gray-500 border-orias-border">{adminStatus.label}</span>
@@ -158,11 +178,31 @@ function LocalClientSendHistoryPanel({ clientId }) {
 
                 {item.response && (
                   <div className="p-4 space-y-2 bg-white border-t border-orias-border">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Réponse reçue</p>
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{responseAuthor}</p>
                     <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-3">
                       <p className="text-sm text-emerald-900 whitespace-pre-wrap">{item.response.message}</p>
                       <p className="text-xs text-emerald-600 mt-1">{item.response.respondedAt}</p>
                     </div>
+                  </div>
+                )}
+
+                {awaitingAdminReply && (
+                  <div className="p-4 space-y-2 bg-white border-t border-orias-border">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Répondre à cette demande</p>
+                    <textarea
+                      value={replyDrafts[item.id] || ''}
+                      onChange={e => setReplyDrafts(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      rows={2}
+                      className="input-field text-sm resize-none"
+                      placeholder="Écrire une réponse au client…"
+                    />
+                    <button
+                      onClick={() => sendReply(item.id)}
+                      disabled={!(replyDrafts[item.id] || '').trim()}
+                      className="text-xs px-3 py-1.5 rounded-lg font-semibold text-white bg-orias-green hover:bg-orias-green-light disabled:opacity-50"
+                    >
+                      Répondre
+                    </button>
                   </div>
                 )}
               </div>
@@ -393,7 +433,11 @@ function sameFilter(a, b) {
   return a.kind === b.kind && a.value === b.value
 }
 
-export default function LocalClientsOverview({ initialFilter = null }) {
+// openClientRequest : deep-link depuis une notification admin (feedback
+// "marketing request does not notify admin" / "support flow unclear") — même
+// mécanisme que `initialFilter` (un objet {clientId, ts} pour forcer l'effet
+// même si le même client est redemandé deux fois de suite).
+export default function LocalClientsOverview({ initialFilter = null, openClientRequest = null }) {
   const [leads, persistLeads] = useLocalLeads()
   const { rows: allRows, kpis } = buildClientsOverview(leads)
   const [filter, setFilter] = useState(initialFilter)
@@ -408,6 +452,7 @@ export default function LocalClientsOverview({ initialFilter = null }) {
   // `selected` — même nom d'état que ClientsSection (live) pour le client
   // ouvert dans le modal "Voir".
   const [selectedId, setSelectedId] = useState(null)
+  useEffect(() => { if (openClientRequest?.clientId != null) setSelectedId(openClientRequest.clientId) }, [openClientRequest])
   const selected = rows.find(r => r.id === selectedId) || allRows.find(r => r.id === selectedId) || null
 
   const conversionEntry = selected ? findConversionEntry({ activity: selected.leadActivity }) : null

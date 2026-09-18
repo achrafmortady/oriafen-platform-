@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react'
 import LocalCRM from './LocalCRM'
 import LocalClientsOverview from './LocalClientsOverview'
 import { AdminMarketingPanel } from './LocalMarketing'
+import LocalAdminNotificationBell from './LocalAdminNotificationBell'
 import Logo from '../components/Logo'
 import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon } from '../components/Icons'
-import { stages, seed, today, normalizeLeadsStage } from './model'
+import { stages, seed, today, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 
 const NAV_ITEMS = [
@@ -63,10 +64,10 @@ function CompactKpiCard({ icon, label, value, sub, accent = 'green', onClick }) 
 
 function useLocalLeadStats() {
   const [leads, setLeads] = useState(() => {
-    try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); return raw ? normalizeLeadsStage(raw) : seed() } catch { return seed() }
+    try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); return raw ? normalizeCanonicalDemoClient(normalizeLeadsStage(raw)) : seed() } catch { return seed() }
   })
   useEffect(() => {
-    const onStorage = () => { try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); setLeads(raw ? normalizeLeadsStage(raw) : seed()) } catch { /* ignore */ } }
+    const onStorage = () => { try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); setLeads(raw ? normalizeCanonicalDemoClient(normalizeLeadsStage(raw)) : seed()) } catch { /* ignore */ } }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
@@ -100,6 +101,22 @@ export default function LocalAdminShell() {
     setActiveTab('crm')
   }
 
+  // Deep-link depuis une notification admin (marketing/support) — même
+  // mécanisme de "requête" que les KPI cliquables ci-dessus (un objet avec
+  // un `ts` unique pour forcer l'effet même si la même cible est redemandée).
+  // context.tab==='clients' ouvre directement la fiche du client concerné
+  // (LocalClientsOverview > openClientId), context.tab==='marketing' ouvre
+  // simplement l'onglet Marketing (vue admin unique, pas de routage par id
+  // pour l'instant).
+  const [openClientRequest, setOpenClientRequest] = useState(null)
+  const handleNotificationNavigate = (context) => {
+    if (!context?.tab) return
+    if (context.tab === 'clients' && context.clientId != null) {
+      setOpenClientRequest({ clientId: context.clientId, ts: Date.now() })
+    }
+    setActiveTab(context.tab)
+  }
+
   const renderSection = () => {
     if (activeTab === 'crm') {
       return (
@@ -111,7 +128,7 @@ export default function LocalAdminShell() {
         />
       )
     }
-    if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} />
+    if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
     if (activeTab === 'marketing') return <AdminMarketingPanel />
     return <LocalAdminPlaceholder tab={activeTab} />
   }
@@ -130,9 +147,7 @@ export default function LocalAdminShell() {
               <span className="hidden md:block text-green-300 text-sm font-medium">Administration</span>
             </div>
             <div className="flex items-center gap-2">
-              <button className="relative p-2.5 rounded-xl transition-colors text-green-300 hover:text-white hover:bg-white/10" title="Notifications" aria-label="Notifications">
-                <BellIcon className="w-6 h-6" />
-              </button>
+              <LocalAdminNotificationBell onNavigate={handleNotificationNavigate} />
               <div className="hidden md:flex items-center gap-4">
                 <button onClick={() => setShowReportIssue(true)} className="flex items-center gap-2 text-amber-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10 border border-amber-300/30">
                   <MessageIcon className="w-4 h-4" />

@@ -9,6 +9,7 @@
 
 import { formatNowLabel } from './dateUtils'
 import { addClientNotification } from './clientTrackingStore'
+import { addAdminNotification } from './adminNotificationsStore'
 import { logActivity } from './activityLog'
 
 const STORAGE_KEY = 'oriafen-marketing-v1'
@@ -70,7 +71,11 @@ export function updateMarketingProject(clientId, patch) {
 
 // section/title/description/priority : mêmes champs que demandés (feedback
 // #8). Un titre vide est ignoré (retourne null), jamais une fausse demande.
-export function createModificationRequest(clientId, { section, title, description, priority = 'normale' }) {
+// clientName (optionnel) : uniquement pour l'affichage de la notification
+// admin ci-dessous (label "Nouvelle demande de modification — <nom>") —
+// jamais stocké sur la demande elle-même, qui reste identifiée par clientId
+// comme partout ailleurs.
+export function createModificationRequest(clientId, { section, title, description, priority = 'normale' }, clientName = null) {
   const clean = (title || '').trim()
   if (!clientId || !clean) return null
   const data = readAll()
@@ -89,6 +94,21 @@ export function createModificationRequest(clientId, { section, title, descriptio
   client.requests = [...client.requests, request]
   writeAll(data)
   logActivity(clientId, { author: 'Client', action: 'Demande de modification marketing envoyée', detail: `${request.section} — ${clean}` })
+
+  // Notification ADMIN (feedback "Marketing request does not notify admin") :
+  // exactement UNE notification par demande, jamais recréée si l'appelant
+  // relit/rerend (dedupeKey = id de la demande, qui n'existe qu'une fois).
+  addAdminNotification({
+    type: 'marketing',
+    title: `Nouvelle demande de modification — ${clientName || 'Client'}`,
+    message: `${request.section} — ${clean}`,
+    clientId,
+    clientName,
+    context: { tab: 'marketing', clientId },
+    important: request.priority === 'urgente',
+    dedupeKey: `admin-notif:marketing-request:${request.id}`,
+  })
+
   return request
 }
 

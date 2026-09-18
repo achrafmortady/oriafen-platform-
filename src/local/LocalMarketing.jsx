@@ -4,6 +4,7 @@ import {
   createModificationRequest, setModificationStatus, updateMarketingProject,
   subscribeToMarketing, MODIFICATION_STATUSES,
 } from './marketingStore'
+import { CANONICAL_DEMO_CLIENT_ID } from './model'
 
 const STATUS_STYLE = {
   'Envoyée': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -120,7 +121,10 @@ function RequestsCard({ requests, onNewRequest }) {
 }
 
 // Vue CLIENT — feedback #8 : projet, livrables, demandes de modification.
-export function ClientMarketingPanel({ clientId }) {
+// clientName (optionnel) : transmis à createModificationRequest uniquement
+// pour libeller la notification admin ("Nouvelle demande de modification —
+// <nom>") — n'affecte rien d'autre.
+export function ClientMarketingPanel({ clientId, clientName = null }) {
   const [project, setProject] = useState(() => getMarketingProject(clientId))
   const [deliverables, setDeliverables] = useState(() => getDeliverables(clientId))
   const [requests, setRequests] = useState(() => getModificationRequests(clientId))
@@ -136,7 +140,7 @@ export function ClientMarketingPanel({ clientId }) {
       {showModal && (
         <NewRequestModal
           onClose={() => setShowModal(false)}
-          onSubmit={form => { createModificationRequest(clientId, form); setShowModal(false); refresh() }}
+          onSubmit={form => { createModificationRequest(clientId, form, clientName); setShowModal(false); refresh() }}
         />
       )}
     </div>
@@ -144,9 +148,11 @@ export function ClientMarketingPanel({ clientId }) {
 }
 
 // Vue ADMIN — feedback #8 : traiter les demandes du client (changement de
-// statut), garder l'historique. Un seul client de démo (clientId=6) dans
-// cette maquette locale, comme ClientSpace dans LocalCRM.jsx.
-export function AdminMarketingPanel({ clientId = 6 }) {
+// statut), garder l'historique. Un seul client de démo dans cette maquette
+// locale — CANONICAL_DEMO_CLIENT_ID (model.js), le même id que ClientSpace
+// et la fiche admin "Client Démo" (feedback "client demo is not mapped to
+// admin client data").
+export function AdminMarketingPanel({ clientId = CANONICAL_DEMO_CLIENT_ID }) {
   const [project, setProject] = useState(() => getMarketingProject(clientId))
   const [requests, setRequests] = useState(() => getModificationRequests(clientId))
   const [phaseDraft, setPhaseDraft] = useState('')

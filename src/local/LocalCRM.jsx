@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useRef} from 'react';
-import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst} from './model';
+import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,CANONICAL_DEMO_CLIENT_ID,CANONICAL_DEMO_CLIENT_NAME,normalizeCanonicalDemoClient} from './model';
 import {getAdminSendStatus,getClientLastActivity,getClientSends,getImportantUnseen,getReminderCount,markClientSendOpened,markClientSendReminded,markClientSendSeen,replyToClientSend,setClientSendImportant,subscribeToClientTracking,createClientSupportRequest,respondToClientRequest} from './clientTrackingStore';
 import Logo from '../components/Logo';
 import {LogoutIcon} from '../components/Icons';
@@ -276,7 +276,10 @@ function LocalTrackedCommunications({ items, drafts, setDrafts, sendingId, sendR
 }
 
 function ClientSpace({onBack}){
- const clientId=6;
+ // Id/nom canoniques (model.js) — mêmes qu'admin > Clients > "Client Démo"
+ // (feedback "client demo is not mapped to admin client data") : la session
+ // client de démo et sa fiche admin sont désormais toujours le même lead.
+ const clientId=CANONICAL_DEMO_CLIENT_ID;
  const [items,setItems]=useState(()=>getClientSends(clientId));
  const [drafts,setDrafts]=useState({});
  const [sending,setSending]=useState(null);
@@ -319,13 +322,13 @@ function ClientSpace({onBack}){
  function submitNewTicket(e){
   e.preventDefault();
   if(!newTicket.subject.trim()||!newTicket.message.trim())return;
-  createClientSupportRequest(clientId,newTicket);
+  createClientSupportRequest(clientId,newTicket,clientName);
   setNewTicket({subject:'',message:''});
   setShowNewTicket(false);
   setItems(getClientSends(clientId));
  }
  const nav=[['dossier','Mon Dossier'],['marketing','Mon site & communication'],['formation','Formation IAS1'],['commercial','Vente & Scripts'],['documents','Documents'],['support','Mes échanges']];
- const clientName='Client Démo';
+ const clientName=CANONICAL_DEMO_CLIENT_NAME;
  const clientPack='Pack Accélération';
  const initials=clientName.split(' ').map(n=>n[0]).join('').slice(0,2);
 
@@ -397,7 +400,7 @@ function ClientSpace({onBack}){
     ) : activeTab==='documents' ? (
      <LocalMesDocuments clientId={clientId} />
     ) : activeTab==='marketing' ? (
-     <ClientMarketingPanel clientId={clientId} />
+     <ClientMarketingPanel clientId={clientId} clientName={clientName} />
     ) : activeTab==='support' ? (
      <section>
       <div style={{
@@ -407,13 +410,13 @@ function ClientSpace({onBack}){
        border:'1px solid rgba(201,168,76,0.18)',
       }}>
        <div style={{height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', marginBottom:'22px', borderRadius:'2px'}} />
-       <p style={{margin:0, color:'#c9a84c', fontSize:'10px', fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:"'Montserrat', sans-serif"}}>Espace client</p>
+       <p style={{margin:0, color:'#c9a84c', fontSize:'10px', fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:"'Montserrat', sans-serif"}}>Espace client · Support &amp; messages</p>
        <h2 style={{margin:'8px 0 6px', color:'#fff', fontSize:'30px', fontWeight:400, letterSpacing:'0.5px', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Mes échanges</h2>
-       <p style={{margin:0, color:'rgba(255,255,255,0.68)', fontSize:'13px', fontWeight:300, fontFamily:"'Montserrat', sans-serif"}}>Vos demandes de support, documents et messages avec l’équipe Oriafen — pour les alertes ponctuelles (réponse reçue, document traité…), consultez la cloche 🔔 en haut à droite.</p>
+       <p style={{margin:0, color:'rgba(255,255,255,0.68)', fontSize:'13px', fontWeight:300, fontFamily:"'Montserrat', sans-serif"}}>🛟 C'est ici que vous ouvrez une demande de support et suivez la réponse de l'équipe, en plus des documents et messages reçus. Chaque demande garde sa propre conversation ci-dessous. Pour les alertes ponctuelles (réponse reçue, document traité…), consultez la cloche 🔔 en haut à droite — elle ne remplace jamais la conversation.</p>
        <p style={{margin:'16px 0 0', color:'rgba(255,255,255,0.42)', fontSize:'10px', fontFamily:"'Montserrat', sans-serif"}}>Démonstration locale · données fictives</p>
       </div>
       <div style={{marginTop:'22px', display:'flex', justifyContent:'flex-end'}}>
-       <button className="btn-gold text-sm" onClick={()=>setShowNewTicket(true)}>＋ Nouvelle demande</button>
+       <button className="btn-gold text-sm" onClick={()=>setShowNewTicket(true)}>＋ Nouvelle demande de support</button>
       </div>
       {showNewTicket && (
        <form onSubmit={submitNewTicket} className="card p-5 mt-3 space-y-3">
@@ -476,7 +479,7 @@ function ClientSpace({onBack}){
  )
 }
 export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null}){
- const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return raw&&raw.length?normalizeLeadsStage(raw):seed()}catch{return seed()}});
+ const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return raw&&raw.length?normalizeCanonicalDemoClient(normalizeLeadsStage(raw)):seed()}catch{return seed()}});
  const [filter,setFilter]=useState(defaults),[view,setView]=useState('Liste'),[selected,setSelected]=useState(null),[note,setNote]=useState(''),[saved,setSaved]=useState('Tous les prospects'),[creating,setCreating]=useState(false),[toast,setToast]=useState('');
  const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel'),[newTaskTitle,setNewTaskTitle]=useState(''),[newTaskDue,setNewTaskDue]=useState('');
  const [notesDraft,setNotesDraft]=useState('');
