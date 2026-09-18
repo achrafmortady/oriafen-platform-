@@ -28,6 +28,7 @@ const { createClientSupportRequest, respondToClientRequest, getClientSends, addC
 const { getAdminNotifications, getUnseenAdminNotificationCount, markAdminNotificationSeen } = await import('./src/local/adminNotificationsStore.js')
 const { getClientDocuments, uploadDocument, rejectDocument } = await import('./src/local/documentsStore.js')
 const { listAssociateDocCategories } = await import('./src/local/associateDocuments.js')
+const { buildClientsOverview } = await import('./src/local/clientsOverviewData.js')
 
 // ============================================================
 // ISSUE 1 — marketing request notifies admin exactly once
@@ -176,5 +177,67 @@ console.log('PASS ISSUE 2: support -> notification admin par demande, threads s�
   notifs.forEach(n => assert.equal(n.clientId, clientId))
 }
 console.log('PASS ISSUE 3: client de démo canonique (id/nom uniques), migration non destructive, même id dans tous les stores')
+
+// ============================================================
+// RÉGRESSION CIBLÉE (QA 2026-09-18, round 2) — vérifie le JEU DE DONNÉES
+// RÉELLEMENT utilisé par Admin > Clients (LocalClientsOverview.jsx), pas
+// seulement que les constantes existent dans le code. Root cause : ce
+// composant a SA PROPRE copie du chargement des leads (useLocalLeads,
+// distincte de celles de LocalAdminShell.jsx et LocalCRM.jsx) et n'appliquait
+// pas normalizeCanonicalDemoClient — reproduit ici exactement la même chaîne
+// que le hook corrigé : JSON.parse(localStorage) -> normalizeLeadsStage ->
+// normalizeCanonicalDemoClient -> buildClientsOverview (même fonction que le
+// rendu réel de l'onglet Clients).
+// ============================================================
+const { normalizeLeadsStage } = await import('./src/local/model.js')
+function loadLeadsLikeAdminClientsTab(raw) {
+  return raw ? normalizeCanonicalDemoClient(normalizeLeadsStage(raw)) : seed()
+}
+
+// Cas 1 : rien en localStorage encore (première visite) -> seed() direct.
+{
+  const leads = loadLeadsLikeAdminClientsTab(null)
+  const { rows } = buildClientsOverview(leads)
+  const matches = rows.filter(r => r.name === CANONICAL_DEMO_CLIENT_NAME)
+  assert.equal(matches.length, 1, 'Admin > Clients doit afficher exactement UN "Client Démo" dès la première visite (seed())')
+  assert.equal(matches[0].id, CANONICAL_DEMO_CLIENT_ID)
+  assert.equal(matches[0].pack, 'Pack Accélération')
+}
+
+// Cas 2 (le bug rapporté) : des leads DÉJÀ persistés en localStorage AVANT
+// ce correctif, où le lead #6 n'a pas encore l'identité canonique (nom
+// différent, pas encore stage "Client"). C'est exactement l'état d'un
+// testeur qui avait déjà utilisé la Preview.
+{
+  const staleRaw = seed().map(l => l.id === CANONICAL_DEMO_CLIENT_ID
+    ? { ...l, name: 'Adam Exemple 1', stage: 'Injoignable', paymentValidated: false, pack: 'Pack Essentiel' }
+    : l)
+  const leads = loadLeadsLikeAdminClientsTab(staleRaw)
+  const { rows } = buildClientsOverview(leads)
+  const matches = rows.filter(r => r.name === CANONICAL_DEMO_CLIENT_NAME)
+  assert.equal(matches.length, 1, 'BUG RAPPORTÉ : avec des données déjà persistées (nom/étape non canoniques), Admin > Clients doit quand même afficher "Client Démo" après le correctif')
+  assert.equal(matches[0].id, CANONICAL_DEMO_CLIENT_ID)
+  assert.equal(matches[0].pack, 'Pack Accélération')
+  // Aucun doublon : l'ancien nom "Adam Exemple 1" n'apparaît plus du tout
+  // pour cet id (il a été corrigé en place, pas dupliqué).
+  assert.equal(rows.some(r => r.id === CANONICAL_DEMO_CLIENT_ID && r.name === 'Adam Exemple 1'), false)
+  assert.equal(rows.filter(r => r.id === CANONICAL_DEMO_CLIENT_ID).length, 1, 'un seul enregistrement pour cet id, jamais deux')
+}
+
+// Cas 3 : mêmes documents/associé/marketing/support pour ce même id, relus
+// au travers de la même chaîne de normalisation (bout-en-bout, pas juste le
+// store isolé).
+{
+  const leads = loadLeadsLikeAdminClientsTab(null)
+  const { rows } = buildClientsOverview(leads)
+  const demoRow = rows.find(r => r.name === CANONICAL_DEMO_CLIENT_NAME)
+  assert.ok(demoRow)
+  uploadDocument(demoRow.id, 'associate_cin_verso', "CIN de l'associé — Verso", { name: 'verso.pdf' })
+  assert.equal(getClientDocuments(demoRow.id).associate_cin_verso.fileName, 'verso.pdf')
+  const support = createClientSupportRequest(demoRow.id, { subject: 'Test bout-en-bout', message: 'Vérification finale' }, CANONICAL_DEMO_CLIENT_NAME)
+  assert.ok(getClientSends(demoRow.id).some(i => i.id === support.id))
+  assert.ok(getAdminNotifications().some(n => n.clientId === demoRow.id && n.title.includes('Client Démo')))
+}
+console.log('PASS RÉGRESSION: le jeu de données réel d\'Admin > Clients (buildClientsOverview) contient "Client Démo", y compris avec des leads déjà persistés, sans doublon')
 
 console.log('ALL PASS: notifications admin (marketing + support) et mapping client de démo <-> fiche admin')

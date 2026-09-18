@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { seed, stages, normalizeLeadsStage } from './model'
+import { seed, stages, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import { buildLeadTimeline, findConversionEntry, findFirstEntry, applyStatusChange, addManualComment, STAGE_BADGE_STYLES } from './clientHistory'
 import { toDisplayDateSafe } from './dateUtils'
@@ -45,12 +45,23 @@ import { listAssociateDocCategories } from './associateDocuments'
 
 const STORAGE_KEY = 'oriafen-isolated-crm-v1'
 
+// Correctif (QA "Client Démo absent d'Admin > Clients") : ce hook lit le
+// même localStorage que LocalAdminShell.jsx/LocalCRM.jsx mais avait sa
+// propre copie du chargement, restée sans normalizeCanonicalDemoClient —
+// un testeur avec des leads déjà en localStorage (créés avant ou même après
+// l'introduction du client canonique) ne voyait donc jamais "Client Démo"
+// dans CETTE vue précise, alors que le CRM et le header le montraient déjà
+// correctement. Les trois chargeurs doivent appliquer la même migration.
+function normalizeLoadedLeads(raw) {
+  return normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+}
+
 function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
-    try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); return raw ? normalizeLeadsStage(raw) : seed() } catch { return seed() }
+    try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); return raw ? normalizeLoadedLeads(raw) : seed() } catch { return seed() }
   })
   useEffect(() => {
-    const refresh = () => { try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); setLeads(raw ? normalizeLeadsStage(raw) : seed()) } catch { /* ignore */ } }
+    const refresh = () => { try { const raw = JSON.parse(localStorage.getItem(STORAGE_KEY)); setLeads(raw ? normalizeLoadedLeads(raw) : seed()) } catch { /* ignore */ } }
     window.addEventListener('storage', refresh)
     const timer = setInterval(refresh, 4000)
     return () => { window.removeEventListener('storage', refresh); clearInterval(timer) }
