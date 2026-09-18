@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getClientDocuments, subscribeToDocuments, uploadDocument, getDocVersions } from './documentsStore'
+import { ASSOCIATE_AUTRE_PREFIX, listAssociateDocCategories, countAssociateDocsSent } from './associateDocuments'
 import { CheckCircleIcon, ClockIcon, XCircleIcon, UploadIcon } from '../components/Icons'
 
 // Reprend le style de src/pages/student/MesDocuments.jsx (fichier live non
@@ -17,10 +18,15 @@ const STATUS_CONFIG = {
   none: { label: 'Manquant', bg: '#f3f4f6', color: '#6b7280', border: 'rgba(148,163,184,0.2)' },
 }
 
-function DocRow({ required, doc, uploading, onUpload }) {
+// optional : true pour une catégorie facultative (documents associé) — un
+// statut 'none' n'y est jamais présenté comme un manque ("Manquant" ->
+// "Non requis"), conformément à la règle "aucun avertissement de document
+// manquant" pour cette section. Ne change rien pour les documents requis du
+// client principal (optional=false par défaut).
+function DocRow({ required, doc, uploading, onUpload, optional = false }) {
   const inputRef = useRef(null)
   const status = doc?.status ?? 'none'
-  const sc = STATUS_CONFIG[status] ?? STATUS_CONFIG.none
+  const sc = status === 'none' && optional ? { ...STATUS_CONFIG.none, label: 'Non requis' } : (STATUS_CONFIG[status] ?? STATUS_CONFIG.none)
   const rejected = status === 'missing' || status === 'correction'
   const btnLabel = rejected ? 'Remplacer le document' : status === 'none' ? 'Envoyer' : 'Remplacer'
 
@@ -103,14 +109,18 @@ function DocRow({ required, doc, uploading, onUpload }) {
 // documents obligatoires (donc le même documentsStore local), avec un id de
 // catégorie dynamique 'autre_<timestamp>' pour ne jamais entrer en conflit
 // avec les catégories obligatoires de REQUIRED_DOCUMENTS.
-function AutreDocRow({ onUpload, uploading }) {
+// categoryPrefix : préfixe d'id dynamique ('autre_' pour le client principal,
+// 'associate_autre_' pour l'associé — voir associateDocuments.js) — garantit
+// que les deux ne peuvent jamais générer le même id de catégorie, même par
+// coïncidence de timestamp.
+function AutreDocRow({ onUpload, uploading, categoryPrefix = 'autre_', title = 'Autre document (facultatif)' }) {
   const inputRef = useRef(null)
   const [label, setLabel] = useState('')
 
   const handleFileChange = (e) => {
     const file = e.target.files?.[0]
     if (file && label.trim()) {
-      onUpload('autre_' + Date.now(), label.trim(), file)
+      onUpload(categoryPrefix + Date.now(), label.trim(), file)
       setLabel('')
       e.target.value = ''
     }
@@ -123,7 +133,7 @@ function AutreDocRow({ onUpload, uploading }) {
     // c'est une option, pas un avertissement.
     <div style={{ background: '#faf7ef', border: '1.5px solid #e3d5ac', borderLeft: '4px solid #c9a84c', borderRadius: '14px', padding: '18px 20px' }}>
       <p style={{ margin: '0 0 12px', fontWeight: '700', color: '#8a6821', fontSize: '13px', fontFamily: "'Montserrat', sans-serif" }}>
-        📎 Autre document (facultatif)
+        📎 {title}
       </p>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
         <input
@@ -163,10 +173,20 @@ export default function LocalMesDocuments({ clientId }) {
     setUploading(prev => ({ ...prev, [categoryId]: false }))
   }
 
+  // Progression du dossier principal : UNIQUEMENT REQUIRED_DOCUMENTS (client
+  // principal). Les documents associé ne sont jamais ajoutés à ce
+  // dénominateur ni à validDocs — une section associé vide ne fait jamais
+  // baisser ce pourcentage, ni ne bloque quoi que ce soit ici.
   const validDocs = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
   const progressPct = Math.round((validDocs / REQUIRED_DOCUMENTS.length) * 100)
 
+  // Documents associé : catégories dédiées (jamais REQUIRED_DOCUMENTS),
+  // affichage neutre uniquement — jamais un statut d'erreur/manquant global.
+  const associateCategories = listAssociateDocCategories(docs)
+  const associateSentCount = countAssociateDocsSent(docs)
+
   return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
     <div style={{ background: '#ffffff', border: '1px solid #e8e2d6', borderRadius: '20px', padding: '24px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
       <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '600', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#c49a2a', fontFamily: "'Montserrat', sans-serif" }}>Documents du dossier ORIAS</p>
       <p style={{ margin: '0 0 20px', fontSize: '12px', color: '#9ca3af', fontFamily: "'Montserrat', sans-serif" }}>Envoyez les {REQUIRED_DOCUMENTS.length} documents requis pour votre immatriculation</p>
@@ -192,6 +212,33 @@ export default function LocalMesDocuments({ clientId }) {
         <span style={{ flexShrink: 0 }}>ℹ️</span>
         <p style={{ margin: 0, lineHeight: '1.6' }}>Formats acceptés : <strong style={{ color: '#b45309' }}>PDF, JPG, PNG</strong> — max 10 Mo. Vérification sous <strong style={{ color: '#b45309' }}>24–48h</strong> par votre conseiller. Démonstration locale · aucun fichier n'est réellement téléversé.</p>
       </div>
+    </div>
+
+    {/* Section associé — TOUJOURS visible (aucun flag hasAssociate), 100%
+        optionnelle. Design volontairement distinct de la carte "Mes
+        documents" ci-dessus (fond vert très clair + liseré vert foncé au
+        lieu du blanc/or) mais dans la même charte Oriafen — jamais un
+        statut d'erreur/manquant : un dossier sans associé la laisse vide,
+        sans aucun impact sur la progression ou le blocage du dossier
+        principal (validDocs/progressPct ci-dessus ne portent QUE sur
+        REQUIRED_DOCUMENTS). */}
+    <div style={{ background: '#f2f7f3', border: '1px solid #c9d8cc', borderLeft: '4px solid #1a4a2e', borderRadius: '20px', padding: '24px' }}>
+      <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '600', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#1a4a2e', fontFamily: "'Montserrat', sans-serif" }}>Documents de mon associé</p>
+      <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#4b5563', fontFamily: "'Montserrat', sans-serif" }}>À compléter uniquement si votre dossier comporte un associé.</p>
+      <p style={{ margin: '0 0 20px', fontSize: '11px', color: '#6b7280', fontStyle: 'italic', fontFamily: "'Montserrat', sans-serif" }}>Documents associé : {associateSentCount} document{associateSentCount > 1 ? 's' : ''} envoyé{associateSentCount > 1 ? 's' : ''}</p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {associateCategories.map(req => (
+          <DocRow key={req.id} required={req} doc={docs[req.id]} uploading={!!uploading[req.id]} onUpload={handleUpload} optional />
+        ))}
+        <AutreDocRow onUpload={handleUpload} uploading={!!uploading[ASSOCIATE_AUTRE_PREFIX]} categoryPrefix={ASSOCIATE_AUTRE_PREFIX} title="Autre document associé (facultatif)" />
+      </div>
+
+      <div style={{ marginTop: '16px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '14px 16px', borderRadius: '14px', background: '#ffffff', border: '1px solid #c9d8cc', fontSize: '12px', color: '#4b5563', fontFamily: "'Montserrat', sans-serif" }}>
+        <span style={{ flexShrink: 0 }}>ℹ️</span>
+        <p style={{ margin: 0, lineHeight: '1.6' }}>Section facultative — elle n'est jamais comptée dans la progression de votre dossier principal ci-dessus et ne bloque aucune étape si elle reste vide.</p>
+      </div>
+    </div>
     </div>
   )
 }

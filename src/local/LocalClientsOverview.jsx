@@ -10,6 +10,7 @@ import { getClientSends, subscribeToClientTracking, getAdminSendStatus } from '.
 import { subscribeToActivityLog } from './activityLog'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getClientDocuments, subscribeToDocuments, rejectDocument, validateDocument } from './documentsStore'
+import { listAssociateDocCategories } from './associateDocuments'
 
 // ============================================================
 // SOURCE DE VÉRITÉ VISUELLE UNIQUE : src/pages/admin/Dashboard.jsx,
@@ -292,7 +293,11 @@ const DOC_STATUS_LABELS = { valid: 'Validé', pending: 'En attente', missing: 'R
 
 // Documents — rejet avec motif / validation / historique de versions (ajout
 // local, §5/§8 — sans équivalent direct dans le modal ClientsSection live).
-function ClientDocumentsPanel({ clientId }) {
+// `categories` : liste de catégories à afficher (REQUIRED_DOCUMENTS pour le
+// client principal, listAssociateDocCategories(docs) pour l'associé — voir
+// AssociateClientDocumentsPanel ci-dessous) — même composant, même workflow
+// (valider/rejeter/motif/historique), jamais un système parallèle.
+function ClientDocumentsPanel({ clientId, categories = REQUIRED_DOCUMENTS, emptyLabel = null }) {
   const [docs, setDocs] = useState(() => getClientDocuments(clientId))
   const [rejectingId, setRejectingId] = useState(null)
   const [reason, setReason] = useState('')
@@ -305,9 +310,13 @@ function ClientDocumentsPanel({ clientId }) {
     setReason('')
   }
 
+  if (!categories.length && emptyLabel) {
+    return <p className="text-xs text-gray-400 italic">{emptyLabel}</p>
+  }
+
   return (
     <div className="space-y-2">
-      {REQUIRED_DOCUMENTS.map(req => {
+      {categories.map(req => {
         const doc = docs[req.id]
         const status = doc?.status || 'none'
         const canReview = doc?.fileName && status !== 'valid'
@@ -344,6 +353,17 @@ function ClientDocumentsPanel({ clientId }) {
       })}
     </div>
   )
+}
+
+// Documents de l'associé, vus par l'admin — mêmes catégories que côté
+// client (associateDocuments.js, y compris les "Autre document associé"
+// dynamiques déjà envoyés), même workflow (ClientDocumentsPanel), jamais
+// mélangées aux documents du client principal (catégories associate_* dédiées).
+function AssociateDocumentsPanel({ clientId }) {
+  const [docs, setDocs] = useState(() => getClientDocuments(clientId))
+  useEffect(() => subscribeToDocuments(() => setDocs(getClientDocuments(clientId))), [clientId])
+  const categories = listAssociateDocCategories(docs)
+  return <ClientDocumentsPanel clientId={clientId} categories={categories} emptyLabel="Aucun document associé pour ce client." />
 }
 
 // Filtres avancés locaux (KPI cliquables du header admin — voir
@@ -601,8 +621,19 @@ export default function LocalClientsOverview({ initialFilter = null }) {
                   </div>
 
                   <div className="card p-5">
-                    <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-3">Documents (rejet / remplacement / versions)</p>
+                    <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-3">Documents du client (rejet / remplacement / versions)</p>
                     <ClientDocumentsPanel clientId={selected.id} />
+                  </div>
+
+                  {/* Documents de l'associé — section admin clairement séparée des
+                      documents du client principal (feedback session 2026-09-18) :
+                      libellés distincts, jamais confondus, même workflow (valider/
+                      rejeter/motif/historique de versions) via ClientDocumentsPanel,
+                      catégories dédiées (associate_*) — voir associateDocuments.js. */}
+                  <div className="card p-5 border-l-4 border-orias-green">
+                    <p className="text-xs font-semibold text-orias-green uppercase tracking-wide mb-1">Documents de l'associé</p>
+                    <p className="text-[11px] text-gray-400 mb-3">Optionnel côté client — présent uniquement si le dossier comporte un associé.</p>
+                    <AssociateDocumentsPanel clientId={selected.id} />
                   </div>
 
                   {/* Hauteur maîtrisée : le titre et le formulaire (dans HistoryTimeline)
