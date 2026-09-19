@@ -17,18 +17,31 @@ import { CheckCircleIcon, ClockIcon } from '../components/Icons'
 
 const STORAGE_KEY = 'oriafen-isolated-crm-v1'
 
+// Réécrit la version migrée dans localStorage si elle diffère des données
+// brutes (même correctif que LocalClientsOverview.jsx/LocalDossierSection.jsx
+// — audit final 2026-09-19 : cet onglet appliquait déjà la migration en
+// mémoire mais ne la persistait jamais, seule différence avec le bug
+// "Client Démo absent d'Admin > Clients" déjà corrigé ailleurs. Sans cette
+// réécriture, ouvrir CET onglet en premier ne préserverait pas la correction
+// pour les autres vues qui liraient encore les données brutes.
+function normalizeAndPersist(raw) {
+  const normalized = normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+  if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+  return normalized
+}
+
 function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-      return raw ? normalizeCanonicalDemoClient(normalizeLeadsStage(raw)) : seed()
+      return raw ? normalizeAndPersist(raw) : seed()
     } catch { return seed() }
   })
   useEffect(() => {
     const refresh = () => {
       try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        if (raw) setLeads(normalizeCanonicalDemoClient(normalizeLeadsStage(raw)))
+        if (raw) setLeads(normalizeAndPersist(raw))
       } catch { /* ignore */ }
     }
     window.addEventListener('storage', refresh)

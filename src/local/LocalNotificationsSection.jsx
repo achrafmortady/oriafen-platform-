@@ -23,19 +23,29 @@ import { BellIcon, CheckCircleIcon, XIcon } from '../components/Icons'
 
 const STORAGE_KEY = 'oriafen-isolated-crm-v1'
 
+// Même correctif que LocalClientsOverview.jsx/LocalDossierSection.jsx
+// (audit final 2026-09-19) : réécrit la version migrée dans localStorage,
+// jamais seulement en mémoire — aucune dépendance à l'ordre de montage des
+// autres onglets.
+function normalizeAndPersist(raw) {
+  const normalized = normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+  if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+  return normalized
+}
+
 function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
       if (!raw) return seed()
-      return normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+      return normalizeAndPersist(raw)
     } catch { return seed() }
   })
   useEffect(() => {
     const refresh = () => {
       try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        if (raw) setLeads(normalizeCanonicalDemoClient(normalizeLeadsStage(raw)))
+        if (raw) setLeads(normalizeAndPersist(raw))
       } catch { /* ignore */ }
     }
     window.addEventListener('storage', refresh)

@@ -104,3 +104,71 @@ En cas d'échec d'une migration en production : ne pas ré-essayer à chaud,
 revenir d'abord sur l'environnement de test/staging pour comprendre l'écart
 avec le schéma live réel (voir section 3), corriger le fichier de migration,
 puis reprogrammer une fenêtre de déploiement.
+
+## Audit final V2 (2026-09-20) — dépendances production restantes
+
+Ce qui suit documente ce qui fonctionne aujourd'hui **uniquement grâce à
+localStorage/données de démonstration** dans `src/local/*` (Preview isolée,
+`local-main.jsx`) et qui devra être câblé avant une vraie mise en
+production. Rien ci-dessous n'a été exécuté sur Supabase live — c'est une
+liste, pas une action.
+
+**1. Authentification — bloquant fondamental, au-dessus de tout le reste.**
+`local-main.jsx` monte `LocalAdminShell` directement, sans aucun login ni
+garde de rôle. Toute la Preview V2 repose sur UN SEUL client canonique
+(`CANONICAL_DEMO_CLIENT_ID = 6`, `model.js`) : `ClientSpace` (espace client)
+et tous les composants `Local*` qui prennent un prop `clientId` l'utilisent
+en dur au lieu de l'id de l'utilisateur connecté. Avant production : réactiver
+`src/App.jsx`/`AuthContext` (déjà intacts, jamais modifiés) comme point
+d'entrée réel, et remplacer partout `CANONICAL_DEMO_CLIENT_ID`/`clientName`
+par `useAuth().user.id`/`user.name`. Sans cette étape, un vrai deuxième
+client verrait les données du premier (id partagé).
+
+**2. Documents & documents associé** (`documentsStore.js`,
+`associateDocuments.js`) : aucun fichier n'est réellement téléversé (le
+"fileName" est stocké, jamais le contenu). Nécessite un vrai stockage
+(Supabase Storage) + le schéma `documents`/`document_versions` déjà planifié
+section 2-3 ci-dessus — les catégories `associate_*` sont nouvelles et
+n'existent dans aucune migration versionnée : à ajouter au schéma live avant
+activation.
+
+**3. Marketing** (`marketingStore.js`, ajouté cette session) : projet,
+livrables et demandes de modification sont 100% localStorage, aucune table
+équivalente n'existe dans les migrations versionnées (le live a
+`fetchAdminMarketingBriefs`/`SITE_FEEDBACK_SECTIONS`, un schéma différent et
+plus riche — réconciliation nécessaire, pas un simple branchement).
+
+**4. Notifications admin** (`adminNotificationsStore.js`, ajouté cette
+session) : n'a AUCUN équivalent live — c'est une fonctionnalité nouvelle
+(l'admin live n'était jamais notifié des nouvelles demandes marketing/
+support). À concevoir côté Supabase (nouvelle table ou vue dérivée des
+tables existantes) avant production.
+
+**5. Formation IAS1 / Vente & Scripts — progression** (`formationProgressStore.js`) :
+contrairement aux points 2-4, le live a DÉJÀ les fonctions Supabase
+correspondantes (`fetchFormationProgress`, `saveChapterProgress`,
+`markUnitComplete`, `saveExamResult` dans `src/lib/api.js`, non modifiées) —
+il s'agit ici de reconnecter ce store local à ces fonctions existantes une
+fois l'auth réelle en place, pas de créer un nouveau schéma.
+
+**6. Suivi des étapes du dossier** (`dossierStepStore.js`) : même cas que le
+point 5 — le live a déjà `updateDossierStep`/`dossierId`, reconnexion
+seulement.
+
+**7. Vidéos/diapositives Formation IAS1** (`Chapitre11.jsx`...`Chapitre55.jsx`,
+non modifiés) : leurs URLs Supabase Storage ne se chargent pas dans cette
+Preview car la CSP de `index.html` (`img-src 'self' data:`, pas de
+`media-src` externe) bloque tout domaine externe — volontaire, pour garantir
+qu'aucune requête ne sorte vers Supabase depuis l'isolation locale. La CSP
+de production devra autoriser explicitement le bucket Storage concerné.
+
+**8. Dossier "Clients" — progression synthétique** (`clientsOverviewData.js`,
+antérieur à cette session) : `deriveDossier()` calcule un statut/une étape
+déterministes à partir de `lead.id % ...` (donnée de démonstration), pas de
+l'état réel du client. En production, ce calcul doit lire les vraies données
+(documents validés, étape réelle du dossier), pas une formule modulo.
+
+**9. Paiements/conversion** (`conversion.js`) : `applyPaymentValidation`
+enregistre un paiement fictif en localStorage. Le live a déjà
+`convertLeadToClient`/`markPaymentPaid` (non modifiés) — reconnexion
+nécessaire après l'auth, pas de nouvelle logique de paiement à inventer.
