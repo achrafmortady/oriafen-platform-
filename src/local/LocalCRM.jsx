@@ -2,11 +2,14 @@ import React,{useState,useEffect,useRef} from 'react';
 import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,CANONICAL_DEMO_CLIENT_ID,CANONICAL_DEMO_CLIENT_NAME,normalizeCanonicalDemoClient} from './model';
 import {getAdminSendStatus,getClientLastActivity,getClientSends,getImportantUnseen,getReminderCount,markClientSendOpened,markClientSendReminded,markClientSendSeen,replyToClientSend,setClientSendImportant,subscribeToClientTracking,createClientSupportRequest,respondToClientRequest} from './clientTrackingStore';
 import Logo from '../components/Logo';
-import {LogoutIcon} from '../components/Icons';
+import {LogoutIcon,WhatsAppIcon,CalendarIcon,MessageIcon,ChevronDownIcon} from '../components/Icons';
+import {FAQ_ITEMS} from '../data/mockData';
 import LocalNotificationBell from './LocalNotificationBell';
 import LocalMonDossier from './LocalMonDossier';
 import LocalMesDocuments from './LocalMesDocuments';
 import {ClientMarketingPanel} from './LocalMarketing';
+import LocalMaFormation from './LocalMaFormation';
+import LocalFormationCommerciale from './LocalFormationCommerciale';
 import {logActivity} from './activityLog';
 import {LOCAL_PACKS,findPackById,basePriceFor,computeFinalPrice} from './packsData';
 import {formatNowLabel,toDisplayDateSafe} from './dateUtils';
@@ -15,6 +18,23 @@ import {applyPaymentValidation} from './conversion';
 import {addAppointment as addAppointmentPure,markAppointmentDone,APPOINTMENT_TYPE_LABELS as APPT_TYPE_LABELS} from './appointments';
 import {relanceReason,isToRelaunch,isRelanceOverdue,scheduleRelance,clearRelance,RELANCE_STAGE} from './relance';
 const money=n=>new Intl.NumberFormat('fr-MA').format(n)+' DH';
+// Reprend TICKET_CATEGORY_LABELS (src/lib/api.js, live non modifié) — copié
+// ici plutôt qu'importé, src/local/* n'important jamais src/lib/api.js
+// (couche live), même pour une simple constante de libellés.
+const TICKET_CATEGORY_LABELS={formation:'Formation IAS1',marketing:'Marketing & communication',dossier:'Dossier ORIAS',facturation:'Facturation',autre:'Autre'};
+// FAQItem — reprend exactement src/pages/student/Support.jsx (live non
+// modifié) : accordéon simple, contenu réel réutilisé depuis FAQ_ITEMS
+// (src/data/mockData.js).
+function FAQItem({item}){
+ const [open,setOpen]=useState(false);
+ return <div className="border border-orias-border rounded-xl overflow-hidden">
+  <button onClick={()=>setOpen(!open)} className="w-full text-left flex items-center justify-between gap-3 p-5 hover:bg-orias-bg transition-colors">
+   <span className="font-semibold text-gray-800 text-sm leading-relaxed pr-4">{item.question}</span>
+   <ChevronDownIcon className={`w-5 h-5 text-orias-gold flex-shrink-0 transition-transform duration-200 ${open?'rotate-180':''}`}/>
+  </button>
+  {open&&<div className="px-5 pb-5 border-t border-orias-border"><p className="text-sm text-gray-600 leading-relaxed pt-4">{item.answer}</p></div>}
+ </div>;
+}
 // Reprend les couleurs de SOURCE_BADGE_STYLES (src/pages/admin/Dashboard.jsx,
 // live non modifié) pour le badge source de l'en-tête de fiche prospect.
 const SOURCE_BADGE_STYLES={'Site web':'#eaf3ec','WhatsApp':'#dcfce7','Instagram':'#fce7f3','Facebook':'#dbeafe','Autre':'#f3f4f6'};
@@ -288,7 +308,7 @@ function ClientSpace({onBack}){
  const getPopupItems=()=>getImportantUnseen(clientId).filter(item=>!dismissedForSession().includes(item.id));
  const [popupItems,setPopupItems]=useState(getPopupItems);
  const [activeTab,setActiveTab]=useState('dossier');
- const [newTicket,setNewTicket]=useState({subject:'',message:''});
+ const [newTicket,setNewTicket]=useState({subject:'',message:'',category:''});
  const [showNewTicket,setShowNewTicket]=useState(false);
  const refreshClientTracking=()=>{setItems(getClientSends(clientId));};
  useEffect(()=>subscribeToClientTracking(refreshClientTracking),[]);
@@ -323,7 +343,7 @@ function ClientSpace({onBack}){
   e.preventDefault();
   if(!newTicket.subject.trim()||!newTicket.message.trim())return;
   createClientSupportRequest(clientId,newTicket,clientName);
-  setNewTicket({subject:'',message:''});
+  setNewTicket({subject:'',message:'',category:''});
   setShowNewTicket(false);
   setItems(getClientSends(clientId));
  }
@@ -399,6 +419,10 @@ function ClientSpace({onBack}){
      <LocalMonDossier />
     ) : activeTab==='documents' ? (
      <LocalMesDocuments clientId={clientId} />
+    ) : activeTab==='formation' ? (
+     <LocalMaFormation clientId={clientId} />
+    ) : activeTab==='commercial' ? (
+     <LocalFormationCommerciale clientId={clientId} clientName={clientName} />
     ) : activeTab==='marketing' ? (
      <ClientMarketingPanel clientId={clientId} clientName={clientName} />
     ) : activeTab==='support' ? (
@@ -425,6 +449,13 @@ function ClientSpace({onBack}){
          <input value={newTicket.subject} onChange={e=>setNewTicket(prev=>({...prev,subject:e.target.value}))} className="input-field text-sm" placeholder="Résumez votre demande" required/>
         </div>
         <div>
+         <label className="block text-xs font-semibold text-gray-500 mb-1">Catégorie</label>
+         <select value={newTicket.category} onChange={e=>setNewTicket(prev=>({...prev,category:e.target.value}))} className="input-field text-sm">
+          <option value="">Sélectionner (optionnel)</option>
+          {Object.entries(TICKET_CATEGORY_LABELS).map(([k,l])=><option key={k} value={k}>{l}</option>)}
+         </select>
+        </div>
+        <div>
          <label className="block text-xs font-semibold text-gray-500 mb-1">Description *</label>
          <textarea value={newTicket.message} onChange={e=>setNewTicket(prev=>({...prev,message:e.target.value}))} rows={3} className="input-field text-sm resize-none" placeholder="Décrivez votre demande ou votre problème…" required/>
         </div>
@@ -436,6 +467,44 @@ function ClientSpace({onBack}){
       )}
       <div style={{marginTop:'22px'}}>
        <LocalTrackedCommunications items={items} drafts={drafts} setDrafts={setDrafts} sendingId={sending} sendReply={sendReply} onOpenFile={openFile} />
+      </div>
+
+      {/* Restauration V1 -> V2 (audit 2026-09-19) : src/pages/student/Support.jsx
+          (live non modifié) proposait aussi WhatsApp direct, une prise de RDV
+          Calendly (placeholder côté live) et une FAQ — absents de V2 jusqu'ici. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+       <a href="https://wa.me/212600000000" target="_blank" rel="noopener noreferrer"
+        className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#25d366] bg-[#25d366]/5 hover:bg-[#25d366]/10 transition-all duration-200">
+        <div className="w-12 h-12 rounded-full bg-[#25d366] flex items-center justify-center shadow-lg shadow-[#25d366]/30"><WhatsAppIcon className="w-6 h-6 text-white"/></div>
+        <div className="text-center"><p className="font-bold text-gray-800">WhatsApp Direct</p><p className="text-xs text-gray-500 mt-0.5">Réponse en moins de 2h</p><p className="text-xs text-[#25d366] font-semibold mt-1">9h – 20h GMT+1</p></div>
+       </a>
+       <div className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-orias-gold bg-orias-gold/5">
+        <div className="w-12 h-12 rounded-full bg-orias-gold flex items-center justify-center shadow-lg shadow-orias-gold/30"><CalendarIcon className="w-6 h-6 text-white"/></div>
+        <div className="text-center"><p className="font-bold text-gray-800">Prendre RDV</p><p className="text-xs text-gray-500 mt-0.5">Appel de suivi personnalisé</p><p className="text-xs text-orias-gold font-semibold mt-1">Réservation Calendly</p></div>
+       </div>
+       <div onClick={()=>setShowNewTicket(true)} style={{cursor:'pointer'}}
+        className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-orias-green bg-orias-green/5 hover:bg-orias-green/10 transition-all duration-200">
+        <div className="w-12 h-12 rounded-full bg-orias-green flex items-center justify-center shadow-lg shadow-orias-green/30"><MessageIcon className="w-6 h-6 text-white"/></div>
+        <div className="text-center"><p className="font-bold text-gray-800">Envoyer un message</p><p className="text-xs text-gray-500 mt-0.5">Formulaire de contact</p><p className="text-xs text-orias-green font-semibold mt-1">Réponse sous 24h</p></div>
+       </div>
+      </div>
+
+      <div className="card p-6 mt-4">
+       <h3 className="font-bold text-orias-green text-lg mb-4 flex items-center gap-2"><CalendarIcon className="w-5 h-5 text-orias-gold"/>Réserver un appel de suivi</h3>
+       <div className="bg-orias-bg rounded-xl border-2 border-dashed border-orias-border p-10 text-center">
+        <CalendarIcon className="w-12 h-12 text-orias-gold/40 mx-auto mb-3"/>
+        <p className="font-semibold text-gray-600">Calendly — Réservation en ligne</p>
+        <p className="text-sm text-gray-400 mt-1">Intégration Calendly disponible après configuration</p>
+        <button className="btn-gold mt-4">Ouvrir le calendrier</button>
+       </div>
+      </div>
+
+      <div className="card p-6 mt-4">
+       <h3 className="font-bold text-orias-green text-lg mb-2">Questions fréquentes</h3>
+       <p className="text-sm text-gray-500 mb-5">Retrouvez les réponses aux questions les plus posées</p>
+       <div className="space-y-3">
+        {FAQ_ITEMS.map((item,i)=><FAQItem key={i} item={item}/>)}
+       </div>
       </div>
      </section>
     ) : (

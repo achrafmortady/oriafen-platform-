@@ -374,7 +374,7 @@ const DOC_STATUS_LABELS = { valid: 'Validé', pending: 'En attente', missing: 'R
 // client principal, listAssociateDocCategories(docs) pour l'associé — voir
 // AssociateClientDocumentsPanel ci-dessous) — même composant, même workflow
 // (valider/rejeter/motif/historique), jamais un système parallèle.
-function ClientDocumentsPanel({ clientId, categories = REQUIRED_DOCUMENTS, emptyLabel = null }) {
+export function ClientDocumentsPanel({ clientId, categories = REQUIRED_DOCUMENTS, emptyLabel = null }) {
   const [docs, setDocs] = useState(() => getClientDocuments(clientId))
   const [rejectingId, setRejectingId] = useState(null)
   const [reason, setReason] = useState('')
@@ -436,7 +436,7 @@ function ClientDocumentsPanel({ clientId, categories = REQUIRED_DOCUMENTS, empty
 // client (associateDocuments.js, y compris les "Autre document associé"
 // dynamiques déjà envoyés), même workflow (ClientDocumentsPanel), jamais
 // mélangées aux documents du client principal (catégories associate_* dédiées).
-function AssociateDocumentsPanel({ clientId }) {
+export function AssociateDocumentsPanel({ clientId }) {
   const [docs, setDocs] = useState(() => getClientDocuments(clientId))
   useEffect(() => subscribeToDocuments(() => setDocs(getClientDocuments(clientId))), [clientId])
   const categories = listAssociateDocCategories(docs)

@@ -390,7 +390,7 @@ export function replyToClientSend(sendId, message) {
 // clientName (optionnel) : uniquement pour le libellé de la notification
 // admin ci-dessous — jamais stocké sur l'item lui-même (qui reste identifié
 // par clientId, comme tout le reste du store).
-export function createClientSupportRequest(clientId, { subject, message }, clientName = null) {
+export function createClientSupportRequest(clientId, { subject, message, category = null }, clientName = null) {
   const title = (subject || '').trim()
   const clean = (message || '').trim()
   if (!clientId || !title || !clean) return null
@@ -405,6 +405,7 @@ export function createClientSupportRequest(clientId, { subject, message }, clien
     title,
     content: clean,
     message: clean,
+    category: category || null,
     sentAt: nowLabel(),
     responseRequired: true,
     status: 'waiting',
@@ -468,6 +469,24 @@ export function respondToClientRequest(sendId, message) {
     })
   }
   return updated
+}
+
+// Restauration V1 -> V2 (audit 2026-09-19) : NotificationsSection (admin,
+// live) affiche un inbox unique agrégeant TOUTES les demandes initiées par
+// les clients (tous clients confondus), pas client par client — utilisé par
+// LocalNotificationsSection.jsx. Filtre sur senderType==='client' (demandes
+// de support), trié du plus récent au plus ancien (même tri que
+// getClientSends).
+export function getAllClientInitiatedItems() {
+  const data = readAll()
+  const all = []
+  Object.keys(data).forEach(clientId => {
+    data[clientId].forEach(raw => {
+      const item = normalizeItem(raw)
+      if (item.senderType === 'client') all.push({ ...item, clientId })
+    })
+  })
+  return sortSendsRecentFirst(all)
 }
 
 export function subscribeToClientTracking(callback) {

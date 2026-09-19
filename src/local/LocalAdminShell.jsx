@@ -3,6 +3,9 @@ import LocalCRM from './LocalCRM'
 import LocalClientsOverview from './LocalClientsOverview'
 import { AdminMarketingPanel } from './LocalMarketing'
 import LocalAdminNotificationBell from './LocalAdminNotificationBell'
+import LocalDossierSection from './LocalDossierSection'
+import LocalNotificationsSection from './LocalNotificationsSection'
+import LocalFormationTrackingSection from './LocalFormationTrackingSection'
 import Logo from '../components/Logo'
 import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon } from '../components/Icons'
 import { stages, seed, today, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
@@ -130,6 +133,9 @@ export default function LocalAdminShell() {
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
     if (activeTab === 'marketing') return <AdminMarketingPanel />
+    if (activeTab === 'dossiers') return <LocalDossierSection />
+    if (activeTab === 'formation') return <LocalFormationTrackingSection />
+    if (activeTab === 'notifs') return <LocalNotificationsSection />
     return <LocalAdminPlaceholder tab={activeTab} />
   }
 
