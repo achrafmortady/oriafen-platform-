@@ -192,6 +192,21 @@ function backfillActivityFromItem(clientId, item) {
   }
 }
 
+// Tri par horodatage RÉEL (sentAt), du plus récent au plus ancien — jamais
+// l'ordre d'insertion du tableau. Corrige : (1) un nouveau fil/question
+// client apparaissait en bas de "Mes échanges"/de la fiche admin (les
+// nouveaux envois sont toujours ajoutés en fin de tableau côté store) ; (2)
+// même règle que le reste de l'app (historique CRM, etc.) : le plus récent
+// en premier. `sentAt` non interprétable (donnée ancienne) est trié en
+// dernier, jamais mélangé au hasard avec une date inventée.
+function sortSendsRecentFirst(items) {
+  return [...items].sort((a, b) => {
+    const ta = parseLocalDate(a.sentAt)
+    const tb = parseLocalDate(b.sentAt)
+    return tb - ta
+  })
+}
+
 export function getClientSends(clientId) {
   const data = readAll()
   if (!data[clientId]) {
@@ -205,7 +220,10 @@ export function getClientSends(clientId) {
     }
   }
   data[clientId].forEach(item => backfillActivityFromItem(clientId, item))
-  return data[clientId]
+  // Renvoie une copie triée — ne modifie jamais l'ordre de stockage
+  // (append-only), utilisé par le client ("Mes échanges") ET l'admin (fiche
+  // CRM + fiche Clients, qui appellent tous les deux cette même fonction).
+  return sortSendsRecentFirst(data[clientId])
 }
 
 function updateSend(sendId, updater) {
