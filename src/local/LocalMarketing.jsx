@@ -4,7 +4,7 @@ import {
   createModificationRequest, setModificationStatus, updateMarketingProject,
   subscribeToMarketing, MODIFICATION_STATUSES,
 } from './marketingStore'
-import { CANONICAL_DEMO_CLIENT_ID } from './model'
+import { getActiveClientId } from './adapters/identity'
 
 const STATUS_STYLE = {
   'Envoyée': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -148,11 +148,10 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
 }
 
 // Vue ADMIN — feedback #8 : traiter les demandes du client (changement de
-// statut), garder l'historique. Un seul client de démo dans cette maquette
-// locale — CANONICAL_DEMO_CLIENT_ID (model.js), le même id que ClientSpace
-// et la fiche admin "Client Démo" (feedback "client demo is not mapped to
-// admin client data").
-export function AdminMarketingPanel({ clientId = CANONICAL_DEMO_CLIENT_ID }) {
+// statut), garder l'historique. Résolu via l'adaptateur identity.js (jamais
+// un id en dur ici) — un seul client de démo aujourd'hui, le même que
+// ClientSpace et la fiche admin "Clients".
+export function AdminMarketingPanel({ clientId = getActiveClientId() }) {
   const [project, setProject] = useState(() => getMarketingProject(clientId))
   const [requests, setRequests] = useState(() => getModificationRequests(clientId))
   const [phaseDraft, setPhaseDraft] = useState('')

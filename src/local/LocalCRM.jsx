@@ -1,5 +1,6 @@
 import React,{useState,useEffect,useRef} from 'react';
-import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,CANONICAL_DEMO_CLIENT_ID,CANONICAL_DEMO_CLIENT_NAME,normalizeCanonicalDemoClient} from './model';
+import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,normalizeCanonicalDemoClient} from './model';
+import {getActiveIdentity} from './adapters/identity';
 import {getAdminSendStatus,getClientLastActivity,getClientSends,getImportantUnseen,getReminderCount,markClientSendOpened,markClientSendReminded,markClientSendSeen,replyToClientSend,setClientSendImportant,subscribeToClientTracking,createClientSupportRequest,respondToClientRequest} from './clientTrackingStore';
 import Logo from '../components/Logo';
 import {LogoutIcon,WhatsAppIcon,CalendarIcon,MessageIcon,ChevronDownIcon} from '../components/Icons';
@@ -296,10 +297,14 @@ function LocalTrackedCommunications({ items, drafts, setDrafts, sendingId, sendR
 }
 
 function ClientSpace({onBack}){
- // Id/nom canoniques (model.js) — mêmes qu'admin > Clients > "Client Démo"
- // (feedback "client demo is not mapped to admin client data") : la session
- // client de démo et sa fiche admin sont désormais toujours le même lead.
- const clientId=CANONICAL_DEMO_CLIENT_ID;
+ // Identité résolue via l'adaptateur (src/local/adapters/identity.js),
+ // jamais CANONICAL_DEMO_CLIENT_ID en dur ici — seul identity.js sait
+ // encore que ce id existe. C'est le point de branchement identifié pour
+ // l'authentification réelle (voir docs/PRODUCTION_WIRING_PLAN.md §1) :
+ // remplacer getActiveIdentity() par useAuth().user suffira, sans toucher
+ // au reste de ce composant.
+ const identity=getActiveIdentity();
+ const clientId=identity.id;
  const [items,setItems]=useState(()=>getClientSends(clientId));
  const [drafts,setDrafts]=useState({});
  const [sending,setSending]=useState(null);
@@ -348,7 +353,7 @@ function ClientSpace({onBack}){
   setItems(getClientSends(clientId));
  }
  const nav=[['dossier','Mon Dossier'],['marketing','Mon site & communication'],['formation','Formation IAS1'],['commercial','Vente & Scripts'],['documents','Documents'],['support','Mes échanges']];
- const clientName=CANONICAL_DEMO_CLIENT_NAME;
+ const clientName=identity.name;
  const clientPack='Pack Accélération';
  const initials=clientName.split(' ').map(n=>n[0]).join('').slice(0,2);
 
