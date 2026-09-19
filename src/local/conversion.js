@@ -18,9 +18,40 @@
 // exactement comme en live où fetchAllClients() ne lit que les comptes
 // réellement créés (table users/dossiers), pas les leads status='client'
 // non convertis.
+//
+// Correctif "final blocker — payment gate" (2026-09-20) : la QA a signalé
+// que passer `stage` à "Client" via le select Statut change immédiatement
+// l'étiquette affichée sur la fiche, ce qui donne l'impression trompeuse
+// qu'un compte client existe déjà — alors même que la vue "Clients" (elle)
+// reste correctement vide tant que paymentValidated n'est pas vrai. Décision
+// produit pour V2 (ne reproduit plus ce point précis du comportement live
+// décrit ci-dessus) : le champ `stage` lui-même ne doit plus pouvoir passer
+// à "Client" tant que le paiement n'est pas validé — voir canSetStageToClient()
+// ci-dessous, seul point de vérité du gate, réutilisé par TOUS les chemins
+// capables de modifier `stage` (select Statut fiche Prospect dans
+// LocalCRM.jsx, select Statut CRM fiche Client dans LocalClientsOverview.jsx
+// via applyStatusChange(), et tout futur chemin — aucune logique dupliquée).
+// applyPaymentValidation() reste la SEULE action qui fait réellement passer
+// un prospect à "Client" : elle fixe désormais `stage: 'Client'` dans la
+// MÊME mise à jour que la validation du paiement (un seul évènement
+// d'historique, jamais un doublon "Statut changé" + "Paiement validé").
+// Logique de paiement (répartition des échéances, montants, statut
+// 'paid'/'pending') strictement inchangée.
 
 import { findPackById } from './packsData.js'
 import { formatNowLabel } from './dateUtils.js'
+
+// Message affiché quand une tentative de changement de statut vers "Client"
+// est bloquée faute de paiement validé — un seul texte, réutilisé partout où
+// le gate peut se déclencher, pour ne jamais désynchroniser le message.
+export const PAYMENT_GATE_MESSAGE = "Ce prospect ne peut pas passer au statut \"Client\" tant que le paiement n'a pas été validé. Utilisez le bouton \"Valider le paiement & créer le compte\" pour convertir ce prospect."
+
+// Seul point de vérité du gate paiement — un prospect ne peut passer à
+// stage==='Client' que si paymentValidated est déjà vrai (compte déjà créé
+// via applyPaymentValidation, la seule action qui le fixe à true).
+export function canSetStageToClient(lead) {
+  return Boolean(lead?.paymentValidated)
+}
 
 // Reproduit EXACTEMENT la répartition de buildPaymentRows, définie dans
 // src/lib/api.js — lecture seule : pack.payment_type === 'full' -> une seule ligne à 100% ;
@@ -54,9 +85,14 @@ export function applyPaymentValidation(leads, leadId) {
   if (payments.length) payments[0] = { ...payments[0], status: 'paid' }
   const now = formatNowLabel()
   const firstAmount = payments[0]?.amount ?? 0
+  // stage: 'Client' fixé ICI, dans la même mise à jour que la validation du
+  // paiement — c'est désormais la SEULE façon pour un prospect de devenir
+  // "Client" (voir canSetStageToClient ci-dessus). Une seule entrée
+  // d'historique couvre les deux à la fois, jamais un "Statut changé" séparé.
   return leads.map(l => l.id === leadId
     ? {
         ...l,
+        stage: 'Client',
         paymentValidated: true,
         convertedAt: now,
         payments,

@@ -16,6 +16,7 @@
 
 import { getActivityLog, logActivity } from './activityLog'
 import { toDisplayDateSafe, toTimestampSafe, formatNowLabel, formatDueDateLabel } from './dateUtils'
+import { canSetStageToClient } from './conversion'
 
 // Reprend EXACTEMENT STATUS_BADGE_STYLES (src/pages/admin/Dashboard.jsx,
 // fichier live non modifié, lu en lecture seule) — mêmes classes de couleur
@@ -107,10 +108,17 @@ export function addManualComment(clientId, text) {
 // reason (optionnel) : raison de la perte, saisie côté fiche prospect quand
 // newStage === 'Perdu' — ajoutée à la même entrée d'historique (une seule
 // entrée pour le changement de statut, jamais une deuxième entrée séparée).
+// Gate paiement (audit "final blocker — payment gate" 2026-09-20) : passer
+// à "Client" par CE chemin générique est bloqué tant que le paiement n'est
+// pas validé — même garde-fou que le select Statut de la fiche Prospect
+// (LocalCRM.jsx), voir canSetStageToClient() dans conversion.js, seul point
+// de vérité réutilisé par les deux. Retourne `leads` inchangé (no-op sûr) ;
+// à l'appelant d'afficher PAYMENT_GATE_MESSAGE si besoin.
 export function applyStatusChange(leads, clientId, newStage, reason = null) {
   const current = leads.find(l => l.id === clientId)
   const oldStage = current?.stage || 'Inconnu'
   if (oldStage === newStage) return leads
+  if (newStage === 'Client' && !canSetStageToClient(current)) return leads
   const cleanReason = (reason || '').trim()
   const text = `Statut changé : ${oldStage} -> ${newStage}${cleanReason ? ` — Raison : ${cleanReason}` : ''}`
   return leads.map(l => l.id === clientId

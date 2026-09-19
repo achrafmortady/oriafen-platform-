@@ -15,7 +15,7 @@ import {logActivity} from './activityLog';
 import {LOCAL_PACKS,findPackById,basePriceFor,computeFinalPrice} from './packsData';
 import {formatNowLabel,toDisplayDateSafe} from './dateUtils';
 import {buildLeadTimeline,applyNextActionUpdate} from './clientHistory';
-import {applyPaymentValidation} from './conversion';
+import {applyPaymentValidation,canSetStageToClient,PAYMENT_GATE_MESSAGE} from './conversion';
 import {addAppointment as addAppointmentPure,markAppointmentDone,APPOINTMENT_TYPE_LABELS as APPT_TYPE_LABELS} from './appointments';
 import {relanceReason,isToRelaunch,isRelanceOverdue,scheduleRelance,clearRelance,RELANCE_STAGE} from './relance';
 const money=n=>new Intl.NumberFormat('fr-MA').format(n)+' DH';
@@ -561,6 +561,13 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  const [notesDraft,setNotesDraft]=useState('');
  const [editingInfo,setEditingInfo]=useState(false),[infoName,setInfoName]=useState(''),[infoEmail,setInfoEmail]=useState(''),[infoPhone,setInfoPhone]=useState(''),[infoCity,setInfoCity]=useState('');
  const [actionDraft,setActionDraft]=useState(''),[relanceAt,setRelanceAt]=useState(''),[relanceNote,setRelanceNote]=useState(''),[lossReasonDraft,setLossReasonDraft]=useState('');
+ // Gate paiement (audit "final blocker" 2026-09-20) : mémorise qu'une
+ // tentative de passage direct à "Client" a été bloquée (select Statut) pour
+ // révéler la carte "Valider le paiement" même si `lead.stage` n'est pas
+ // encore "Client" — sans cela, un prospect non payé ne pourrait jamais
+ // atteindre cette carte, qui est désormais le SEUL chemin qui fait
+ // réellement passer un prospect à "Client" (voir validatePayment/patch).
+ const [convertAttempt,setConvertAttempt]=useState(false);
  const board=useRef(null),close=useRef(null),opener=useRef(null); const lead=leads.find(l=>l.id===selected);
  // "Clients à relancer" (feedback #6) : preset dédié, filtré en plus de
  // selectLeads() (qui ignore la clé `relance`, non destructurée par sa
@@ -619,7 +626,20 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
   return()=>{cancelled=true;clearInterval(timer)};
  },[]);
  useEffect(()=>{if(!lead&&!creating)return;close.current?.focus();function key(e){if(e.key==='Escape'){setSelected(null);setCreating(false)}if(e.key==='Tab'){const els=[...document.querySelectorAll('[role="dialog"] button,[role="dialog"] input,[role="dialog"] select,[role="dialog"] textarea')];const first=els[0],last=els.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus()}}}document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);opener.current?.focus()}},[selected,creating]);
- function patch(id,data,event){setLeads(prev=>prev.map(l=>l.id===id?{...l,...data,activity:event?[{text:event,at:formatNowLabel()},...l.activity]:l.activity}:l));if(data.stage)logActivity(id,{author:'Équipe',action:'Étape du parcours modifiée',detail:data.stage})}
+ // Gate paiement : quel que soit l'appelant (select Statut ci-dessous,
+ // futur bouton/action), patch() refuse de faire passer un prospect à
+ // "Client" tant que paymentValidated n'est pas vrai — même garde-fou que
+ // applyStatusChange() (LocalClientsOverview.jsx), voir canSetStageToClient()
+ // dans conversion.js, seul point de vérité partagé. Renvoie false (no-op,
+ // toast affiché) plutôt que d'appliquer un changement de statut trompeur.
+ function patch(id,data,event){
+  if(data.stage==='Client'){
+   const current=leads.find(l=>l.id===id)
+   if(!canSetStageToClient(current)){return false}
+  }
+  setLeads(prev=>prev.map(l=>l.id===id?{...l,...data,activity:event?[{text:event,at:formatNowLabel()},...l.activity]:l.activity}:l));if(data.stage)logActivity(id,{author:'Équipe',action:'Étape du parcours modifiée',detail:data.stage})
+  return true
+ }
  // RDV / tâches locales sur la fiche prospect (absentes du modèle local avant
  // cette session) — mêmes champs que live (lead_appointments/lead_tasks dans
  // src/lib/api.js : scheduledAt+type, title+dueAt), mais stockées sur l'objet
@@ -645,7 +665,7 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // cette action explicite (bouton "Valider le paiement & créer le compte")
  // exécute réellement la conversion (voir src/local/conversion.js).
  function validatePayment(id){setLeads(prev=>applyPaymentValidation(prev,id))}
- function open(l,e){opener.current=e.currentTarget;setNote('');setNewApptDate('');setNewApptType('appel');setNewTaskTitle('');setNewTaskDue('');setNotesDraft(l.notes||'');setEditingInfo(false);setActionDraft(l.action||'');setRelanceAt('');setRelanceNote('');setLossReasonDraft(l.lossReason||'');setSelected(l.id)}
+ function open(l,e){opener.current=e.currentTarget;setNote('');setNewApptDate('');setNewApptType('appel');setNewTaskTitle('');setNewTaskDue('');setNotesDraft(l.notes||'');setEditingInfo(false);setActionDraft(l.action||'');setRelanceAt('');setRelanceNote('');setLossReasonDraft(l.lossReason||'');setConvertAttempt(false);setSelected(l.id)}
  function change(k,v){setFilter(f=>({...f,[k]:v}));setSaved('Personnalisée')}
  function preset(label){setSaved(label);setFilter({...defaults,...(label==='À relancer en retard'?{overdue:true}:label==='Mes prospects'?{owner:owners[0]}:label==='Clients à relancer'?{relance:true}:{})})}
  function sort(k){setFilter(f=>({...f,sort:k,desc:f.sort===k?!f.desc:false}))}
@@ -750,7 +770,7 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
    <div>
     <section className="detailbox">
      <h3>Statut</h3>
-     <select value={lead.stage} onChange={e=>patch(lead.id,{stage:e.target.value},'Étape : '+e.target.value)}>{stages.map(s=><option key={s}>{s}</option>)}</select>
+     <select value={lead.stage} onChange={e=>{const next=e.target.value;if(next==='Client'&&!canSetStageToClient(lead)){setConvertAttempt(true)}patch(lead.id,{stage:next},'Étape : '+next)}}>{stages.map(s=><option key={s}>{s}</option>)}</select>
      {lead.stage==='Perdu'&&<>
       <label>Raison de la perte (optionnel)<textarea style={{minHeight:'60px'}} value={lossReasonDraft} onChange={e=>setLossReasonDraft(e.target.value)}/></label>
       <button disabled={!lossReasonDraft.trim()||lossReasonDraft.trim()===(lead.lossReason||'')} onClick={()=>saveLossReason(lead.id)}>Enregistrer la raison</button>
@@ -794,15 +814,16 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
      <label>Potentiel (DH)<input type="number" min="0" value={lead.value} onChange={e=>patch(lead.id,{value:Math.max(0,Number(e.target.value))})}/></label>
     </section>
 
-    {lead.stage==='Client'&&<section className="detailbox conversion-card">
+    {(lead.stage==='Client'||convertAttempt)&&<section className="detailbox conversion-card">
      {lead.paymentValidated?<>
       <h3>✓ Compte client créé</h3>
       <p className="muted">Premier paiement validé le {lead.convertedAt}. Ce prospect apparaît désormais dans l'onglet Clients.</p>
       {lead.payments?.length>0&&<ul className="payment-rows">{lead.payments.map((p,i)=><li key={i}><span>{p.milestone}</span><b>{money(p.amount)}</b><span className={`paystatus ${p.status}`}>{p.status==='paid'?'Payé':'En attente'}</span></li>)}</ul>}
      </>:<>
       <h3>Valider le premier paiement</h3>
-      <p className="muted">Crée le compte client, génère les paiements ({lead.packId&&findPackById(lead.packId)?.paymentType==='full'?'100%':'50% / 25% / 25%'}) et marque le premier comme réglé. Tant que cette action n'a pas été effectuée, ce prospect n'apparaît pas dans l'onglet Clients.</p>
-      <button className="primary" disabled={!lead.packId} onClick={()=>validatePayment(lead.id)}>{lead.packId?'📌 Valider le paiement & créer le compte':'Sélectionnez un pack ci-dessus'}</button>
+      {convertAttempt&&<p className="muted" style={{color:'#a13636',fontWeight:600}}>{PAYMENT_GATE_MESSAGE}</p>}
+      <p className="muted">Crée le compte client, génère les paiements ({lead.packId&&findPackById(lead.packId)?.paymentType==='full'?'100%':'50% / 25% / 25%'}) et marque le premier comme réglé — cette action fait aussi passer le statut à "Client". Tant que cette action n'a pas été effectuée, ce prospect n'apparaît pas dans l'onglet Clients.</p>
+      <button className="primary" disabled={!lead.packId} onClick={()=>{validatePayment(lead.id);setConvertAttempt(false)}}>{lead.packId?'📌 Valider le paiement & créer le compte':'Sélectionnez un pack ci-dessus'}</button>
      </>}
     </section>}
 
