@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { seed, normalizeLeadsStage, normalizeCanonicalDemoClient, CANONICAL_DEMO_CLIENT_ID, CANONICAL_DEMO_CLIENT_NAME } from './model'
+import { seed, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import {
   getAllClientInitiatedItems, respondToClientRequest, addClientNotification,
@@ -73,10 +73,10 @@ export default function LocalNotificationsSection() {
 
   useEffect(() => subscribeToClientTracking(() => setItems(getAllClientInitiatedItems())), [])
 
-  const nameFor = (clientId) => {
-    if (String(clientId) === String(CANONICAL_DEMO_CLIENT_ID)) return CANONICAL_DEMO_CLIENT_NAME
-    return clients.find(c => String(c.id) === String(clientId))?.name || `Client #${clientId}`
-  }
+  // Résolu depuis buildClientsOverview() (même source que "Clients"), donc
+  // déjà à jour avec normalizeCanonicalDemoClient — aucune référence
+  // codée en dur à un id de démo ici.
+  const nameFor = (clientId) => clients.find(c => String(c.id) === String(clientId))?.name || `Client #${clientId}`
 
   const handleSend = (e) => {
     e.preventDefault()

@@ -171,4 +171,57 @@ console.log('PASS: dédoublonnage des notifications au niveau de l\'adaptateur')
 }
 console.log('PASS: adaptateur formation/dossier/paiement — mappings corrects, gate de paiement jamais contourné')
 
+// ============================================================
+// 8. Le module d'entrée adapters/index.js s'importe sans lever d'exception
+// en mode Preview normal (l'assertion "au chargement du module" — audit
+// final 2026-09-20 — ne doit jamais se déclencher tant qu'aucun
+// ADAPTER_MODE n'a été changé manuellement).
+// ============================================================
+{
+  const mod = await import('./src/local/adapters/index.js')
+  assert.ok(mod.identity && mod.documentsAdapter && mod.marketingAdapter && mod.supportAdapter && mod.formationAdapter, 'adapters/index.js doit exposer les 5 modules')
+}
+console.log('PASS: adapters/index.js s\'importe sans erreur en mode Preview (assertion de démarrage ne se déclenche jamais à tort)')
+
+// ============================================================
+// 9. STATIQUE : plus aucun composant applicatif n'importe
+// CANONICAL_DEMO_CLIENT_ID directement (seul identity.js peut le connaître)
+// — audit final 2026-09-20, point 1 ("no hardcoded client ID in production
+// code path").
+// ============================================================
+{
+  const appFiles = readdirSync('./src/local').filter(f => f.endsWith('.jsx') || f.endsWith('.js'))
+  appFiles.forEach(f => {
+    if (f === 'model.js') return // définition légitime de la constante
+    const src = readFileSync(`./src/local/${f}`, 'utf8')
+    // On vérifie l'ABSENCE D'IMPORT (usage réel), pas les mentions en
+    // commentaire (qui expliquent volontairement pourquoi ce fichier ne
+    // l'importe plus).
+    assert.doesNotMatch(src, /import\s*\{[^}]*\bCANONICAL_DEMO_CLIENT_ID\b[^}]*\}\s*from/, `${f} ne doit plus importer CANONICAL_DEMO_CLIENT_ID directement — passer par adapters/identity.js`)
+  })
+}
+console.log('PASS: aucun composant applicatif n\'importe CANONICAL_DEMO_CLIENT_ID directement (seul model.js le définit, seul identity.js le lit)')
+
+// ============================================================
+// 10. Historique des étapes du dossier (corrige le TODO visible
+// précédemment dans l'UI admin — audit final 2026-09-20).
+// ============================================================
+{
+  const { getDossierStep, setDossierStep, getDossierStepHistory, STEP_LABELS } = await import('./src/local/dossierStepStore.js')
+  const clientId = 'dossier-history-test'
+  assert.equal(getDossierStepHistory(clientId).length, 0)
+  setDossierStep(clientId, 2)
+  setDossierStep(clientId, 3)
+  const history = getDossierStepHistory(clientId)
+  assert.equal(history.length, 2, 'chaque changement d\'étape doit être journalisé individuellement')
+  assert.equal(history[0].step, 3, 'le changement le plus récent doit apparaître en premier')
+  assert.equal(history[0].label, STEP_LABELS[2])
+  assert.ok(history[0].at && history[0].actor, 'date/heure et acteur doivent être renseignés (plus de TODO)')
+  // Revalider la même étape ne doit rien dupliquer.
+  setDossierStep(clientId, 3)
+  assert.equal(getDossierStepHistory(clientId).length, 2, 'revalider la même étape ne doit jamais créer une entrée dupliquée')
+  assert.equal(getDossierStep(clientId, 1), 3)
+}
+console.log('PASS: historique des étapes du dossier journalisé (date/heure/acteur), jamais dupliqué')
+
 console.log('ALL PASS: couche adaptateurs production (identité, documents, marketing, support, formation/dossier/paiement) — mode Preview uniquement, aucun accès Supabase')

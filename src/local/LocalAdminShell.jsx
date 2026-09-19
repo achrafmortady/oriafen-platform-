@@ -20,22 +20,18 @@ const NAV_ITEMS = [
   { id: 'notifs',     label: 'Notifications', icon: <BellIcon className="w-4 h-4" /> },
 ]
 
-const PLACEHOLDER_COPY = {
-  clients: ['Clients', 'La gestion des clients sera disponible dans cette démo locale.'],
-  marketing: ['Marketing', 'La section Marketing sera disponible dans cette démo locale.'],
-  dossiers: ['Dossiers', 'Le suivi des dossiers sera disponible dans cette démo locale.'],
-  formation: ['Formation', 'La section Formation sera disponible dans cette démo locale.'],
-  notifs: ['Notifications', 'Les notifications seront disponibles dans cette démo locale.'],
-}
-
+// Filet de sécurité défensif uniquement — tous les NAV_ITEMS ci-dessus
+// résolvent déjà un composant réel dans renderSection() (audit final
+// 2026-09-20 : les anciens libellés "sera disponible dans cette démo" par
+// onglet étaient devenus du texte mort, chaque onglet étant maintenant
+// implémenté). Ne s'affiche que si `activeTab` prenait une valeur inconnue
+// (jamais le cas via la navigation normale).
 function LocalAdminPlaceholder({ tab }) {
-  const [title, message] = PLACEHOLDER_COPY[tab]
   return (
     <div className="card p-10 max-w-2xl mx-auto text-center">
       <span className="text-[10px] font-bold tracking-wide text-orias-gold uppercase">Administration</span>
-      <h1 className="text-2xl font-bold text-orias-green mt-2 mb-2">{title}</h1>
-      <p className="text-sm text-gray-500">{message}</p>
-      <p className="text-[11px] text-gray-400 mt-5">Démonstration locale · données fictives</p>
+      <h1 className="text-2xl font-bold text-orias-green mt-2 mb-2">Section inconnue</h1>
+      <p className="text-sm text-gray-500">L'onglet « {tab} » n'existe pas.</p>
     </div>
   )
 }

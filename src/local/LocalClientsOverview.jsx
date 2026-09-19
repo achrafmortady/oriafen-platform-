@@ -11,6 +11,7 @@ import { subscribeToActivityLog } from './activityLog'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getClientDocuments, subscribeToDocuments, rejectDocument, validateDocument } from './documentsStore'
 import { listAssociateDocCategories } from './associateDocuments'
+import { getDossierStep, getDossierStepHistory, STEP_LABELS } from './dossierStepStore'
 
 // ============================================================
 // SOURCE DE VÉRITÉ VISUELLE UNIQUE : src/pages/admin/Dashboard.jsx,
@@ -253,13 +254,20 @@ function LocalClientSendHistoryPanel({ clientId }) {
 
 // Parcours CRM (avant conversion) puis dossier ORIAS (après conversion) —
 // ajout local (voir §5/D de la consigne), n'existe pas tel quel côté live.
-const DOSSIER_JOURNEY_STEPS = ['Consultation initiale', 'Montage dossier', 'Structure juridique', 'Soumission ORIAS', 'Obtention ORIAS', 'Lancement activité']
-
+// Lit désormais dossierStepStore.js (même source que l'onglet admin
+// "Dossiers") au lieu du seul stepIndex synthétique — corrige une
+// incohérence : avant ce correctif, faire avancer l'étape depuis l'onglet
+// Dossiers n'était jamais répercuté ici (audit final 2026-09-20). Corrige
+// aussi le TODO "date/heure/acteur non journalisés" en affichant
+// l'historique réel (dossierStepStore.getDossierStepHistory).
 function JourneySection({ client }) {
   const stageChanges = (client.leadActivity || [])
     .filter(e => e.text?.startsWith('Étape : ') || e.text?.startsWith('Statut changé : '))
     .map(e => ({ to: e.text, at: e.at }))
     .reverse()
+
+  const currentStep = getDossierStep(client.id, client.stepIndex + 1)
+  const history = getDossierStepHistory(client.id)
 
   return (
     <div className="space-y-4">
@@ -282,9 +290,10 @@ function JourneySection({ client }) {
       <div className="pt-3 border-t border-orias-border">
         <p className="text-xs font-semibold text-gray-500 mb-2">Parcours dossier ORIAS (après conversion)</p>
         <div className="space-y-1.5">
-          {DOSSIER_JOURNEY_STEPS.map((step, i) => {
-            const done = i < client.stepIndex
-            const active = i === client.stepIndex
+          {STEP_LABELS.map((step, i) => {
+            const stepNum = i + 1
+            const done = stepNum < currentStep
+            const active = stepNum === currentStep
             return (
               <div key={step} className={`flex items-center gap-2 text-xs ${done ? 'text-emerald-600' : active ? 'text-amber-600 font-semibold' : 'text-gray-300'}`}>
                 <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${done ? 'bg-emerald-500' : active ? 'bg-amber-500' : 'bg-gray-200'}`} />
@@ -294,10 +303,17 @@ function JourneySection({ client }) {
             )
           })}
         </div>
-        <p className="text-[11px] text-gray-400 mt-2">
-          TODO (staging) : la date/heure/acteur de chaque changement d'étape dossier n'est pas journalisée
-          individuellement en local (seule l'étape courante `current_step` existe côté live, table `dossiers`).
-        </p>
+        {history.length > 0 && (
+          <div className="mt-3 pt-3 border-t border-orias-border/60 space-y-1">
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Historique des étapes validées</p>
+            {history.map((h, i) => (
+              <div key={i} className="flex items-center gap-2 text-[11px] text-gray-500">
+                <span className="font-medium text-gray-700">{h.label}</span>
+                <span className="text-gray-400 ml-auto whitespace-nowrap">{h.at} · {h.actor}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

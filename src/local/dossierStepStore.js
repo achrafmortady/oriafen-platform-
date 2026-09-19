@@ -11,6 +11,8 @@
 // sur l'id) qui reste la valeur par défaut tant qu'aucune action admin n'a
 // eu lieu.
 import { ORIAS_STEPS } from './clientsOverviewData'
+import { formatNowLabel } from './dateUtils'
+import { logActivity } from './activityLog'
 
 export { ORIAS_STEPS as STEP_LABELS }
 
@@ -26,18 +28,57 @@ function writeAll(data) {
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT))
 }
 
+function ensureClient(data, clientId) {
+  if (!data[clientId]) data[clientId] = { step: null, history: [] }
+  // Migration non destructive : d'anciennes données pouvaient stocker
+  // directement un nombre (avant l'ajout de l'historique) — normalisé en
+  // place, jamais perdu.
+  if (typeof data[clientId] === 'number') data[clientId] = { step: data[clientId], history: [] }
+  return data[clientId]
+}
+
 // defaultStep (1-based, requis) : valeur déterministe déjà calculée côté
 // appelant (clientsOverviewData.deriveDossier -> stepIndex+1) — utilisée
 // tant qu'aucun override admin n'existe pour ce client.
 export function getDossierStep(clientId, defaultStep) {
   const data = readAll()
-  return data[clientId] ?? defaultStep
+  const client = data[clientId]
+  const step = typeof client === 'number' ? client : client?.step
+  return step ?? defaultStep
 }
 
-export function setDossierStep(clientId, step) {
+// Historique des changements d'étape (date/heure + acteur), du plus récent
+// au plus ancien — corrige le TODO "la date/heure/acteur de chaque
+// changement d'étape n'est pas journalisée" (visible précédemment dans
+// LocalClientsOverview.jsx). Journalisé aussi dans activityLog.js
+// (dedupeKey) pour apparaître dans l'historique 360° du client, comme tout
+// autre évènement CRM.
+// L'historique est déjà chronologique par construction (append-only, voir
+// setDossierStep) — on inverse plutôt que de trier par `ts` : deux
+// validations rapprochées peuvent partager le même Date.now() (résolution
+// milliseconde), ce qui rendrait un tri par ts ambigu sur une égalité.
+export function getDossierStepHistory(clientId) {
   const data = readAll()
-  data[clientId] = Math.max(1, Math.min(ORIAS_STEPS.length, step))
+  return [...ensureClient(data, clientId).history].reverse()
+}
+
+export function setDossierStep(clientId, step, actor = 'Équipe Oriafen') {
+  const data = readAll()
+  const client = ensureClient(data, clientId)
+  const nextStep = Math.max(1, Math.min(ORIAS_STEPS.length, step))
+  if (client.step === nextStep) return
+  const at = formatNowLabel()
+  const label = ORIAS_STEPS[nextStep - 1]
+  client.step = nextStep
+  client.history = [...client.history, { step: nextStep, label, actor, at, ts: Date.now() }]
   writeAll(data)
+  logActivity(clientId, {
+    author: 'Équipe',
+    action: 'Étape du dossier validée',
+    detail: label,
+    dedupeKey: `dossier-step:${clientId}:${nextStep}:${at}`,
+    at,
+  })
 }
 
 export function subscribeToDossierSteps(callback) {

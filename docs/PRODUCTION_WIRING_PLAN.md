@@ -109,23 +109,25 @@ sans transformation.
 | Catégories `associate_*` (CIN associé recto/verso, justificatif domiciliation, autre) | **N'existe dans aucun schéma versionné** — nouveau |
 
 **Classification** : B (extension du schéma existant) pour le versioning ;
-**C (nouveau)** pour les catégories associé.
+**A dans le cas le plus probable, sinon B** pour les catégories associé —
+voir `supabase/migrations/20260920_notes_associate_documents.sql` (nouveau,
+2026-09-20) : si `documents.category` est un simple `text` (cas le plus
+probable au vu des catégories existantes), aucune migration n'est
+nécessaire, seulement de nouvelles valeurs de `category` ; si c'est un enum
+Postgres, une migration `ALTER TYPE ... ADD VALUE` est nécessaire (détail
+dans ce fichier de notes, non exécuté).
 
-**Migrations déjà préparées (non exécutées)**, à valider dans l'ordre —
-inchangé depuis `README.md` §2 :
+**Migrations déjà préparées (non exécutées)**, à valider dans l'ordre — voir
+`supabase/migrations/README.md` pour l'ordre complet et à jour :
 1. `20260916_test_local_tracking_columns.sql`
 2. `20260916_test_local_documents_rejection.sql`
 3. `20260916_test_local_document_versions.sql`
+4. `20260920_notes_associate_documents.sql` (nouveau — mapping/cas A vs B)
 
-**À ajouter (nouveau, pas encore écrit en migration)** pour les documents
-associé : soit (a) réutiliser la table `documents` telle quelle — les
-catégories `associate_*` sont déjà des valeurs de `category` distinctes,
-aucune colonne supplémentaire n'est strictement nécessaire — soit (b) une
-colonne `owner_type` (`'client'|'associate'`) si une distinction structurelle
-plus explicite est préférée côté schéma. Recommandation : (a), pas de
-nouvelle migration nécessaire au-delà de ce qui est déjà préparé, tant que
-les valeurs de `category` restent uniques et jamais réutilisées entre client
-et associé (déjà garanti côté code — `isAssociateCategory()`).
+Pas de nouvelle colonne `owner_type` recommandée : les catégories
+`associate_*` sont déjà des valeurs de `category` distinctes, jamais
+réutilisées entre client et associé (garanti côté code —
+`isAssociateCategory()`).
 
 **Adaptateur** : `src/local/adapters/documentsAdapter.js` (créé cette
 session) — enveloppe `documentsStore.js`/`associateDocuments.js`, même
@@ -138,12 +140,16 @@ catégories `associate_*` n'y entrent jamais, quel que soit l'adaptateur.
 
 ## 4. Marketing + notifications
 
+**Corrigé 2026-09-20** (relecture des corps de fonction `src/lib/api.js` +
+du fichier de notes existant sur `public.notifications`) :
+
 | Fonctionnalité | V1 équivalent | Classification |
 |---|---|---|
-| Projet/livrables/demandes de modification (`marketingStore.js`) | `fetchAdminMarketingBriefs`, `updateClientDeliverables`, `SITE_FEEDBACK_SECTIONS`, `sendDeliverableFile` — schéma **différent et plus riche** (briefs + fichiers + feedback structuré par section) | **C — réconciliation nécessaire**, pas un simple branchement. Le modèle V2 (projet/livrables/demandes) est plus simple que le modèle live existant ; avant activation, décider lequel des deux devient la référence, ou faire correspondre les champs. |
-| Notifications admin (`adminNotificationsStore.js`) | **Aucun équivalent live** — l'admin n'était jamais notifié des nouvelles demandes marketing/support avant cette session | **C — nouveau**. Options : (i) nouvelle table `admin_notifications` (clientId, type, title, message, context, seen_at, dedupe_key) ; (ii) vue dérivée calculée à la volée depuis `support_tickets`/`marketing` sans nouvelle table de stockage. Recommandation : (i), plus simple à indexer/marquer lu, avec `dedupe_key` UNIQUE pour préserver la garantie "une action = une notification" déjà testée côté local. |
+| Projet/livrables/demandes de modification (`marketingStore.js`) | `brand_briefs` (projet), `client_deliverables` (statut/lien/notes), `deliverable_files` (livrables), `deliverable_feedback` (une ligne = une remarque, avec `section`/`status` — `SITE_FEEDBACK_SECTIONS` fournit déjà la liste de sections en langage client) | **B — mapping de champs, pas une nouvelle table.** Mapping exact dans `supabase/migrations/20260920_notes_marketing_reconciliation.sql` (nouveau). Le schéma live est en fait un bon candidat : `deliverable_feedback` correspond presque terme à terme aux "demandes de modification" locales. |
+| Notifications admin (`adminNotificationsStore.js`) | `public.notifications` supporte déjà `audience='admin'` (colonnes confirmées : `audience, user_id, type, title, body, link_tab, related_id, read_at` — voir `20260916_notes_notifications_schema_TODO.sql`) | **A — table déjà existante et déjà compatible**, corrigé depuis un classement initial erroné en C. Mapping exact champ par champ dans `supabase/migrations/20260920_notes_admin_notifications_mapping.sql` (nouveau) — `message` locale devient `body`, `context.tab`/`context.clientId` deviennent `link_tab`/`related_id`. Seuls deux points restent à confirmer avant activation : la policy RLS d'INSERT pour une ligne `audience='admin'`, et l'ajout éventuel d'un index UNIQUE pour le dédoublonnage (`dedupe_key`, actuel uniquement local). |
 
-**Adaptateur** : `src/local/adapters/marketingAdapter.js`.
+**Adaptateur** : `src/local/adapters/marketingAdapter.js` (le contrat
+`support`/notifications admin reste dans `supportAdapter.js`, voir §5).
 
 **RLS à prévoir (nouveau schéma)** : un client ne doit lire/écrire que ses
 propres demandes (`user_id = auth.uid()`) ; l'admin/super_admin lit tout ;
@@ -219,9 +225,9 @@ modifiée ni ne doit l'être lors de la reconnexion.
 | Auth / session (users, dossiers.status) | A | Aucune — reconnecter `identity.js` |
 | Documents client (6 catégories) | A | Aucune — reconnecter `documentsAdapter.js` |
 | Versioning des documents | B | Appliquer la migration déjà écrite (`document_versions`) sur un projet de test |
-| Documents associé | C | Nouvelles valeurs de `category` (pas de nouvelle table a priori) |
-| Marketing (projet/livrables/demandes) | C | Réconcilier avec le schéma live existant (briefs/deliverable_files) |
-| Notifications admin | C | Nouvelle table `admin_notifications` (ou vue dérivée) |
+| Documents associé | A (probable) / B | Vérifier le type réel de `documents.category` (voir `20260920_notes_associate_documents.sql`) |
+| Marketing (projet/livrables/demandes) | B | Mapper vers `brand_briefs`/`client_deliverables`/`deliverable_feedback`/`deliverable_files` (voir `20260920_notes_marketing_reconciliation.sql`) — pas de nouvelle table |
+| Notifications admin | A | `public.notifications` supporte déjà `audience='admin'` (voir `20260920_notes_admin_notifications_mapping.sql`) — confirmer seulement la policy RLS INSERT + un éventuel index de dédoublonnage |
 | Support / tickets | A/B | Confirmer les colonnes exactes de `client_messages`/`notifications` |
 | Formation IAS1 (progression, examen) | A | Aucune — reconnecter `formationAdapter.js` |
 | Vente & Scripts (évaluation) | A | Aucune — `exam_results` avec `exam_type='commercial'` déjà supporté côté live |
@@ -229,11 +235,18 @@ modifiée ni ne doit l'être lors de la reconnexion.
 | Paiements / conversion | A | Aucune — reconnecter `formationAdapter.js` |
 | Vidéos/diapositives Formation | — | CSP de production à autoriser pour le bucket Storage concerné (déploiement, pas schéma) |
 
-Ordre de migration recommandé si applicable : 1) valider les 3 migrations
-déjà préparées (tracking/rejection/versions) sur un projet de test, 2)
-confirmer les colonnes exactes de `client_messages`/`notifications` sur le
-schéma live, 3) concevoir la nouvelle table `admin_notifications`, 4)
-réconcilier le schéma Marketing, 5) seulement ensuite reconnecter les
-adaptateurs "A" (formation/dossier/paiements), qui ne nécessitent aucun
-changement de schéma et peuvent donc être faits en dernier sans bloquer les
+**Correction 2026-09-20** : sur relecture complète de `src/lib/api.js` et du
+fichier de notes déjà présent sur `public.notifications`, AUCUNE nouvelle
+table n'est en fait nécessaire pour l'ensemble des fonctionnalités
+auditées — seulement des mappings de champs (Marketing, notifications
+admin) et une vérification de type de colonne (documents associé). Ordre de
+migration recommandé, mis à jour : 1) valider les 3 migrations déjà
+préparées (tracking/rejection/versions) sur un projet de test, 2) confirmer
+les colonnes exactes de `client_messages`/`brand_briefs`/
+`client_deliverables`/`deliverable_feedback`/`documents.category` sur le
+schéma live (un seul export de schéma peut répondre à plusieurs de ces
+questions à la fois), 3) écrire les vraies migrations de mapping une fois
+ces colonnes confirmées, 4) reconnecter en dernier les adaptateurs "A"
+(formation/dossier/paiements/notifications admin), qui ne nécessitent
+aucun changement de schéma et peuvent donc être faits sans attendre les
 autres.

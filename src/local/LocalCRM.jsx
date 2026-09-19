@@ -513,9 +513,11 @@ function ClientSpace({onBack}){
       </div>
      </section>
     ) : (
+     // Filet de sécurité défensif uniquement — tous les onglets de `nav`
+     // ci-dessus résolvent déjà un composant réel (audit final 2026-09-20).
+     // Ne s'affiche que si activeTab prenait une valeur hors de `nav`.
      <div className="card p-10 max-w-2xl mx-auto text-center">
-      <h1 className="text-2xl font-bold text-orias-green mb-2">{nav.find(([id])=>id===activeTab)?.[1]}</h1>
-      <p className="text-sm text-gray-500">Cette section est disponible dans l’espace client local.</p>
+      <h1 className="text-2xl font-bold text-orias-green mb-2">Section inconnue</h1>
       <button onClick={()=>setActiveTab('support')} className="btn-outline-green mt-5">Voir Mes échanges</button>
      </div>
     )}
