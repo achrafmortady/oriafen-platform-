@@ -1,12 +1,27 @@
 import { getClientSends, getAdminSendStatus } from './clientTrackingStore'
 import { getClientDocuments } from './documentsStore'
+import { REQUIRED_DOCUMENTS } from '../data/mockData'
+import { getDossierStep } from './dossierStepStore'
+import { getFormationState } from './formationProgressStore'
 
 // Vue "Clients" admin — dérive un état de dossier lisible par client à
 // partir des mêmes données locales déjà utilisées ailleurs dans le CRM
 // (leads avec stage === 'Client', + clientTrackingStore pour seenAt /
-// openedAt / repliedAt). Aucune nouvelle source de données : uniquement de
-// la lecture + un calcul déterministe (basé sur l'id du lead) pour simuler
-// une progression de dossier ORIAS cohérente en démonstration locale.
+// openedAt / repliedAt).
+//
+// Correctif (audit "final data consistency" 2026-09-20) : step/documents/
+// heures de formation étaient calculés par une formule synthétique basée
+// sur `lead.id % ...` — jamais lue nulle part ailleurs, donc jamais mise à
+// jour par une action réelle (faire avancer une étape depuis l'onglet
+// Dossiers, valider un document, terminer un chapitre) et donc TOUJOURS en
+// désaccord avec les pages détaillées (Dossiers, Documents, Formation IAS1)
+// pour le même client. Lit désormais les MÊMES stores que ces pages
+// détaillées (dossierStepStore/documentsStore/formationProgressStore) —
+// aucune nouvelle donnée, seulement le même calcul déterministe réutilisé
+// comme valeur PAR DÉFAUT tant qu'aucune action réelle n'a eu lieu pour ce
+// client (jamais un doublon : dès qu'une action réelle existe, elle prime
+// toujours sur la valeur par défaut, exactement comme dossierStepStore.js
+// le fait déjà pour l'étape).
 
 export const ORIAS_STEPS = [
   'Consultation initiale',
@@ -17,8 +32,7 @@ export const ORIAS_STEPS = [
   'Lancement activité',
 ]
 
-const REQUIRED_DOCS_COUNT = 6
-const FORMATION_TOTAL_HOURS = 150
+const REQUIRED_DOCS_COUNT = REQUIRED_DOCUMENTS.length
 
 function parseLocalDate(value) {
   if (!value) return 0
@@ -67,20 +81,50 @@ function hasDocumentAwaitingRevalidation(clientId) {
   )
 }
 
+// Étape par défaut (avant toute action admin réelle) — même formule
+// déterministe qu'avant, exportée pour être réutilisée telle quelle par les
+// autres vues (ex: LocalMonDossier.jsx côté client) plutôt que dupliquée.
+export function defaultStepIndexFor(clientId) {
+  return Number(clientId) % ORIAS_STEPS.length
+}
+
 function deriveDossier(lead) {
-  const stepIndex = lead.id % ORIAS_STEPS.length
+  // Étape : dossierStepStore est la SEULE source de vérité une fois qu'une
+  // action réelle a eu lieu (même store que l'onglet admin "Dossiers" et
+  // le widget client "Mon Dossier") — la formule ci-dessus ne sert plus que
+  // de valeur par défaut tant qu'aucune étape n'a jamais été validée.
+  const defaultStep = defaultStepIndexFor(lead.id) + 1
+  const stepNumber = getDossierStep(lead.id, defaultStep)
+  const stepIndex = stepNumber - 1
   const step = ORIAS_STEPS[stepIndex]
   const progressPct = Math.round(((stepIndex + 1) / ORIAS_STEPS.length) * 100)
 
-  const validDocs = Math.min(REQUIRED_DOCS_COUNT, stepIndex + (lead.id % 2))
-  const pendingDocs = lead.id % 2 === 0 && validDocs < REQUIRED_DOCS_COUNT ? 1 : 0
-  const missingDocs = Math.max(0, REQUIRED_DOCS_COUNT - validDocs - pendingDocs)
+  // Formation : somme réelle des heures complétées/totales par unité, même
+  // store que LocalMaFormation.jsx (page détaillée) et le widget client —
+  // le total n'est plus une constante dupliquée (150) mais la somme réelle
+  // de FORMATION_UNITS, à jour même si le catalogue d'unités change.
+  const formationUnits = getFormationState(lead.id).units
+  const formationDoneH = formationUnits.reduce((sum, u) => sum + u.completedHours, 0)
+  const formationTotalH = formationUnits.reduce((sum, u) => sum + u.totalHours, 0)
 
-  const formationDoneH = Math.min(FORMATION_TOTAL_HOURS, (lead.id * 13) % (FORMATION_TOTAL_HOURS + 1))
-
+  // Dernière activité calculée AVANT toute lecture de documentsStore : un
+  // document seedé 'missing' (démo) déclenche à la lecture un rattrapage
+  // idempotent de notification/journal horodaté "maintenant" (voir
+  // backfillDocActivity) — lu après coup, il fausserait "Dernière activité"
+  // en se glissant devant un évènement CRM réel du même instant.
   const activity = lastActivityEvent(lead.id, lead)
   const toRelaunch = hasItemToRelaunch(lead.id)
   const awaitingReply = hasPendingReply(lead.id)
+
+  // Documents : mêmes catégories/statuts que LocalMesDocuments.jsx (page
+  // détaillée) — validDocs/pendingDocs comptés sur REQUIRED_DOCUMENTS,
+  // missingDocs regroupe rejeté ('missing'), correction demandée et non
+  // soumis ('none'), comme le fait déjà le résumé à 3 catégories affiché
+  // ici et sur le widget client (jamais une 4e catégorie ajoutée à l'UI).
+  const docs = getClientDocuments(lead.id)
+  const validDocs = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
+  const pendingDocs = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'pending').length
+  const missingDocs = REQUIRED_DOCS_COUNT - validDocs - pendingDocs
   const awaitingDocRevalidation = hasDocumentAwaitingRevalidation(lead.id)
 
   // Le statut repose sur l'étape/les documents (déterministe, stable dans le
@@ -151,7 +195,7 @@ function deriveDossier(lead) {
     pendingDocs,
     missingDocs,
     formationDoneH,
-    formationTotalH: FORMATION_TOTAL_HOURS,
+    formationTotalH,
     lastActivity: activity,
     nextAction,
     status,

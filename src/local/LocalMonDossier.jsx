@@ -1,37 +1,32 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { CheckCircleIcon, ClockIcon, LockIcon } from '../components/Icons'
+import { getActiveClientId } from './adapters/identity'
+import { getDossierStep, subscribeToDossierSteps } from './dossierStepStore'
+import { ORIAS_STEPS, defaultStepIndexFor } from './clientsOverviewData'
+import { getClientDocuments, subscribeToDocuments } from './documentsStore'
+import { REQUIRED_DOCUMENTS } from '../data/mockData'
+import { getFormationState, subscribeToFormationProgress } from './formationProgressStore'
 
-// Reprend exactement la structure/le style (styles inline) de
-// src/pages/student/MonDossier.jsx (fichier live non modifié, uniquement
-// dupliqué ici) avec des données statiques de démonstration — pas d'appel
-// API, pas d'upload, pas de logique métier nouvelle.
+// Reprend la structure/le style (styles inline) de
+// src/pages/student/MonDossier.jsx (fichier live non modifié) — MAIS les
+// chiffres viennent désormais des MÊMES stores que les pages détaillées
+// (dossierStepStore / documentsStore / formationProgressStore), au lieu de
+// constantes statiques de démonstration (STEPS/FORMATION_UNITS/VALID_DOCS
+// etc. codées en dur) — corrige la désynchronisation entre ce widget
+// résumé et les onglets Dossiers/Formation IAS1/Documents pour le même
+// client (audit "final data consistency" 2026-09-20).
 
-const STEPS = [
-  { id: 1, label: 'Consultation initiale', status: 'done', description: "Premier entretien avec votre conseiller pour évaluer votre projet et définir les étapes." },
-  { id: 2, label: 'Montage dossier', status: 'done', description: "Rassemblement et vérification de tous les documents nécessaires à votre dossier ORIAS." },
-  { id: 3, label: 'Structure juridique', status: 'current', description: "Création ou validation de votre structure juridique (SASU, SAS, auto-entrepreneur…)." },
-  { id: 4, label: 'Soumission ORIAS', status: 'locked', description: "Envoi officiel de votre dossier complet à l'ORIAS pour immatriculation." },
-  { id: 5, label: 'Obtention ORIAS', status: 'locked', description: "Réception de votre numéro ORIAS et validation officielle de votre statut d'intermédiaire." },
-  { id: 6, label: 'Lancement activité', status: 'locked', description: "Vous êtes officiellement autorisé à exercer ! Lancement de votre activité." },
+// Libellés + descriptions restent statiques (contenu éditorial, jamais une
+// donnée métier) — mêmes 6 étapes que ORIAS_STEPS (clientsOverviewData.js,
+// même store que l'onglet admin "Dossiers"), avec leur description longue.
+const STEP_META = [
+  { label: 'Consultation initiale', description: "Premier entretien avec votre conseiller pour évaluer votre projet et définir les étapes." },
+  { label: 'Montage dossier', description: "Rassemblement et vérification de tous les documents nécessaires à votre dossier ORIAS." },
+  { label: 'Structure juridique', description: "Création ou validation de votre structure juridique (SASU, SAS, auto-entrepreneur…)." },
+  { label: 'Soumission ORIAS', description: "Envoi officiel de votre dossier complet à l'ORIAS pour immatriculation." },
+  { label: 'Obtention ORIAS', description: "Réception de votre numéro ORIAS et validation officielle de votre statut d'intermédiaire." },
+  { label: 'Lancement activité', description: "Vous êtes officiellement autorisé à exercer ! Lancement de votre activité." },
 ]
-
-// Seules les 3 premières unités sont affichées (comme dans le live, via
-// formationUnits.slice(0,3)) mais le total/heures faites porte sur la liste
-// complète — d'où 7/150h sur la barre globale malgré 3 lignes visibles.
-const FORMATION_UNITS = [
-  { id: 1, title: 'Les savoirs généraux', status: 'in_progress', totalHours: 20, completedHours: 7 },
-  { id: 2, title: 'Assurances personnes', status: 'locked', totalHours: 30, completedHours: 0 },
-  { id: 3, title: 'Assurance vie', status: 'locked', totalHours: 45, completedHours: 0 },
-  { id: 4, title: 'Assurance dommages', status: 'locked', totalHours: 35, completedHours: 0 },
-  { id: 5, title: 'Déontologie et réglementation', status: 'locked', totalHours: 20, completedHours: 0 },
-]
-const DISPLAYED_FORMATION_UNITS = FORMATION_UNITS.slice(0, 3)
-
-const REQUIRED_DOCUMENTS_COUNT = 6
-const VALID_DOCS = 0
-const PENDING_DOCS = 1
-const MISSING_DOCS = REQUIRED_DOCUMENTS_COUNT - VALID_DOCS - PENDING_DOCS
-const PROGRESS_PCT = Math.round((VALID_DOCS / REQUIRED_DOCUMENTS_COUNT) * 100)
 
 function StepIcon({ status }) {
   if (status === 'done') return <CheckCircleIcon className="w-5 h-5 text-white" />
@@ -39,12 +34,44 @@ function StepIcon({ status }) {
   return <LockIcon className="w-4 h-4 text-gray-400" />
 }
 
-export default function LocalMonDossier() {
+export default function LocalMonDossier({ clientId = getActiveClientId() }) {
   const [selectedStep, setSelectedStep] = useState(null)
+  const [, forceRefresh] = useState(0)
+  useEffect(() => {
+    const unsub = [
+      subscribeToDossierSteps(() => forceRefresh(n => n + 1)),
+      subscribeToDocuments(() => forceRefresh(n => n + 1)),
+      subscribeToFormationProgress(() => forceRefresh(n => n + 1)),
+    ]
+    return () => unsub.forEach(u => u())
+  }, [])
+
   const dossierNumber = 'OR-2026-1236'
   const pack = 'Pack Accélération'
   const status = 'En cours'
-  const currentStep = STEPS.find(s => s.status === 'current')?.id ?? STEPS.length
+
+  // Étape courante : MÊME store que l'onglet admin "Dossiers"
+  // (dossierStepStore.js) — jamais une valeur figée par étape.
+  const currentStep = getDossierStep(clientId, defaultStepIndexFor(clientId) + 1)
+  const STEPS = ORIAS_STEPS.map((label, i) => ({
+    id: i + 1,
+    label,
+    description: STEP_META[i]?.description ?? '',
+    status: i + 1 < currentStep ? 'done' : i + 1 === currentStep ? 'current' : 'locked',
+  }))
+
+  // Documents : MÊME store que la page "Documents" (documentsStore.js).
+  const docs = getClientDocuments(clientId)
+  const VALID_DOCS = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
+  const PENDING_DOCS = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'pending').length
+  const REQUIRED_DOCUMENTS_COUNT = REQUIRED_DOCUMENTS.length
+  const MISSING_DOCS = REQUIRED_DOCUMENTS_COUNT - VALID_DOCS - PENDING_DOCS
+  const PROGRESS_PCT = REQUIRED_DOCUMENTS_COUNT > 0 ? Math.round((VALID_DOCS / REQUIRED_DOCUMENTS_COUNT) * 100) : 0
+
+  // Formation : MÊME store que la page "Formation IAS1"
+  // (formationProgressStore.js) — mêmes 5 unités, mêmes heures réelles.
+  const { units: FORMATION_UNITS } = getFormationState(clientId)
+  const DISPLAYED_FORMATION_UNITS = FORMATION_UNITS.slice(0, 3).map(u => ({ id: u.id, title: u.title, status: u.status, totalHours: u.totalHours, completedHours: u.completedHours }))
   const totalH = FORMATION_UNITS.reduce((s, u) => s + u.totalHours, 0)
   const doneH = FORMATION_UNITS.reduce((s, u) => s + u.completedHours, 0)
   const formationPct = totalH > 0 ? Math.round((doneH / totalH) * 100) : 0

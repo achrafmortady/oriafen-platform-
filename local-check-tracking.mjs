@@ -56,12 +56,15 @@ const {
   getClientDocuments,
   rejectDocument,
   uploadDocument,
+  validateDocument,
   getDocVersions,
 } = await import('./src/local/documentsStore.js')
 
 const { getActivityLog, logActivity: logActivityLocal } = await import('./src/local/activityLog.js')
 
-const { buildClientsOverview } = await import('./src/local/clientsOverviewData.js')
+const { buildClientsOverview, defaultStepIndexFor } = await import('./src/local/clientsOverviewData.js')
+const { setDossierStep } = await import('./src/local/dossierStepStore.js')
+const { REQUIRED_DOCUMENTS } = await import('./src/data/mockData.js')
 
 const { LOCAL_PACKS, PACK_CATEGORY_LABELS, packsByCategory, findPackByName, findPackById, basePriceFor, computeFinalPrice, TVA_RATE } = await import('./src/local/packsData.js')
 const { stages, seed, normalizeLeadsStage, MIGRATION_RDV_PRIS_TO } = await import('./src/local/model.js')
@@ -376,28 +379,34 @@ console.log('F. Vérifications statiques de sécurité (aucune référence Finan
 console.log('I. Prochaine action dérivée (clientsOverviewData.js)')
 
 // deriveDossier() n'est pas exporté (seul buildClientsOverview l'est) : on
-// teste donc en boîte noire, en reproduisant ici les mêmes formules
-// déterministes que le code source pour choisir des `lead.id` qui tombent
-// dans le statut synthétique voulu, puis en pilotant les vrais stores
-// locaux (documentsStore/clientTrackingStore) pour les signaux réels
-// (relance, réponse en attente, document remplacé).
-function computeSyntheticStatus(id) {
-  const stepIndex = id % 6
-  const validDocs = Math.min(6, stepIndex + (id % 2))
-  const pendingDocs = (id % 2 === 0 && validDocs < 6) ? 1 : 0
-  const missingDocs = Math.max(0, 6 - validDocs - pendingDocs)
-  let status
-  if (stepIndex >= 4 && missingDocs === 0) status = 'Complété'
-  else if (missingDocs >= 4) status = 'Bloqué'
-  else if (missingDocs >= 2) status = 'À relancer'
-  else status = 'En cours'
-  return { stepIndex, missingDocs, status }
+// teste donc en boîte noire. Depuis le correctif "final data consistency"
+// (2026-09-20), deriveDossier() lit les VRAIS stores locaux (dossierStepStore
+// / documentsStore / formationProgressStore) au lieu d'une formule
+// synthétique basée sur `lead.id` — on construit donc directement l'état de
+// dossier voulu (étape + documents) en pilotant ces stores, plutôt qu'en
+// cherchant un `lead.id` qui tombait par hasard dans le bon statut sous
+// l'ancienne formule (qui n'existe plus).
+function setDocsState(id, validCount, pendingCount) {
+  // Neutralise l'état hérité du seed de démo (qui peut inclure des documents
+  // 'missing') AVANT de fixer l'état voulu : sinon le prochain uploadDocument()
+  // sur une catégorie ciblée 'pending' détecterait à tort un remplacement de
+  // document rejeté (wasRejected) et déclencherait hasDocumentAwaitingRevalidation
+  // involontairement. validateDocument() est un no-op sans fichier envoyé.
+  REQUIRED_DOCUMENTS.forEach(req => validateDocument(id, req.id, 'Reset Test'))
+  REQUIRED_DOCUMENTS.forEach((req, i) => {
+    if (i < validCount) {
+      uploadDocument(id, req.id, req.label, { name: `${req.id}.pdf` })
+      validateDocument(id, req.id, 'Admin Test')
+    } else if (i < validCount + pendingCount) {
+      uploadDocument(id, req.id, req.label, { name: `${req.id}.pdf` })
+    } else {
+      rejectDocument(id, req.id, 'reset', 'Admin Test')
+    }
+  })
 }
-function findId(predicate, start, end) {
-  for (let id = start; id < end; id++) {
-    if (predicate(computeSyntheticStatus(id))) return id
-  }
-  throw new Error(`Aucun id trouvé dans [${start}, ${end}) satisfaisant le prédicat`)
+function setDossierState(id, { step = 1, validDocs = 0, pendingDocs = 0 } = {}) {
+  setDossierStep(id, step, 'Admin Test')
+  setDocsState(id, validDocs, pendingDocs)
 }
 function makeClientLead(id) {
   // paymentValidated: true — buildClientsOverview ne fait apparaître un lead
@@ -414,23 +423,28 @@ function nextActionFor(id) {
 }
 
 await check('I1. Document remplacé (en attente de revalidation) => "Vérifier le document remplacé"', () => {
-  // Choisi avec un statut synthétique "Complété" pour prouver au passage la
-  // priorité (voir I7) : même un dossier par ailleurs complet doit remonter
-  // le document à vérifier.
-  const id = findId(s => s.status === 'Complété', 4000, 4200)
-  const category = Object.values(getClientDocuments(id)).find(d => d.fileName && d.status !== 'missing').category
+  // Construit un dossier "Complété" (étape 5, 0 document manquant) pour
+  // prouver au passage la priorité (voir I7) : même un dossier par ailleurs
+  // complet doit remonter le document à vérifier. Le remplacement d'une
+  // catégorie déjà "valide" en "pending" laisse missingDocs à 0 (elle passe
+  // simplement du panier "valide" au panier "en attente").
+  const id = 9001
+  setDossierState(id, { step: 5, validDocs: 6, pendingDocs: 0 })
+  const category = Object.values(getClientDocuments(id)).find(d => d.status === 'valid').category
   rejectDocument(id, category, 'Motif à corriger', 'Admin Test')
   uploadDocument(id, category, 'Document', { name: 'remplacement.pdf' })
 
   const row = nextActionFor(id)
-  assert.equal(row.status, 'Complété', 'le statut global synthétique reste inchangé')
+  assert.equal(row.status, 'Complété', 'le statut global reste inchangé (0 document manquant)')
   assert.equal(row.nextAction, 'Vérifier le document remplacé')
 })
 
 await check('I2. Réponse requise sans réponse (aucun autre signal) => statut "Attendre réponse"', () => {
   // status doit être 'En cours' pour atteindre la branche awaitingReply
-  // (ni Complété, ni À relancer/Bloqué qui court-circuiteraient avant).
-  const id = findId(s => s.status === 'En cours', 4200, 4400)
+  // (ni Complété, ni À relancer/Bloqué qui court-circuiteraient avant) :
+  // 1 document manquant (missingDocs=1) suffit, quelle que soit l'étape.
+  const id = 9002
+  setDossierState(id, { step: 1, validDocs: 5, pendingDocs: 0 })
   const items = getClientSends(id)
   assert.ok(items.some(i => i.responseRequired), 'au moins un item de démo requiert une réponse')
 
@@ -461,19 +475,21 @@ await check('I3. Envoi à relancer (signal réel du tracking) => "Relancer le cl
   // lu par aucune branche de nextAction — un client par ailleurs "En cours"
   // avec un envoi réellement à relancer ne remontait donc jamais "Relancer
   // le client". Ce test couvre spécifiquement ce cas, désormais corrigé.
-  const id = findId(s => s.status === 'En cours', 4400, 4600)
+  const id = 9004
+  setDossierState(id, { step: 1, validDocs: 5, pendingDocs: 0 })
   const [item] = getClientSends(id)
   markClientSendReminded(item.id)
   const after = getClientSends(id).find(i => i.id === item.id)
   assert.equal(getAdminSendStatus(after).key, 'remind', 'précondition : le tracking doit bien signaler "à relancer"')
 
   const row = nextActionFor(id)
-  assert.equal(row.status, 'En cours', 'le statut synthétique du dossier, lui, ne change pas')
+  assert.equal(row.status, 'En cours', 'le statut du dossier, lui, ne change pas')
   assert.equal(row.nextAction, 'Relancer le client')
 })
 
-await check('I3b. Statut synthétique "À relancer" (sans signal réel) => "Relancer le client" (comportement historique préservé)', () => {
-  const id = findId(s => s.status === 'À relancer', 4600, 4800)
+await check('I3b. Statut "À relancer" (sans signal réel) => "Relancer le client" (comportement historique préservé)', () => {
+  const id = 9005
+  setDossierState(id, { step: 1, validDocs: 4, pendingDocs: 0 }) // missingDocs=2
   const row = nextActionFor(id)
   assert.equal(row.status, 'À relancer')
   assert.equal(row.nextAction, 'Relancer le client')
@@ -485,7 +501,8 @@ await check('I4. Document manquant / attendu => "Attendre document"', () => {
   // condition qu'aucun signal de relance réel ne prenne le dessus (voir I3 :
   // "Relancer le client" prime désormais aussi sur "Bloqué", intentionnel,
   // donc on neutralise ce signal ici pour isoler le cas "document manquant").
-  const idBloque = findId(s => s.status === 'Bloqué', 4800, 5000)
+  const idBloque = 9006
+  setDossierState(idBloque, { step: 1, validDocs: 0, pendingDocs: 0 }) // missingDocs=6
   getClientSends(idBloque).filter(i => i.responseRequired).forEach(i => markClientSendSeen(i.id))
   const rowBloque = nextActionFor(idBloque)
   assert.equal(rowBloque.status, 'Bloqué')
@@ -494,7 +511,8 @@ await check('I4. Document manquant / attendu => "Attendre document"', () => {
 
   // status "En cours" avec missingDocs > 0 (1 document manquant, pas de
   // réponse en attente) : doit aussi retomber sur "Attendre document".
-  const idEnCours = findId(s => s.status === 'En cours' && s.missingDocs > 0, 5000, 5200)
+  const idEnCours = 9007
+  setDossierState(idEnCours, { step: 1, validDocs: 5, pendingDocs: 0 }) // missingDocs=1
   // Neutraliser le signal "réponse en attente" pour isoler ce cas précis :
   // marquer comme répondu le seul item qui requiert une réponse.
   getClientSends(idEnCours).filter(i => i.responseRequired).forEach(i => replyToClientSend(i.id, 'ok'))
@@ -504,42 +522,43 @@ await check('I4. Document manquant / attendu => "Attendre document"', () => {
   assert.equal(rowEnCours.nextAction, 'Attendre document')
 })
 
-await check('I5. "Vérifier le dossier" — branche de repli actuellement inatteignable via le calcul synthétique (constat, pas un bug fonctionnel)', () => {
-  // D'après la formule : missingDocs === 0 exige stepIndex === 5 (seule
-  // valeur où stepIndex + (id%2) peut atteindre 6), qui déclenche toujours
-  // status === 'Complété' avant même d'atteindre la branche finale
-  // (awaitingReply / missingDocs>0 / "sinon"). Le libellé "Vérifier le
-  // dossier" existe bien dans le code comme repli défensif, mais aucune
-  // combinaison de lead.id ne l'atteint avec les formules actuelles —
-  // vérifié ici par recherche exhaustive. Ce n'est pas un bug fonctionnel
-  // (aucun client réel n'affiche un statut incorrect à cause de ça), donc
-  // non modifié ici conformément à la consigne de ne changer la logique
-  // métier qu'en cas de bug réel avéré — signalé dans le rapport de
-  // session pour une décision produit ultérieure si souhaité.
-  let reachable = false
-  for (let id = 0; id < 6000 && !reachable; id++) {
-    const s = computeSyntheticStatus(id)
-    if (s.status === 'En cours' && s.missingDocs === 0) reachable = true
-  }
-  assert.equal(reachable, false, 'si ce test échoue, la formule a changé et "Vérifier le dossier" est peut-être redevenu atteignable — un vrai test de transition devient alors nécessaire')
+await check('I5. "Vérifier le dossier" : dossier sans document manquant mais étape non finale, aucun autre signal en attente', () => {
+  // Avant le correctif "final data consistency", cette branche de repli
+  // était mathématiquement inatteignable par la formule synthétique
+  // (missingDocs===0 impliquait toujours stepIndex===5, donc "Complété").
+  // Piloter directement dossierStepStore/documentsStore la rend désormais
+  // atteignable et testable : étape 1 (< 5), 0 document manquant.
+  const id = 9008
+  setDossierState(id, { step: 1, validDocs: 6, pendingDocs: 0 }) // missingDocs=0, step<5 => pas 'Complété'
+  // Neutralise les signaux "réponse en attente" / "à relancer" pour isoler
+  // le repli "Vérifier le dossier" (replyToClientSend efface aussi le
+  // statut 'remind' — voir getAdminSendStatus, 'replied' est prioritaire).
+  getClientSends(id).filter(i => i.responseRequired).forEach(i => replyToClientSend(i.id, 'ok'))
+
+  const row = nextActionFor(id)
+  assert.equal(row.status, 'En cours')
+  assert.equal(row.missingDocs, 0)
+  assert.equal(row.nextAction, 'Vérifier le dossier')
 })
 
 await check('I6. Dossier complet, aucun signal en attente => "Aucune action"', () => {
-  const id = findId(s => s.status === 'Complété', 5500, 5700)
+  const id = 9009
+  setDossierState(id, { step: 5, validDocs: 6, pendingDocs: 0 })
   const row = nextActionFor(id)
   assert.equal(row.status, 'Complété')
   assert.equal(row.nextAction, 'Aucune action')
 })
 
 await check('I7. Priorités : document remplacé reste prioritaire même avec statut "À relancer" ou réponse en attente', () => {
-  const id = findId(s => s.status === 'À relancer', 5700, 5900)
+  const id = 9010
+  setDossierState(id, { step: 1, validDocs: 4, pendingDocs: 0 }) // missingDocs=2 => 'À relancer'
   // Ajoute en plus un signal de réponse en attente + relance réelle, pour
   // vérifier qu'aucun de ces signaux ne prend le dessus sur le document à
   // vérifier une fois qu'il est présent.
   const [item] = getClientSends(id)
   markClientSendReminded(item.id)
 
-  const category = Object.values(getClientDocuments(id)).find(d => d.fileName && d.status !== 'missing').category
+  const category = Object.values(getClientDocuments(id)).find(d => d.status === 'valid').category
   rejectDocument(id, category, 'Motif', 'Admin Test')
   uploadDocument(id, category, 'Document', { name: 'v2.pdf' })
 

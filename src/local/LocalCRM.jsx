@@ -421,7 +421,7 @@ function ClientSpace({onBack}){
     </div>
 
     {activeTab==='dossier' ? (
-     <LocalMonDossier />
+     <LocalMonDossier clientId={clientId} />
     ) : activeTab==='documents' ? (
      <LocalMesDocuments clientId={clientId} />
     ) : activeTab==='formation' ? (
