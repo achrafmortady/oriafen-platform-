@@ -19,13 +19,15 @@ import {
 //      quiz inclus) sont RÉUTILISÉS TELS QUELS depuis
 //      src/pages/student/ChapitreXX.jsx (aucune dépendance Auth/API — voir
 //      leurs imports, uniquement React) : le quiz de chaque chapitre est
-//      donc pleinement fonctionnel ici. Seules les vidéos/diapositives
-//      (hébergées sur Supabase Storage, ex: VIDEO_URL dans Chapitre11.jsx)
-//      ne se chargent pas, bloquées par la CSP de ce build isolé
-//      (`img-src 'self' data:`, pas de `media-src` externe autorisé) —
-//      c'est le comportement voulu (aucune requête ne doit jamais sortir
-//      vers un domaine Supabase depuis cette Preview). Câblage média à
-//      prévoir en production (voir docs).
+//      donc pleinement fonctionnel ici. Les vidéos (hébergées sur Supabase
+//      Storage, VIDEO_URL dans chaque ChapitreXX.jsx, même bucket public
+//      `formation` sur cgmjjxosgnfsqupjketw.supabase.co) se chargent via
+//      une balise <video src=...> classique — correctif CSP "Formation IAS1
+//      video" (2026-09-21) : `media-src` autorise désormais explicitement
+//      ce seul domaine, en LECTURE de fichiers publics uniquement (aucun
+//      appel API/DB Supabase, `connect-src` reste inchangé). Les
+//      diapositives (SLIDE_BASE, mêmes fichiers, servies en <img>) restent
+//      hors scope de ce correctif et ne sont pas concernées par `img-src`.
 import Chapitre11 from '../pages/student/Chapitre11'
 import Chapitre12 from '../pages/student/Chapitre12'
 import Chapitre13 from '../pages/student/Chapitre13'
