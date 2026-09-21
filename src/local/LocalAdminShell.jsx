@@ -170,7 +170,17 @@ export default function LocalAdminShell() {
       <div className="bg-orias-green border-t border-orias-green-light">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <CompactKpiCard icon={<UsersIcon className="w-4 h-4" />} label="Clients actifs" value={clientKpis.actifs} accent="green" onClick={() => openClientsFiltered('actifs')} />
+            {/* "Total clients" (audit "top KPI card" 2026-09-21) : affichait
+                auparavant clientKpis.actifs (sous-ensemble hors dossiers
+                "Complété"), en désaccord avec la carte Conversion du CRM
+                ("X clients sur Y prospects", tous statuts confondus). Lit
+                désormais clientKpis.total (buildClientsOverview,
+                clientsOverviewData.js — même source que la carte
+                Conversion), jamais un chiffre recalculé ici. Clic : ouvre
+                l'onglet Clients SANS filtre de statut (kind=null = puce
+                "Tous"), cohérent avec "total" — "Actifs"/Bloqué/ORIAS
+                obtenu restent des puces de filtre séparées dans cet onglet. */}
+            <CompactKpiCard icon={<UsersIcon className="w-4 h-4" />} label="Total clients" value={clientKpis.total} accent="green" onClick={() => openClientsFiltered(null)} />
             <CompactKpiCard icon={<ClockIcon className="w-4 h-4" />} label="Dossiers en cours" value={dossiersEnCours} accent="gold" onClick={() => openCrmPreset('Tous les prospects')} />
             <CompactKpiCard icon={<XCircleIcon className="w-4 h-4" />} label="Actions en retard" value={actionsEnRetard} accent="gold" onClick={() => openCrmPreset('À relancer en retard')} />
             <CompactKpiCard icon={<MessageIcon className="w-4 h-4" />} label="Réponses en attente" value={reponsesEnAttente} accent="green" onClick={() => openClientsFiltered('nextAction', 'Attendre réponse')} />

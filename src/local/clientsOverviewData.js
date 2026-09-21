@@ -216,6 +216,14 @@ export function buildClientsOverview(leads) {
     .sort((a, b) => (STATUS_PRIORITY[a.status] ?? 9) - (STATUS_PRIORITY[b.status] ?? 9))
 
   const kpis = {
+    // Correctif "top KPI card" (2026-09-21) : total réel de clients
+    // convertis (même filtre stage==='Client' && paymentValidated que
+    // `rows` ci-dessus, donc TOUJOURS égal au dénominateur "X clients sur Y
+    // prospects" affiché par la carte Conversion du CRM — voir
+    // LocalCRM.jsx) — seule source de vérité, jamais un chiffre recalculé
+    // ailleurs. Distinct de `actifs` (sous-ensemble : clients dont le
+    // dossier n'est pas encore "Complété"), qui reste une métrique séparée.
+    total: rows.length,
     actifs: rows.filter(r => r.status !== 'Complété').length,
     bloques: rows.filter(r => r.status === 'Bloqué').length,
     aRelancer: rows.filter(r => r.status === 'À relancer').length,
