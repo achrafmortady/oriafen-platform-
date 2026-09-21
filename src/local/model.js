@@ -108,6 +108,37 @@ export function normalizeCanonicalDemoClient(leads) {
     : l)
 }
 
+// Migration non destructive (même convention que les deux ci-dessus) —
+// correctif "CRM count mismatch" (2026-09-21) : un lead avec stage==='Client'
+// mais paymentValidated !== true a été repéré en localStorage (créé avant le
+// gate paiement ajouté au correctif "final blocker — payment gate", qui ne
+// bloque que les NOUVELLES tentatives, jamais les données déjà persistées).
+// Ce lead était compté dans la puce "Client" du Kanban/stagebar (comptage
+// brut par `stage`) mais pas dans "Total clients"/"Conversion" (qui, eux,
+// exigent déjà paymentValidated — voir buildClientsOverview,
+// clientsOverviewData.js) : deux définitions de "client" en désaccord sur
+// les mêmes données. Règle unique désormais partout : un "vrai" client est
+// stage==='Client' ET paymentValidated===true (voir canSetStageToClient,
+// conversion.js). Un lead qui viole cette règle n'a donc jamais été
+// réellement converti — il est ramené à la dernière étape du pipeline avant
+// "Client" plutôt que laissé dans un état "Client" trompeur ; son historique
+// (activity/appointments/tasks/paiements) reste intact, une entrée
+// d'historique documente la correction.
+export function normalizeInconsistentClientStage(leads) {
+  return (leads || []).map(l => {
+    if (!l || l.stage !== 'Client' || l.paymentValidated) return l
+    const fallbackStage = stages[stages.indexOf('Client') - 1] || 'Qualifié'
+    return {
+      ...l,
+      stage: fallbackStage,
+      activity: [
+        { text: `Statut corrigé : Client -> ${fallbackStage} (paiement jamais validé)`, at: formatNowLabel() },
+        ...(l.activity || []),
+      ],
+    }
+  })
+}
+
 // Recent-first (createdAt DESC) — utilisé par la vue Kanban (feedback #4 :
 // un nouveau prospect doit apparaître en tête de sa colonne d'étape,
 // indépendamment du tri choisi par l'utilisateur dans la vue Liste). Ne

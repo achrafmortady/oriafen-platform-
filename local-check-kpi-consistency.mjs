@@ -43,7 +43,7 @@ globalThis.localStorage = new MemoryStorage()
 globalThis.window = { addEventListener() {}, removeEventListener() {}, dispatchEvent() {} }
 
 const { buildClientsOverview } = await import('./src/local/clientsOverviewData.js')
-const { seed } = await import('./src/local/model.js')
+const { seed, stages, normalizeInconsistentClientStage } = await import('./src/local/model.js')
 const { applyPaymentValidation } = await import('./src/local/conversion.js')
 const { LOCAL_PACKS } = await import('./src/local/packsData.js')
 
@@ -112,4 +112,43 @@ check('Garde anti-régression : LocalCRM.jsx calcule la carte Conversion via bui
   assert.doesNotMatch(src, /\{count\('Client'\)\} clients sur/, 'la carte Conversion ne doit plus recompter localement via count(\'Client\')')
 })
 
-console.log(`PASS (${passed} checks): KPI "Total clients" (dashboard) et carte Conversion (CRM) partagent la même source (buildClientsOverview.kpis.total), aucun chiffre en dur.`)
+// ================================================================
+// 4. Correctif "CRM count mismatch" (2026-09-21) : un lead persisté avec
+//    stage==='Client' mais paymentValidated !== true (créé avant le gate
+//    paiement) faisait diverger la puce "Client" du stagebar (comptage brut
+//    par `stage`, ex. 6) de "Total clients"/"Conversion" (ex. 5, tous deux
+//    déjà basés sur buildClientsOverview). normalizeInconsistentClientStage
+//    (model.js) corrige ce lead à la source (non destructif) ; les trois
+//    chiffres doivent alors reconcilier exactement.
+// ================================================================
+check('normalizeInconsistentClientStage corrige un lead stage=Client sans paymentValidated : les 3 compteurs (stagebar/Total clients/Conversion) reconcilient', () => {
+  const base = seed()
+  const otherLead = base.find(l => l.stage !== 'Client')
+  // Reproduit la donnée incohérente observée (persistée avant le gate
+  // paiement) : stage='Client' mais paymentValidated jamais vrai.
+  const inconsistent = { ...otherLead, id: 9301, stage: 'Client', paymentValidated: false, activity: [{ text: 'Historique existant', at: '01/01/2026 · 10:00' }] }
+  const leadsWithBug = [...base, inconsistent]
+
+  const rawStageClientCount = leadsWithBug.filter(l => l.stage === 'Client').length
+  const { kpis: kpisBefore } = buildClientsOverview(leadsWithBug)
+  assert.notEqual(rawStageClientCount, kpisBefore.total, 'précondition : reproduit bien le mismatch (comptage brut != total réel)')
+
+  const fixed = normalizeInconsistentClientStage(leadsWithBug)
+  const correctedLead = fixed.find(l => l.id === 9301)
+  assert.notEqual(correctedLead.stage, 'Client', 'un lead jamais payé ne doit plus jamais être compté comme "Client"')
+  assert.equal(stages.includes(correctedLead.stage), true, 'doit retomber sur une étape valide du pipeline')
+  assert.equal(correctedLead.activity.length, 2, 'une entrée de correction est ajoutée, l\'historique existant est conservé (additif, jamais écrasé)')
+  assert.equal(correctedLead.activity[1].text, 'Historique existant')
+
+  const rawStageClientCountAfter = fixed.filter(l => l.stage === 'Client').length
+  const { kpis: kpisAfter } = buildClientsOverview(fixed)
+  assert.equal(rawStageClientCountAfter, kpisAfter.total, 'après correction, le comptage brut par stage et le total réel (buildClientsOverview) doivent être identiques — plus aucune divergence possible')
+
+  // Aucun autre lead touché (non destructif).
+  base.forEach(l => {
+    const stillThere = fixed.find(f => f.id === l.id)
+    assert.deepEqual(stillThere, l, `le lead ${l.id} ne doit pas être modifié par cette migration`)
+  })
+})
+
+console.log(`PASS (${passed} checks): KPI "Total clients" (dashboard), carte Conversion (CRM) et puce stagebar "Client" partagent la même source (buildClientsOverview.kpis.total), aucun chiffre en dur.`)

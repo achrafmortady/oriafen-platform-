@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useRef} from 'react';
-import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,normalizeCanonicalDemoClient} from './model';
+import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,normalizeCanonicalDemoClient,normalizeInconsistentClientStage} from './model';
 import {getActiveIdentity} from './adapters/identity';
 import {getAdminSendStatus,getClientLastActivity,getClientSends,getImportantUnseen,getReminderCount,markClientSendOpened,markClientSendReminded,markClientSendSeen,replyToClientSend,setClientSendImportant,subscribeToClientTracking,createClientSupportRequest,respondToClientRequest} from './clientTrackingStore';
 import Logo from '../components/Logo';
@@ -556,7 +556,7 @@ function ClientSpace({onBack}){
  )
 }
 export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null}){
- const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return raw&&raw.length?normalizeCanonicalDemoClient(normalizeLeadsStage(raw)):seed()}catch{return seed()}});
+ const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return raw&&raw.length?normalizeCanonicalDemoClient(normalizeInconsistentClientStage(normalizeLeadsStage(raw))):seed()}catch{return seed()}});
  const [filter,setFilter]=useState(defaults),[view,setView]=useState('Liste'),[selected,setSelected]=useState(null),[note,setNote]=useState(''),[saved,setSaved]=useState('Tous les prospects'),[creating,setCreating]=useState(false),[toast,setToast]=useState('');
  const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel'),[newTaskTitle,setNewTaskTitle]=useState(''),[newTaskDue,setNewTaskDue]=useState('');
  const [notesDraft,setNotesDraft]=useState('');
@@ -670,12 +670,19 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  function change(k,v){setFilter(f=>({...f,[k]:v}));setSaved('Personnalisée')}
  function preset(label){setSaved(label);setFilter({...defaults,...(label==='À relancer en retard'?{overdue:true}:label==='Mes prospects'?{owner:owners[0]}:label==='Clients à relancer'?{relance:true}:{})})}
  function sort(k){setFilter(f=>({...f,sort:k,desc:f.sort===k?!f.desc:false}))}
- const count=s=>leads.filter(l=>l.stage===s).length;
- // Total clients pour la carte "Conversion" — même source que la KPI "Total
- // clients" du dashboard admin (LocalAdminShell.jsx) et l'onglet Clients :
- // buildClientsOverview(leads).kpis.total (clientsOverviewData.js), jamais
- // un recompte local séparé (count('Client') ignorait paymentValidated).
+ // Total clients — même source partout (KPI "Total clients" du dashboard
+ // admin dans LocalAdminShell.jsx, carte "Conversion" ci-dessous, ET la puce
+ // "Client" du stagebar juste en dessous) : buildClientsOverview(leads).kpis.total
+ // (clientsOverviewData.js), qui exige stage==='Client' ET paymentValidated.
+ // Correctif "CRM count mismatch" (2026-09-21) : count(s) (comptage brut par
+ // `stage`) pouvait afficher un chiffre différent pour la puce "Client" si un
+ // lead avait stage==='Client' sans paiement validé (donnée déjà persistée
+ // avant le gate paiement — voir normalizeInconsistentClientStage,
+ // model.js, qui corrige ces leads à la source). Pour rester robuste même
+ // sans cette migration (ex. lead recréé manuellement en tests), la puce
+ // "Client" ne compte plus jamais par `stage` seul.
  const totalClients=buildClientsOverview(leads).kpis.total;
+ const count=s=>s==='Client'?totalClients:leads.filter(l=>l.stage===s).length;
  if(mode==='client')return <ClientSpace onBack={onExitClient}/>;
  return <div className="oriafenlocal"><main><div className="demo"><span>● Démonstration locale · données fictives</span><span>Modifications enregistrées sur ce navigateur</span></div><header><div><div className="eyebrow">RELATION CLIENT</div><h1>Votre pipeline commercial</h1><p>Les bonnes priorités, au bon moment.</p></div><div className="header-actions"><button className="client-switch" onClick={onEnterClient}>Voir l'espace client</button><button className="primary" onClick={e=>{opener.current=e.currentTarget;setCreating(true)}}>＋ Nouveau prospect</button></div></header><section className="metrics" aria-label="Indicateurs CRM"><article><span>Prospects</span><strong>{leads.length}</strong><small>Toutes les étapes</small></article><article><span>Potentiel ouvert</span><strong>{money(leads.filter(l=>!['Client','Perdu'].includes(l.stage)).reduce((n,l)=>n+l.value,0))}</strong><small>Hors clients et prospects perdus</small></article><article><span>Actions en retard</span><strong>{leads.filter(l=>!l.done&&l.due<today).length}</strong><small>À traiter en priorité</small></article><article><span>Conversion</span><strong>{leads.length?Math.round(totalClients/leads.length*100):0}%</strong><small>{totalClients} clients sur {leads.length} prospects</small></article></section>
  <section className="stagebar" aria-label="Répartition par étape">{stages.map((s,i)=><button key={s} className={'stagechip '+(count(s)?'':'zero ')+(filter.stage===s?'chosen':'')} onClick={()=>change('stage',filter.stage===s?'':s)}><i className={'dot d'+i}/><span>{s}</span><b>{count(s)}</b></button>)}<div className="sources"><span>Sources</span>{sources.filter(s=>leads.some(l=>l.source===s)).map(s=><span key={s}>{s} <b>{leads.filter(l=>l.source===s).length}</b></span>)}</div></section>
