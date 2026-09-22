@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getClientDocuments, subscribeToDocuments, uploadDocument, getDocVersions } from './documentsStore'
 import { ASSOCIATE_AUTRE_PREFIX, listAssociateDocCategories, countAssociateDocsSent } from './associateDocuments'
+import { getHasAssociate, subscribeToAssociate } from './associateStore'
 import { CheckCircleIcon, ClockIcon, XCircleIcon, UploadIcon } from '../components/Icons'
 
 // Reprend le style de src/pages/student/MesDocuments.jsx (fichier live non
@@ -163,8 +164,11 @@ function AutreDocRow({ onUpload, uploading, categoryPrefix = 'autre_', title = '
 export default function LocalMesDocuments({ clientId }) {
   const [docs, setDocs] = useState(() => getClientDocuments(clientId))
   const [uploading, setUploading] = useState({})
+  const [hasAssociate, setHasAssociateState] = useState(() => getHasAssociate(clientId))
 
   useEffect(() => subscribeToDocuments(() => setDocs(getClientDocuments(clientId))), [clientId])
+  useEffect(() => subscribeToAssociate(() => setHasAssociateState(getHasAssociate(clientId))), [clientId])
+  useEffect(() => setHasAssociateState(getHasAssociate(clientId)), [clientId])
 
   const handleUpload = (categoryId, categoryLabel, file) => {
     setUploading(prev => ({ ...prev, [categoryId]: true }))
@@ -214,17 +218,19 @@ export default function LocalMesDocuments({ clientId }) {
       </div>
     </div>
 
-    {/* Section associé — TOUJOURS visible (aucun flag hasAssociate), 100%
-        optionnelle. Design volontairement distinct de la carte "Mes
-        documents" ci-dessus (fond vert très clair + liseré vert foncé au
-        lieu du blanc/or) mais dans la même charte Oriafen — jamais un
-        statut d'erreur/manquant : un dossier sans associé la laisse vide,
-        sans aucun impact sur la progression ou le blocage du dossier
-        principal (validDocs/progressPct ci-dessus ne portent QUE sur
-        REQUIRED_DOCUMENTS). */}
+    {/* Section associé — visibilité CONDITIONNELLE (correctif 2026-09-22,
+        retour client) : affichée UNIQUEMENT si associateStore.js confirme
+        que ce dossier a un associé (réglé exclusivement par l'admin,
+        jamais par le client) — absente entièrement sinon, plutôt que
+        vide. Design volontairement distinct de la carte "Mes documents"
+        ci-dessus (fond vert très clair + liseré vert foncé au lieu du
+        blanc/or) mais dans la même charte Oriafen — jamais un statut
+        d'erreur/manquant : aucun impact sur la progression ou le blocage
+        du dossier principal (validDocs/progressPct ci-dessus ne portent
+        QUE sur REQUIRED_DOCUMENTS). */}
+    {hasAssociate && (
     <div style={{ background: '#f2f7f3', border: '1px solid #c9d8cc', borderLeft: '4px solid #1a4a2e', borderRadius: '20px', padding: '24px' }}>
       <p style={{ margin: '0 0 4px', fontSize: '11px', fontWeight: '600', letterSpacing: '1.5px', textTransform: 'uppercase', color: '#1a4a2e', fontFamily: "'Montserrat', sans-serif" }}>Documents de mon associé</p>
-      <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#4b5563', fontFamily: "'Montserrat', sans-serif" }}>À compléter uniquement si votre dossier comporte un associé.</p>
       <p style={{ margin: '0 0 20px', fontSize: '11px', color: '#6b7280', fontStyle: 'italic', fontFamily: "'Montserrat', sans-serif" }}>Documents associé : {associateSentCount} document{associateSentCount > 1 ? 's' : ''} envoyé{associateSentCount > 1 ? 's' : ''}</p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -239,6 +245,7 @@ export default function LocalMesDocuments({ clientId }) {
         <p style={{ margin: 0, lineHeight: '1.6' }}>Section facultative — elle n'est jamais comptée dans la progression de votre dossier principal ci-dessus et ne bloque aucune étape si elle reste vide.</p>
       </div>
     </div>
+    )}
     </div>
   )
 }

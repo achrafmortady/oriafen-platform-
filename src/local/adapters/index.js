@@ -18,6 +18,7 @@ if (ADAPTER_MODE !== 'local') {
 }
 
 export * as identity from './identity'
+export * as crmAdapter from './crmAdapter'
 export * as documentsAdapter from './documentsAdapter'
 export * as marketingAdapter from './marketingAdapter'
 export * as supportAdapter from './supportAdapter'

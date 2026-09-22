@@ -89,6 +89,16 @@ export function applyPaymentValidation(leads, leadId) {
   // paiement — c'est désormais la SEULE façon pour un prospect de devenir
   // "Client" (voir canSetStageToClient ci-dessus). Une seule entrée
   // d'historique couvre les deux à la fois, jamais un "Statut changé" séparé.
+  //
+  // relance: null (correctif 2026-09-22, retour client "Client Démo statut
+  // à relancer alors qu'il est déjà client") : une relance programmée AVANT
+  // la conversion (relance.js, indépendant du statut CRM par conception)
+  // n'était jamais nettoyée — un prospect relancé juste avant de devenir
+  // client continuait donc d'afficher le badge "À relancer" sur sa fiche
+  // après conversion (relanceReason() ne filtre pas par stage). Une fois
+  // converti, la relance programmée n'a plus de sens : elle est annulée
+  // ici, jamais recréée ailleurs. `stage` n'est jamais redéfini par ce
+  // nettoyage (règle explicite du correctif).
   return leads.map(l => l.id === leadId
     ? {
         ...l,
@@ -96,6 +106,7 @@ export function applyPaymentValidation(leads, leadId) {
         paymentValidated: true,
         convertedAt: now,
         payments,
+        relance: null,
         activity: [
           { text: `Paiement validé — compte client créé (${firstAmount} DH réglés)`, at: now },
           ...(l.activity || []),

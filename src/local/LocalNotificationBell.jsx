@@ -10,6 +10,16 @@ const TYPE_ICON = {
   support: '🛟',
 }
 
+// Libellé de type explicite (texte, pas juste une icône) — correctif
+// "centre d'activité" (2026-09-22, retour client) : la présentation
+// s'aligne sur les trois champs demandés (source/sender, type/contexte,
+// lu/non lu) SANS fusionner les modèles de données sous-jacents
+// (support_tickets/client_messages/notifications restent des stores
+// distincts, clientTrackingStore.js ici — seule la présentation change).
+const TYPE_LABEL = {
+  message: 'Message', fichier: 'Fichier', document: 'Document', marketing: 'Marketing', support: 'Support',
+}
+
 /**
  * Clone visuel local de components/NotificationBell.jsx (même markup / mêmes
  * classes Tailwind), branché sur clientTrackingStore au lieu de Supabase.
@@ -110,12 +120,13 @@ export default function LocalNotificationBell({ clientId, onNavigate, dark = fal
                 >
                   <span className="text-2xl flex-shrink-0">{TYPE_ICON[item.type] || '🔔'}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {!item.seenAt && <span className="w-2 h-2 rounded-full bg-orias-gold flex-shrink-0" />}
                       <p className={`text-sm truncate ${!item.seenAt ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{item.title}</p>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-orias-green/70 bg-orias-green/5 rounded-full px-1.5 py-0.5">{TYPE_LABEL[item.type] || item.type}</span>
                     </div>
                     {item.message && <p className="text-xs text-gray-500 truncate mt-0.5">{item.message}</p>}
-                    <p className="text-[11px] text-gray-400 mt-1">{item.sentAt}</p>
+                    <p className="text-[11px] text-gray-400 mt-1">{item.senderType === 'client' ? 'Vous' : 'Équipe Oriafen'} · {item.sentAt}</p>
                   </div>
                 </button>
               ))

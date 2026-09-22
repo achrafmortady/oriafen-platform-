@@ -11,6 +11,7 @@ import { subscribeToActivityLog } from './activityLog'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getClientDocuments, subscribeToDocuments, rejectDocument, validateDocument } from './documentsStore'
 import { listAssociateDocCategories } from './associateDocuments'
+import { getHasAssociate, setHasAssociate, subscribeToAssociate } from './associateStore'
 import { getDossierStep, getDossierStepHistory, STEP_LABELS } from './dossierStepStore'
 
 // ============================================================
@@ -114,13 +115,39 @@ function KpiCard({ icon, label, value, color }) {
   )
 }
 
-// Statuts dossier locaux (calcul déterministe existant, utilisé par les KPI
-// cliquables et "Prochaine action" — conservé tel quel, voir consigne
-// "ne pas casser KPI/Prochaine action"). "Complété" est affiché "ORIAS
-// obtenu" dans le tableau/modal pour matcher le vocabulaire live exact ;
-// "Bloqué"/"À relancer" n'ont pas d'équivalent dans le vocabulaire live à
-// 3 valeurs (En cours/ORIAS obtenu/Annulé) — variante locale assumée.
-const STATUS_DISPLAY_LABEL = { 'Complété': 'ORIAS obtenu', 'En cours': 'En cours', 'À relancer': 'À relancer', 'Bloqué': 'Bloqué' }
+// Statuts dossier locaux (calcul déterministe existant, clé interne
+// inchangée — utilisé par les KPI cliquables et "Prochaine action",
+// conservé tel quel, voir consigne "ne pas casser KPI/Prochaine action").
+// "Complété" est affiché "ORIAS obtenu" dans le tableau/modal pour matcher
+// le vocabulaire live exact ; "Bloqué"/"À relancer" n'ont pas d'équivalent
+// dans le vocabulaire live à 3 valeurs (En cours/ORIAS obtenu/Annulé) —
+// variante locale assumée.
+//
+// Correctif (2026-09-22, retour client) : ce statut concerne UNIQUEMENT des
+// clients déjà convertis (buildClientsOverview ne prend que stage==='Client'
+// && paymentValidated) — la clé interne 'À relancer' vient du calcul de
+// dossier (missingDocs>=2, clientsOverviewData.js), jamais du pipeline CRM
+// pré-conversion ("Intéressé – à relancer", relance.js — un système
+// entièrement séparé, non modifié ici). Mais afficher littéralement "À
+// relancer" pour un client déjà acquis prêtait à confusion ("c'est encore
+// un prospect à relancer ?"). Seul le LIBELLÉ affiché change ici — la clé
+// interne 'À relancer' (STATUS_PRIORITY, filtres, couleur) reste identique
+// partout, aucune logique de statut/priorité n'est modifiée.
+const STATUS_DISPLAY_LABEL = { 'Complété': 'ORIAS obtenu', 'En cours': 'En cours', 'À relancer': 'Documents à relancer', 'Bloqué': 'Bloqué' }
+
+// Raison du statut, à partir des champs RÉELS déjà calculés par
+// deriveDossier (clientsOverviewData.js) — jamais un texte inventé, jamais
+// une donnée recalculée séparément (correctif "tooltip Bloqué", 2026-09-22,
+// retour client). Utilisé comme title/aria-label accessible (hover ET
+// focus clavier) sur le badge de statut, pour les 4 statuts.
+function statusReason(client) {
+  const { status, missingDocs, nextAction } = client
+  if (status === 'Bloqué' || status === 'À relancer') {
+    return `${missingDocs} document${missingDocs > 1 ? 's' : ''} manquant${missingDocs > 1 ? 's' : ''} sur ${REQUIRED_DOCUMENTS.length} — ${nextAction}`
+  }
+  if (status === 'Complété') return 'Dossier complet — aucune action requise'
+  return `Prochaine action : ${nextAction}`
+}
 const STATUS_STYLES = {
   'Complété': 'bg-emerald-50 text-emerald-700 border-emerald-200',
   'En cours': 'bg-amber-50 text-amber-700 border-amber-200',
@@ -459,6 +486,34 @@ export function AssociateDocumentsPanel({ clientId }) {
   return <ClientDocumentsPanel clientId={clientId} categories={categories} emptyLabel="Aucun document associé pour ce client." />
 }
 
+// Bascule admin "Ce dossier a un associé" + panneau, regroupés dans un seul
+// composant auto-abonné (correctif 2026-09-22, retour client) : seul point
+// de vérité (associateStore.js), réglable UNIQUEMENT par l'admin. Toggle et
+// panneau partagent le même état local abonné, pour que cocher/décocher
+// affiche/masque le panneau immédiatement, sans dépendre d'un re-render du
+// parent. Même store que côté client (LocalMesDocuments.jsx, même clientId).
+export function AssociateSection({ clientId }) {
+  const [hasAssociate, setLocalState] = useState(() => getHasAssociate(clientId))
+  useEffect(() => subscribeToAssociate(() => setLocalState(getHasAssociate(clientId))), [clientId])
+  useEffect(() => setLocalState(getHasAssociate(clientId)), [clientId])
+  return (
+    <div className="card p-5 border-l-4 border-orias-green">
+      <div className="flex items-center justify-between mb-1">
+        <p className="text-xs font-semibold text-orias-green uppercase tracking-wide">Documents de l'associé</p>
+        <label className="flex items-center gap-2 text-xs font-medium text-gray-600 cursor-pointer select-none">
+          <input type="checkbox" checked={hasAssociate} onChange={e => setHasAssociate(clientId, e.target.checked)} />
+          Ce dossier comporte un associé
+        </label>
+      </div>
+      {hasAssociate ? (
+        <AssociateDocumentsPanel clientId={clientId} />
+      ) : (
+        <p className="text-[11px] text-gray-400">Ce dossier ne comporte pas d'associé — section masquée côté client.</p>
+      )}
+    </div>
+  )
+}
+
 // Filtres avancés locaux (KPI cliquables du header admin — voir
 // LocalAdminShell.jsx) — ajout local, s'appliquent en plus de la recherche
 // texte (qui, elle, reproduit exactement le champ live).
@@ -466,7 +521,7 @@ const FILTER_CHIPS = [
   { kind: null, label: 'Tous' },
   { kind: 'actifs', label: 'Actifs' },
   { kind: 'status', value: 'En cours', label: 'En cours' },
-  { kind: 'status', value: 'À relancer', label: 'À relancer' },
+  { kind: 'status', value: 'À relancer', label: 'Documents à relancer' },
   { kind: 'status', value: 'Bloqué', label: 'Bloqué' },
   { kind: 'status', value: 'Complété', label: 'ORIAS obtenu' },
   { kind: 'nextAction', value: 'Attendre réponse', label: 'Réponses en attente' },
@@ -521,7 +576,7 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard icon={<UsersIcon className="w-5 h-5 text-white" />} label="Clients actifs" value={kpis.actifs} color="bg-orias-green border-orias-green-light" />
         <KpiCard icon={<XCircleIcon className="w-5 h-5 text-white" />} label="Clients bloqués" value={kpis.bloques} color="bg-red-500/90 border-red-400/40" />
-        <KpiCard icon={<ClockIcon className="w-5 h-5 text-orias-green" />} label="À relancer" value={kpis.aRelancer} color="bg-orias-gold/90 border-orias-gold/40" />
+        <KpiCard icon={<ClockIcon className="w-5 h-5 text-orias-green" />} label="Documents à relancer" value={kpis.aRelancer} color="bg-orias-gold/90 border-orias-gold/40" />
         <KpiCard icon={<AwardIcon className="w-5 h-5 text-emerald-100" />} label="ORIAS obtenus" value={kpis.obtenus} color="bg-emerald-600 border-emerald-400/40" />
       </div>
 
@@ -606,7 +661,12 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                       </div>
                     </td>
                     <td className="px-4 py-4">
-                      <span className={`status-badge border ${STATUS_STYLES[client.status]} text-xs`}>
+                      <span
+                        className={`status-badge border ${STATUS_STYLES[client.status]} text-xs cursor-help`}
+                        title={statusReason(client)}
+                        aria-label={`${STATUS_DISPLAY_LABEL[client.status]} — ${statusReason(client)}`}
+                        tabIndex={0}
+                      >
                         {client.status === 'Complété' ? <AwardIcon className="w-3 h-3" /> : <ClockIcon className="w-3 h-3" />}
                         <span className="hidden sm:inline">{STATUS_DISPLAY_LABEL[client.status]}</span>
                       </span>
@@ -669,7 +729,12 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                 </div>
                 <div className="bg-orias-bg rounded-xl p-3 border border-orias-border">
                   <p className="text-xs text-gray-500 font-medium">Statut</p>
-                  <p className={`font-bold ${selected.status === 'Complété' ? 'text-emerald-600' : 'text-amber-600'}`}>{STATUS_DISPLAY_LABEL[selected.status]}</p>
+                  <p
+                    className={`font-bold cursor-help ${selected.status === 'Complété' ? 'text-emerald-600' : 'text-amber-600'}`}
+                    title={statusReason(selected)}
+                    aria-label={`${STATUS_DISPLAY_LABEL[selected.status]} — ${statusReason(selected)}`}
+                    tabIndex={0}
+                  >{STATUS_DISPLAY_LABEL[selected.status]}</p>
                 </div>
                 <div className="bg-orias-bg rounded-xl p-3 border border-orias-border">
                   <p className="text-xs text-gray-500 font-medium">Dernière activité</p>
@@ -727,12 +792,11 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                       documents du client principal (feedback session 2026-09-18) :
                       libellés distincts, jamais confondus, même workflow (valider/
                       rejeter/motif/historique de versions) via ClientDocumentsPanel,
-                      catégories dédiées (associate_*) — voir associateDocuments.js. */}
-                  <div className="card p-5 border-l-4 border-orias-green">
-                    <p className="text-xs font-semibold text-orias-green uppercase tracking-wide mb-1">Documents de l'associé</p>
-                    <p className="text-[11px] text-gray-400 mb-3">Optionnel côté client — présent uniquement si le dossier comporte un associé.</p>
-                    <AssociateDocumentsPanel clientId={selected.id} />
-                  </div>
+                      catégories dédiées (associate_*) — voir associateDocuments.js.
+                      Visibilité CONDITIONNELLE (correctif 2026-09-22, retour client) :
+                      voir AssociateSection ci-dessus (bascule + panneau, même source
+                      associateStore.js que côté client). */}
+                  <AssociateSection clientId={selected.id} />
 
                   {/* Hauteur maîtrisée : le titre et le formulaire (dans HistoryTimeline)
                       gardent leur hauteur naturelle ; seule la liste des événements a un

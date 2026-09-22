@@ -3,6 +3,10 @@ import { BellIcon, XIcon } from '../components/Icons'
 import { getAdminNotifications, markAdminNotificationSeen, markAllAdminNotificationsSeen, subscribeToAdminNotifications } from './adminNotificationsStore'
 
 const TYPE_ICON = { marketing: '🎯', support: '🛟' }
+// Correctif "centre d'activité" (2026-09-22, retour client) : présentation
+// alignée sur source/sender, type/contexte, lu/non lu — sans fusionner
+// adminNotificationsStore.js avec les autres modèles (clientTrackingStore).
+const TYPE_LABEL = { marketing: 'Marketing', support: 'Support' }
 
 // Clone de LocalNotificationBell.jsx (même markup/comportement) côté ADMIN —
 // avant ce correctif, le bouton cloche du header admin était statique (pas
@@ -87,12 +91,13 @@ export default function LocalAdminNotificationBell({ onNavigate }) {
                 >
                   <span className="text-2xl flex-shrink-0">{TYPE_ICON[item.type] || '🔔'}</span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       {!item.seenAt && <span className="w-2 h-2 rounded-full bg-orias-gold flex-shrink-0" />}
                       <p className={`text-sm truncate ${!item.seenAt ? 'font-bold text-gray-900' : 'font-medium text-gray-700'}`}>{item.title}</p>
+                      <span className="text-[10px] font-semibold uppercase tracking-wide text-orias-green/70 bg-orias-green/5 rounded-full px-1.5 py-0.5">{TYPE_LABEL[item.type] || item.type}</span>
                     </div>
                     {item.message && <p className="text-xs text-gray-500 truncate mt-0.5">{item.message}</p>}
-                    <p className="text-[11px] text-gray-400 mt-1">{item.createdAt}</p>
+                    <p className="text-[11px] text-gray-400 mt-1">{item.clientName ? `${item.clientName} · ` : ''}{item.createdAt}</p>
                   </div>
                 </button>
               ))

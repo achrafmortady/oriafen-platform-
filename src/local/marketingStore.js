@@ -17,6 +17,29 @@ const CHANGE_EVENT = 'oriafen-marketing-change'
 
 export const MODIFICATION_STATUSES = ['Envoyée', 'En cours', 'Traitée', 'Refusée']
 
+// Progression PAR CANAL (correctif 2026-09-22, retour client : "la
+// progression marketing/réseaux est trop globale/mélangée — il faut voir
+// le statut de chaque canal séparément"). Champ LOCAL UNIQUEMENT — aucune
+// table live équivalente confirmée dans l'audit schéma (brand_briefs/
+// client_deliverables n'ont pas de colonne de progression par canal, voir
+// docs/PRODUCTION_WIRING_PLAN.md) : mapping production à définir plus tard
+// (probablement une nouvelle table `marketing_channel_progress` ou des
+// colonnes dédiées sur `client_deliverables`, classification C — jamais
+// deviné ici). CHANNEL_DEFS = la liste fixe des canaux suivis ; chaque
+// client démarre à 0% "À démarrer" (jamais une progression inventée) tant
+// qu'aucune action admin ne l'a mise à jour.
+export const CHANNEL_STATUSES = ['À démarrer', 'En cours', 'En révision', 'Terminé']
+export const CHANNEL_DEFS = [
+  { id: 'site', label: 'Site web' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'ads_manager', label: 'Meta Business Manager / Ads Manager' },
+]
+
+function defaultChannels() {
+  return CHANNEL_DEFS.map(c => ({ ...c, status: 'À démarrer', progressPct: 0, currentStep: null, remainingWork: null, updatedAt: null }))
+}
+
 function defaultProject() {
   return {
     name: 'Site vitrine — Cabinet Démo',
@@ -46,11 +69,38 @@ function writeAll(data) {
 
 function ensureClient(data, clientId) {
   if (!data[clientId]) data[clientId] = { project: defaultProject(), deliverables: defaultDeliverables(), requests: [] }
+  // Migration non destructive (même convention que dossierStepStore.js) :
+  // un client déjà en localStorage avant ce correctif n'a pas encore de
+  // `channels` — ajouté sans toucher au reste de ses données existantes.
+  if (!data[clientId].channels) data[clientId].channels = defaultChannels()
   return data[clientId]
 }
 
 export function getMarketingProject(clientId) {
   return ensureClient(readAll(), clientId).project
+}
+
+export function getMarketingChannels(clientId) {
+  return ensureClient(readAll(), clientId).channels
+}
+
+// patch : { status?, progressPct?, currentStep?, remainingWork? } — réglé
+// UNIQUEMENT par l'admin (jamais auto-calculé depuis une autre donnée,
+// pour ne jamais fabriquer une progression qui ne reflète pas la réalité
+// du travail effectué).
+export function updateMarketingChannel(clientId, channelId, patch) {
+  const data = readAll()
+  const client = ensureClient(data, clientId)
+  let label = null
+  client.channels = client.channels.map(c => {
+    if (c.id !== channelId) return c
+    label = c.label
+    return { ...c, ...patch, updatedAt: formatNowLabel() }
+  })
+  if (label == null) return false
+  writeAll(data)
+  logActivity(clientId, { author: 'Équipe', action: `Progression marketing (${label}) mise à jour`, detail: patch.status || null })
+  return true
 }
 
 export function getDeliverables(clientId) {

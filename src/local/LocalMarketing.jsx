@@ -3,8 +3,83 @@ import {
   getMarketingProject, getDeliverables, getModificationRequests,
   createModificationRequest, setModificationStatus, updateMarketingProject,
   subscribeToMarketing, MODIFICATION_STATUSES,
+  getMarketingChannels, updateMarketingChannel, CHANNEL_STATUSES,
 } from './marketingStore'
 import { getActiveClientId } from './adapters/identity'
+
+const CHANNEL_STATUS_STYLE = {
+  'À démarrer': 'bg-gray-50 text-gray-500 border-gray-200',
+  'En cours': 'bg-amber-50 text-amber-700 border-amber-200',
+  'En révision': 'bg-blue-50 text-blue-700 border-blue-200',
+  'Terminé': 'bg-emerald-50 text-emerald-700 border-emerald-200',
+}
+
+// Progression PAR CANAL, affichée séparément pour chaque canal (correctif
+// 2026-09-22, retour client) — jamais un statut global unique. Même carte
+// réutilisée côté client (lecture seule) et admin (`editable`).
+function ChannelsCard({ channels, editable = false, onUpdate }) {
+  return (
+    <section className="card p-6">
+      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-1">Progression par canal</h3>
+      <p className="text-xs text-gray-400 mb-4">Statut indépendant pour chaque canal — site, réseaux sociaux, gestionnaire de publicités.</p>
+      <div className="space-y-4">
+        {channels.map(ch => (
+          <div key={ch.id} className="border border-orias-border rounded-xl p-4">
+            <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
+              <p className="font-bold text-gray-800 text-sm">{ch.label}</p>
+              {editable ? (
+                <select
+                  value={ch.status}
+                  onChange={e => onUpdate(ch.id, { status: e.target.value })}
+                  className={`text-xs font-bold px-2 py-1 rounded-full border cursor-pointer ${CHANNEL_STATUS_STYLE[ch.status]}`}
+                >
+                  {CHANNEL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              ) : (
+                <span className={`inline-flex text-xs font-bold px-2.5 py-1 rounded-full border ${CHANNEL_STATUS_STYLE[ch.status]}`}>{ch.status}</span>
+              )}
+            </div>
+            <div className="h-1.5 rounded-full bg-orias-bg overflow-hidden mb-2">
+              <div className="h-full bg-orias-gold" style={{ width: `${ch.progressPct}%` }} />
+            </div>
+            <div className="flex items-center justify-between gap-3 text-xs text-gray-500 mb-2">
+              <span>{ch.progressPct}%</span>
+              {editable && (
+                <input
+                  type="range" min="0" max="100" value={ch.progressPct}
+                  onChange={e => onUpdate(ch.id, { progressPct: Number(e.target.value) })}
+                  className="flex-1 mx-2"
+                />
+              )}
+            </div>
+            {editable ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                <input
+                  value={ch.currentStep || ''}
+                  onChange={e => onUpdate(ch.id, { currentStep: e.target.value })}
+                  placeholder="Étape actuelle"
+                  className="input-field text-xs"
+                />
+                <input
+                  value={ch.remainingWork || ''}
+                  onChange={e => onUpdate(ch.id, { remainingWork: e.target.value })}
+                  placeholder="Reste à faire"
+                  className="input-field text-xs"
+                />
+              </div>
+            ) : (
+              <>
+                {ch.currentStep && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold">Étape actuelle :</span> {ch.currentStep}</p>}
+                {ch.remainingWork && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold">Reste à faire :</span> {ch.remainingWork}</p>}
+              </>
+            )}
+            {ch.updatedAt && <p className="text-[11px] text-gray-400 mt-2">Mis à jour le {ch.updatedAt}</p>}
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
 
 const STATUS_STYLE = {
   'Envoyée': 'bg-blue-50 text-blue-700 border-blue-200',
@@ -20,7 +95,8 @@ function StatusBadge({ status }) {
 function ProjectOverviewCard({ project }) {
   return (
     <section className="card p-6">
-      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Aperçu du projet</h3>
+      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
+      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Aperçu du projet — basé sur les informations transmises par le client</h3>
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Projet</p><p className="font-bold text-gray-800 mt-0.5">{project.name}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Type</p><p className="font-bold text-gray-800 mt-0.5">{project.type}</p></div>
@@ -126,15 +202,17 @@ function RequestsCard({ requests, onNewRequest }) {
 // <nom>") — n'affecte rien d'autre.
 export function ClientMarketingPanel({ clientId, clientName = null }) {
   const [project, setProject] = useState(() => getMarketingProject(clientId))
+  const [channels, setChannels] = useState(() => getMarketingChannels(clientId))
   const [deliverables, setDeliverables] = useState(() => getDeliverables(clientId))
   const [requests, setRequests] = useState(() => getModificationRequests(clientId))
   const [showModal, setShowModal] = useState(false)
-  const refresh = () => { setProject(getMarketingProject(clientId)); setDeliverables(getDeliverables(clientId)); setRequests(getModificationRequests(clientId)) }
+  const refresh = () => { setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setDeliverables(getDeliverables(clientId)); setRequests(getModificationRequests(clientId)) }
   useEffect(() => subscribeToMarketing(refresh), [clientId])
 
   return (
     <div className="space-y-5">
       <ProjectOverviewCard project={project} />
+      <ChannelsCard channels={channels} />
       <DeliverablesCard deliverables={deliverables} />
       <RequestsCard requests={requests} onNewRequest={() => setShowModal(true)} />
       {showModal && (
@@ -153,16 +231,18 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
 // ClientSpace et la fiche admin "Clients".
 export function AdminMarketingPanel({ clientId = getActiveClientId() }) {
   const [project, setProject] = useState(() => getMarketingProject(clientId))
+  const [channels, setChannels] = useState(() => getMarketingChannels(clientId))
   const [requests, setRequests] = useState(() => getModificationRequests(clientId))
   const [phaseDraft, setPhaseDraft] = useState('')
-  const refresh = () => { setProject(getMarketingProject(clientId)); setRequests(getModificationRequests(clientId)) }
+  const refresh = () => { setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setRequests(getModificationRequests(clientId)) }
   useEffect(() => subscribeToMarketing(refresh), [clientId])
   useEffect(() => { setPhaseDraft(project.phase) }, [project.phase])
 
   return (
     <div className="space-y-5">
       <section className="card p-6">
-        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client (démo)</h3>
+        <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
+        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client (démo) — basé sur les informations transmises par le client</h3>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[220px]">
             <label className="block text-xs font-semibold text-gray-500 mb-1">Phase actuelle</label>
@@ -172,6 +252,7 @@ export function AdminMarketingPanel({ clientId = getActiveClientId() }) {
         </div>
         <p className="text-[11px] text-gray-400 mt-3">Statut : {project.status} · Dernière mise à jour : {project.lastUpdate}</p>
       </section>
+      <ChannelsCard channels={channels} editable onUpdate={(channelId, patch) => { updateMarketingChannel(clientId, channelId, patch); refresh() }} />
       <section className="card p-6">
         <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Demandes de modification client</h3>
         {!requests.length && <p className="text-sm text-gray-400">Aucune demande reçue.</p>}

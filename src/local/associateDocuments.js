@@ -10,13 +10,17 @@
 // recoupent jamais, un document associé ne peut structurellement pas
 // écraser un document du client principal, ni l'inverse.
 //
-// Section OPTIONNELLE et TOUJOURS visible (pas de flag hasAssociate) : un
-// client sans associé la laisse simplement vide, sans blocage ni impact sur
-// la progression du dossier principal (voir LocalMesDocuments.jsx, qui ne
-// compte que REQUIRED_DOCUMENTS dans son dénominateur).
+// Section OPTIONNELLE, dont la visibilité est conditionnée par
+// associateStore.js::getHasAssociate(clientId) (correctif 2026-09-22, sur
+// demande client explicite) : affichée UNIQUEMENT pour un client dont le
+// dossier comporte réellement un associé, jamais pour les autres — voir
+// LocalMesDocuments.jsx (client) et LocalClientsOverview.jsx (admin).
+// Aucun impact sur la progression du dossier principal quand affichée
+// (REQUIRED_DOCUMENTS reste le seul dénominateur, LocalMesDocuments.jsx).
 export const ASSOCIATE_DOCUMENTS = [
   { id: 'associate_cin_recto', label: "CIN de l'associé — Recto", sublabel: 'Recto', accept: '.pdf,.jpg,.jpeg,.png' },
   { id: 'associate_cin_verso', label: "CIN de l'associé — Verso", sublabel: 'Verso', accept: '.pdf,.jpg,.jpeg,.png' },
+  { id: 'associate_passeport', label: "Passeport de l'associé", sublabel: 'Pages photo et signature', accept: '.pdf,.jpg,.jpeg,.png' },
   { id: 'associate_justificatif_domiciliation', label: "Justificatif de domiciliation de l'associé", sublabel: 'Facture ou courrier officiel', accept: '.pdf,.jpg,.jpeg,.png' },
 ]
 

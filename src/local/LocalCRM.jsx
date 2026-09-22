@@ -297,14 +297,19 @@ function LocalTrackedCommunications({ items, drafts, setDrafts, sendingId, sendR
  )
 }
 
-function ClientSpace({onBack}){
- // Identité résolue via l'adaptateur (src/local/adapters/identity.js),
- // jamais CANONICAL_DEMO_CLIENT_ID en dur ici — seul identity.js sait
- // encore que ce id existe. C'est le point de branchement identifié pour
- // l'authentification réelle (voir docs/PRODUCTION_WIRING_PLAN.md §1) :
- // remplacer getActiveIdentity() par useAuth().user suffira, sans toucher
- // au reste de ce composant.
- const identity=getActiveIdentity();
+// `overrideClientId` (audit "client data/access preservation" 2026-09-22) :
+// sans ce prop, ClientSpace résolvait TOUJOURS getActiveIdentity() sans
+// argument, donc TOUJOURS le client de démo (CANONICAL_DEMO_CLIENT_ID),
+// quel que soit l'utilisateur réellement authentifié — un vrai risque si un
+// futur point d'entrée production montait ce composant tel quel (voir
+// src/local/adapters/supabase/productionEntry.proposal.jsx, jamais activé).
+// getActiveIdentity(override) supporte déjà un override ({id}) — utilisé
+// ici pour la première fois par ClientSpace lui-même, même mécanisme que
+// celui déjà utilisé par l'admin pour consulter la fiche d'un autre client
+// (LocalDossierSection.jsx, LocalClientsOverview.jsx). `undefined` (valeur
+// par défaut) préserve EXACTEMENT le comportement Preview actuel.
+function ClientSpace({onBack, overrideClientId}){
+ const identity=getActiveIdentity(overrideClientId != null ? { id: overrideClientId } : null)
  const clientId=identity.id;
  const [items,setItems]=useState(()=>getClientSends(clientId));
  const [drafts,setDrafts]=useState({});
@@ -555,10 +560,10 @@ function ClientSpace({onBack}){
   </div>
  )
 }
-export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null}){
+export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null,clientId=null}){
  const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return raw&&raw.length?normalizeCanonicalDemoClient(normalizeInconsistentClientStage(normalizeLeadsStage(raw))):seed()}catch{return seed()}});
  const [filter,setFilter]=useState(defaults),[view,setView]=useState('Liste'),[selected,setSelected]=useState(null),[note,setNote]=useState(''),[saved,setSaved]=useState('Tous les prospects'),[creating,setCreating]=useState(false),[toast,setToast]=useState('');
- const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel'),[newTaskTitle,setNewTaskTitle]=useState(''),[newTaskDue,setNewTaskDue]=useState('');
+ const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel');
  const [notesDraft,setNotesDraft]=useState('');
  const [editingInfo,setEditingInfo]=useState(false),[infoName,setInfoName]=useState(''),[infoEmail,setInfoEmail]=useState(''),[infoPhone,setInfoPhone]=useState(''),[infoCity,setInfoCity]=useState('');
  const [actionDraft,setActionDraft]=useState(''),[relanceAt,setRelanceAt]=useState(''),[relanceNote,setRelanceNote]=useState(''),[lossReasonDraft,setLossReasonDraft]=useState('');
@@ -658,15 +663,13 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // fiche prospect quand l'étape est "Perdu" — une seule entrée d'historique
  // par enregistrement, jamais un doublon du changement de statut.
  function saveLossReason(id){const clean=lossReasonDraft.trim();if(!clean)return;patch(id,{lossReason:clean},`Raison de la perte — ${clean}`)}
- function addTask(id,{title,dueAt}){if(!title?.trim())return;setLeads(prev=>prev.map(l=>l.id===id?{...l,tasks:[...(l.tasks||[]),{id:Date.now(),title:title.trim(),dueAt:dueAt||null,done:false}],activity:[{text:`Tâche ajoutée : ${title.trim()}`,at:formatNowLabel()},...l.activity]}:l))}
- function toggleTaskDone(id,taskId){setLeads(prev=>prev.map(l=>l.id===id?{...l,tasks:(l.tasks||[]).map(t=>t.id===taskId?{...t,done:!t.done}:t)}:l))}
  // Reproduit handleConvert (src/pages/admin/Dashboard.jsx, lecture seule) :
  // passer stage='Client' via le select ci-dessus est un simple changement de
  // statut, TOUJOURS possible — mais ne crée pas le compte/dossier. Seule
  // cette action explicite (bouton "Valider le paiement & créer le compte")
  // exécute réellement la conversion (voir src/local/conversion.js).
  function validatePayment(id){setLeads(prev=>applyPaymentValidation(prev,id))}
- function open(l,e){opener.current=e.currentTarget;setNote('');setNewApptDate('');setNewApptType('appel');setNewTaskTitle('');setNewTaskDue('');setNotesDraft(l.notes||'');setEditingInfo(false);setActionDraft(l.action||'');setRelanceAt('');setRelanceNote('');setLossReasonDraft(l.lossReason||'');setConvertAttempt(false);setSelected(l.id)}
+ function open(l,e){opener.current=e.currentTarget;setNote('');setNewApptDate('');setNewApptType('appel');setNotesDraft(l.notes||'');setEditingInfo(false);setActionDraft(l.action||'');setRelanceAt('');setRelanceNote('');setLossReasonDraft(l.lossReason||'');setConvertAttempt(false);setSelected(l.id)}
  function change(k,v){setFilter(f=>({...f,[k]:v}));setSaved('Personnalisée')}
  function preset(label){setSaved(label);setFilter({...defaults,...(label==='À relancer en retard'?{overdue:true}:label==='Mes prospects'?{owner:owners[0]}:label==='Clients à relancer'?{relance:true}:{})})}
  function sort(k){setFilter(f=>({...f,sort:k,desc:f.sort===k?!f.desc:false}))}
@@ -683,7 +686,7 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // "Client" ne compte plus jamais par `stage` seul.
  const totalClients=buildClientsOverview(leads).kpis.total;
  const count=s=>s==='Client'?totalClients:leads.filter(l=>l.stage===s).length;
- if(mode==='client')return <ClientSpace onBack={onExitClient}/>;
+ if(mode==='client')return <ClientSpace onBack={onExitClient} overrideClientId={clientId}/>;
  return <div className="oriafenlocal"><main><div className="demo"><span>● Démonstration locale · données fictives</span><span>Modifications enregistrées sur ce navigateur</span></div><header><div><div className="eyebrow">RELATION CLIENT</div><h1>Votre pipeline commercial</h1><p>Les bonnes priorités, au bon moment.</p></div><div className="header-actions"><button className="client-switch" onClick={onEnterClient}>Voir l'espace client</button><button className="primary" onClick={e=>{opener.current=e.currentTarget;setCreating(true)}}>＋ Nouveau prospect</button></div></header><section className="metrics" aria-label="Indicateurs CRM"><article><span>Prospects</span><strong>{leads.length}</strong><small>Toutes les étapes</small></article><article><span>Potentiel ouvert</span><strong>{money(leads.filter(l=>!['Client','Perdu'].includes(l.stage)).reduce((n,l)=>n+l.value,0))}</strong><small>Hors clients et prospects perdus</small></article><article><span>Actions en retard</span><strong>{leads.filter(l=>!l.done&&l.due<today).length}</strong><small>À traiter en priorité</small></article><article><span>Conversion</span><strong>{leads.length?Math.round(totalClients/leads.length*100):0}%</strong><small>{totalClients} clients sur {leads.length} prospects</small></article></section>
  <section className="stagebar" aria-label="Répartition par étape">{stages.map((s,i)=><button key={s} className={'stagechip '+(count(s)?'':'zero ')+(filter.stage===s?'chosen':'')} onClick={()=>change('stage',filter.stage===s?'':s)}><i className={'dot d'+i}/><span>{s}</span><b>{count(s)}</b></button>)}<div className="sources"><span>Sources</span>{sources.filter(s=>leads.some(l=>l.source===s)).map(s=><span key={s}>{s} <b>{leads.filter(l=>l.source===s).length}</b></span>)}</div></section>
  <section className="panel"><div className="paneltop"><div className="saved">{['Tous les prospects','À relancer en retard','Clients à relancer','Mes prospects'].map(s=><button className={saved===s?'active':''} key={s} onClick={()=>preset(s)}>{s}</button>)}</div><div className="views">{['Liste','Kanban','Agenda','Calendrier'].map(v=><button key={v} className={view===v?'active':''} onClick={()=>setView(v)}>{v}</button>)}</div></div><div className="filters"><input aria-label="Rechercher" placeholder="Rechercher un nom, un email, une ville…" value={filter.search} onChange={e=>change('search',e.target.value)}/>{[['stage','Toutes les étapes',stages],['owner','Tous les responsables',owners],['source','Toutes les sources',sources]].map(([key,label,items])=><select aria-label={label} key={key} value={filter[key]} onChange={e=>change(key,e.target.value)}><option value="">{label}</option>{items.map(x=><option key={x}>{x}</option>)}</select>)}<label className="check"><input type="checkbox" checked={filter.overdue} onChange={e=>change('overdue',e.target.checked)}/>En retard</label><button onClick={()=>preset('Tous les prospects')}>Réinitialiser</button></div><div className="results"><span>{rows.length} prospect{rows.length!==1?'s':''} · {saved}</span><span>Cliquer sur un prospect pour ouvrir sa fiche</span></div>
@@ -750,18 +753,6 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
      <button className="primary" disabled={!relanceAt} onClick={()=>submitRelance(lead.id)}>Programmer une relance</button>
     </section>
 
-    <section className="detailbox">
-     <h3>Tâches</h3>
-     {!(lead.tasks||[]).length && <p className="muted">Aucune tâche.</p>}
-     <div style={{display:'flex',flexDirection:'column',gap:'8px',margin:'10px 0'}}>
-      {(lead.tasks||[]).map(t=><label key={t.id} style={{display:'flex',alignItems:'center',gap:'8px',flexDirection:'row',margin:0}}><input type="checkbox" checked={t.done} onChange={()=>toggleTaskDone(lead.id,t.id)}/><span style={{textDecoration:t.done?'line-through':'none',flex:1,fontSize:'12px'}}>{t.title}</span>{t.dueAt && <small>{t.dueAt}</small>}</label>)}
-     </div>
-     <div className="twocol">
-      <label>Titre<input value={newTaskTitle} onChange={e=>setNewTaskTitle(e.target.value)}/></label>
-      <label>Échéance<input type="date" value={newTaskDue} onChange={e=>setNewTaskDue(e.target.value)}/></label>
-     </div>
-     <button className="primary" disabled={!newTaskTitle.trim()} onClick={()=>{addTask(lead.id,{title:newTaskTitle,dueAt:newTaskDue});setNewTaskTitle('');setNewTaskDue('')}}>Ajouter la tâche</button>
-    </section>
 
     <section className="detailbox">
      <h3>Notes internes</h3>

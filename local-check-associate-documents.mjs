@@ -26,12 +26,16 @@ const { getClientSends } = await import('./src/local/clientTrackingStore.js')
 
 const clientId = 'assoc-test-1'
 
-// 1. La section associé (ses 3 catégories fixes) est visible pour TOUT
-// client, sans condition/flag — aucune dépendance à un état préalable.
+// 1. La liste des 4 catégories fixes (couche données, associateDocuments.js)
+// reste la même pour tout client, sans condition — c'est la couche
+// UI (LocalMesDocuments.jsx/LocalClientsOverview.jsx) qui conditionne
+// désormais l'AFFICHAGE de la section sur associateStore.js::getHasAssociate
+// (correctif 2026-09-22, voir local-check-feedback-2026-09-22.mjs) ; ce
+// fichier-ci ne teste que la couche données, inchangée sur ce point.
 {
-  assert.equal(ASSOCIATE_DOCUMENTS.length, 3)
+  assert.equal(ASSOCIATE_DOCUMENTS.length, 4)
   const ids = ASSOCIATE_DOCUMENTS.map(d => d.id)
-  assert.deepEqual(ids, ['associate_cin_recto', 'associate_cin_verso', 'associate_justificatif_domiciliation'])
+  assert.deepEqual(ids, ['associate_cin_recto', 'associate_cin_verso', 'associate_passeport', 'associate_justificatif_domiciliation'])
   const categories = listAssociateDocCategories(getClientDocuments(clientId))
   // Toujours au moins les 3 catégories fixes, quel que soit le client, quel
   // que soit son état (aucun flag hasAssociate à vérifier avant affichage).
@@ -165,7 +169,7 @@ console.log('PASS 14: catégories client et associé strictement séparées (adm
   assert.equal(getClientDocuments(freshClientId).passeport.status, 'valid')
   // Et ce client n'a jamais eu aucun document associé -> section toujours vide, sans erreur.
   assert.equal(countAssociateDocsSent(getClientDocuments(freshClientId)), 0)
-  assert.equal(listAssociateDocCategories(getClientDocuments(freshClientId)).length, 3)
+  assert.equal(listAssociateDocCategories(getClientDocuments(freshClientId)).length, 4)
 }
 console.log('PASS 15: flux document du client principal inchangé (upload/rejet/remplacement/validation) même en présence de la fonctionnalité associé')
 
