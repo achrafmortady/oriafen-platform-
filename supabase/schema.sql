@@ -38,7 +38,7 @@ CREATE POLICY "users_admin_select_all"
   USING (
     EXISTS (
       SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND u.role = 'admin'
+      WHERE u.id = auth.uid() AND u.role IN ('admin', 'super_admin', 'juridique', 'marketing')
     )
   );
 
@@ -74,7 +74,7 @@ CREATE POLICY "dossiers_admin_all"
   USING (
     EXISTS (
       SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND u.role = 'admin'
+      WHERE u.id = auth.uid() AND u.role IN ('admin', 'super_admin', 'juridique', 'marketing')
     )
   );
 
@@ -111,7 +111,7 @@ CREATE POLICY "documents_admin_all"
   USING (
     EXISTS (
       SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND u.role = 'admin'
+      WHERE u.id = auth.uid() AND u.role IN ('admin', 'super_admin', 'juridique', 'marketing')
     )
   );
 
@@ -143,7 +143,7 @@ CREATE POLICY "formation_admin_all"
   USING (
     EXISTS (
       SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND u.role = 'admin'
+      WHERE u.id = auth.uid() AND u.role IN ('admin', 'super_admin', 'juridique', 'marketing')
     )
   );
 
@@ -171,7 +171,7 @@ CREATE POLICY "exam_results_admin_all"
   USING (
     EXISTS (
       SELECT 1 FROM public.users u
-      WHERE u.id = auth.uid() AND u.role = 'admin'
+      WHERE u.id = auth.uid() AND u.role IN ('admin', 'super_admin', 'juridique', 'marketing')
     )
   );
 
@@ -211,7 +211,7 @@ CREATE POLICY "admins_all_storage"
     bucket_id = 'documents'
     AND EXISTS (
       SELECT 1 FROM public.users
-      WHERE id = auth.uid() AND role = 'admin'
+      WHERE id = auth.uid() AND role IN ('admin', 'super_admin', 'juridique', 'marketing')
     )
   );
 
