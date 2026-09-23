@@ -93,7 +93,7 @@ function AddAdminModal({ onClose, onAdd }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="bg-orias-green px-6 py-5 flex items-center justify-between">
-          <h3 className="font-bold text-white text-lg">Ajouter un collaborateur admin</h3>
+          <h3 className="font-bold text-white text-lg">Ajouter un collaborateur</h3>
           <button onClick={onClose} className="text-green-300 hover:text-white transition-colors">
             <XIcon className="w-6 h-6" />
           </button>
@@ -102,7 +102,7 @@ function AddAdminModal({ onClose, onAdd }) {
           {success ? (
             <div className="text-center space-y-4">
               <CheckCircleIcon className="w-14 h-14 text-emerald-500 mx-auto" />
-              <p className="font-bold text-orias-green text-lg">Compte admin créé !</p>
+              <p className="font-bold text-orias-green text-lg">Compte collaborateur créé !</p>
               <div className="bg-orias-bg rounded-xl p-4 border border-orias-border text-left space-y-2">
                 <p className="text-sm font-semibold text-orias-green">📧 Email envoyé automatiquement</p>
                 <p className="text-xs text-gray-500">Le collaborateur reçoit un lien pour créer son mot de passe et accéder au dashboard admin (sans la section Finance).</p>
@@ -136,7 +136,7 @@ function AddAdminModal({ onClose, onAdd }) {
               <button type="submit" disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
                 {loading
                   ? <><svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>Création…</>
-                  : 'Créer le compte admin'
+                : 'Créer le compte collaborateur'
                 }
               </button>
             </form>
@@ -3303,11 +3303,11 @@ function TeamSection() {
       <div className="card p-4 flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="font-bold text-orias-green text-lg">Équipe</h2>
-          <p className="text-sm text-gray-500">{admins.length} compte{admins.length > 1 ? 's' : ''} avec accès admin</p>
+          <p className="text-sm text-gray-500">{admins.length} compte{admins.length > 1 ? 's' : ''} collaborateur{admins.length > 1 ? 's' : ''}</p>
         </div>
         <button onClick={() => setShowAddAdmin(true)} className="btn-gold flex items-center gap-2 text-sm">
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
-          Ajouter un admin
+          Ajouter un collaborateur
         </button>
       </div>
 
@@ -4035,3 +4035,4 @@ export default function AdminDashboard() {
     </div>
   )
 }
+
