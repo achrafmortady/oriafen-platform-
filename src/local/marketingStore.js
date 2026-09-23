@@ -42,20 +42,17 @@ function defaultChannels() {
 
 function defaultProject() {
   return {
-    name: 'Site vitrine — Cabinet Démo',
-    type: 'Site vitrine + prise de RDV en ligne',
-    status: 'En production',
-    phase: 'Révisions client',
-    lastUpdate: formatNowLabel(),
-    progressPct: 70,
+    name: 'Projet digital',
+    type: 'Brand kit, site web et communication',
+    status: 'En attente du brief client',
+    phase: 'Étape 1 — informations de marque à compléter',
+    lastUpdate: null,
+    progressPct: 0,
   }
 }
 
 function defaultDeliverables() {
-  return [
-    { id: 'del-1', name: 'Site vitrine (aperçu)', kind: 'Site', url: 'https://demo.oriafen.invalid', version: 'v2', updatedAt: formatNowLabel() },
-    { id: 'del-2', name: "Maquette page d'accueil", kind: 'Fichier', url: null, version: 'v1', updatedAt: formatNowLabel() },
-  ]
+  return []
 }
 
 function readAll() {
@@ -68,12 +65,63 @@ function writeAll(data) {
 }
 
 function ensureClient(data, clientId) {
-  if (!data[clientId]) data[clientId] = { project: defaultProject(), deliverables: defaultDeliverables(), requests: [] }
+  if (!data[clientId]) data[clientId] = { project: defaultProject(), deliverables: defaultDeliverables(), requests: [], brandIntake: null }
   // Migration non destructive (même convention que dossierStepStore.js) :
   // un client déjà en localStorage avant ce correctif n'a pas encore de
   // `channels` — ajouté sans toucher au reste de ses données existantes.
   if (!data[clientId].channels) data[clientId].channels = defaultChannels()
+  if (!('brandIntake' in data[clientId])) data[clientId].brandIntake = null
   return data[clientId]
+}
+
+export function getBrandIntake(clientId) {
+  return ensureClient(readAll(), clientId).brandIntake
+}
+
+export function submitBrandIntake(clientId, intake, clientName = null) {
+  const data = readAll()
+  const client = ensureClient(data, clientId)
+  const cleanName = (intake.brandName || '').trim()
+  if (!clientId || !cleanName) return null
+  const submittedAt = formatNowLabel()
+  client.brandIntake = {
+    brandName: cleanName,
+    activity: (intake.activity || '').trim(),
+    audience: (intake.audience || '').trim(),
+    offer: (intake.offer || '').trim(),
+    values: (intake.values || '').trim(),
+    tone: (intake.tone || '').trim(),
+    colors: (intake.colors || '').trim(),
+    logoStatus: intake.logoStatus || 'À créer',
+    websiteGoal: (intake.websiteGoal || '').trim(),
+    instagram: (intake.instagram || '').trim(),
+    facebook: (intake.facebook || '').trim(),
+    metaBusiness: (intake.metaBusiness || '').trim(),
+    notes: (intake.notes || '').trim(),
+    submittedAt,
+  }
+  client.project = {
+    ...client.project,
+    name: cleanName,
+    type: 'Brand kit, site web et communication',
+    status: 'Brief reçu',
+    phase: 'Étape 1 complétée — préparation brand kit',
+    lastUpdate: submittedAt,
+    progressPct: Math.max(client.project.progressPct || 0, 10),
+  }
+  writeAll(data)
+  logActivity(clientId, { author: 'Client', action: 'Informations de marque envoyées', detail: cleanName })
+  addAdminNotification({
+    type: 'marketing',
+    title: `Brand kit à préparer — ${clientName || cleanName}`,
+    message: `Brief marque reçu pour ${cleanName}`,
+    clientId,
+    clientName,
+    context: { tab: 'marketing', clientId },
+    important: true,
+    dedupeKey: `admin-notif:brand-intake:${clientId}:${submittedAt}`,
+  })
+  return client.brandIntake
 }
 
 export function getMarketingProject(clientId) {

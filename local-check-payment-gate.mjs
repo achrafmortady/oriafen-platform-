@@ -133,8 +133,13 @@ check('4. applyPaymentValidation fixe stage="Client" ET paymentValidated dans la
 
   assert.equal(updated.stage, 'Client', 'la validation du paiement doit elle-même faire passer le statut à "Client"')
   assert.equal(updated.paymentValidated, true)
-  assert.equal(updated.activity.length, 1, 'une seule entrée d\'historique doit être créée (pas de "Statut changé" en plus de "Paiement validé")')
-  assert.match(updated.activity[0].text, /Paiement validé/)
+  // Deux entrées attendues (paiement + email d'activation préparé, voir
+  // buildActivationEmail) — jamais une troisième entrée séparée "Statut
+  // changé", qui reste ce que ce test vérifie réellement.
+  assert.equal(updated.activity.length, 2, 'paiement + email d\'activation préparé, jamais une entrée "Statut changé" séparée en plus')
+  assert.ok(updated.activity.some(a => /Paiement validé/.test(a.text)))
+  assert.ok(updated.activity.some(a => /activation préparé/.test(a.text)))
+  assert.ok(!updated.activity.some(a => /Statut changé/.test(a.text)), 'jamais une entrée "Statut changé" séparée')
 
   const { rows: rowsAfterFirst } = buildClientsOverview(once)
   assert.equal(rowsAfterFirst.length, 1, 'le lead doit maintenant apparaître exactement une fois dans l\'onglet Clients')
@@ -142,7 +147,7 @@ check('4. applyPaymentValidation fixe stage="Client" ET paymentValidated dans la
   // Rejouer l'action (ex. double-clic) ne doit rien dupliquer.
   const twice = applyPaymentValidation(once, 9204)
   const updatedTwice = twice.find(l => l.id === 9204)
-  assert.equal(updatedTwice.activity.length, 1, 'rejouer la validation ne doit ajouter aucune entrée d\'historique supplémentaire')
+  assert.equal(updatedTwice.activity.length, 2, 'rejouer la validation ne doit ajouter aucune entrée d\'historique supplémentaire')
   assert.deepEqual(updatedTwice.payments, updated.payments, 'rejouer la validation ne doit pas régénérer/dupliquer les échéances de paiement')
 
   const { rows: rowsAfterSecond } = buildClientsOverview(twice)

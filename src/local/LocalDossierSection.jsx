@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { seed, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
+import { cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import { ClientDocumentsPanel, AssociateDocumentsPanel } from './LocalClientsOverview'
 import { STEP_LABELS, getDossierStep, setDossierStep, subscribeToDossierSteps } from './dossierStepStore'
@@ -28,17 +28,17 @@ function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-      if (!raw) return seed()
-      const normalized = normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+      if (!raw) return []
+      const normalized = cleanPreviewLeads(raw)
       if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
       return normalized
-    } catch { return seed() }
+    } catch { return [] }
   })
   useEffect(() => {
     const refresh = () => {
       try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        if (raw) setLeads(normalizeCanonicalDemoClient(normalizeLeadsStage(raw)))
+        setLeads(cleanPreviewLeads(raw || []))
       } catch { /* ignore */ }
     }
     window.addEventListener('storage', refresh)

@@ -165,7 +165,7 @@ console.log('PASS: dédoublonnage des notifications au niveau de l\'adaptateur')
   assert.equal(stillBlocked[0].paymentValidated, false, 'sans pack sélectionné, la conversion doit rester bloquée (même garde-fou que le live)')
 
   const pack = LOCAL_PACKS[0]
-  const leadWithPack = [{ id: 1, paymentValidated: false, packId: pack.id, finalPrice: pack.priceTtc }]
+  const leadWithPack = [{ id: 1, paymentValidated: false, packId: pack.id, finalPrice: pack.priceTtc, email: 'client@example.invalid' }]
   const validated = formationAdapter.validatePayment(leadWithPack, 1)
   assert.equal(validated[0].paymentValidated, true)
 }

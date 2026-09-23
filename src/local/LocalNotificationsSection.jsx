@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { seed, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
+import { cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import {
   getAllClientInitiatedItems, respondToClientRequest, addClientNotification,
@@ -28,7 +28,7 @@ const STORAGE_KEY = 'oriafen-isolated-crm-v1'
 // jamais seulement en mémoire — aucune dépendance à l'ordre de montage des
 // autres onglets.
 function normalizeAndPersist(raw) {
-  const normalized = normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+  const normalized = cleanPreviewLeads(raw || [])
   if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   return normalized
 }
@@ -37,15 +37,14 @@ function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-      if (!raw) return seed()
-      return normalizeAndPersist(raw)
-    } catch { return seed() }
+      return normalizeAndPersist(raw || [])
+    } catch { return [] }
   })
   useEffect(() => {
     const refresh = () => {
       try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        if (raw) setLeads(normalizeAndPersist(raw))
+        setLeads(normalizeAndPersist(raw || []))
       } catch { /* ignore */ }
     }
     window.addEventListener('storage', refresh)

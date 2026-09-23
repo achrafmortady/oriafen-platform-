@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { seed, stages, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
+import { stages, cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import { buildLeadTimeline, findConversionEntry, findFirstEntry, applyStatusChange, addManualComment, STAGE_BADGE_STYLES } from './clientHistory'
 import { toDisplayDateSafe } from './dateUtils'
@@ -55,7 +55,7 @@ const STORAGE_KEY = 'oriafen-isolated-crm-v1'
 // dans CETTE vue précise, alors que le CRM et le header le montraient déjà
 // correctement. Les trois chargeurs doivent appliquer la même migration.
 function normalizeLoadedLeads(raw) {
-  return normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+  return cleanPreviewLeads(raw || [])
 }
 
 // Round 2 du correctif : la lecture en mémoire était déjà corrigée (React
@@ -74,17 +74,17 @@ function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-      if (!raw) return seed()
+      if (!raw) return []
       const normalized = normalizeLoadedLeads(raw)
       if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
       return normalized
-    } catch { return seed() }
+    } catch { return [] }
   })
   useEffect(() => {
     const refresh = () => {
       try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        if (!raw) { setLeads(seed()); return }
+        if (!raw) { setLeads([]); return }
         const normalized = normalizeLoadedLeads(raw)
         if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
         setLeads(normalized)

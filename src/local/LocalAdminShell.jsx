@@ -8,7 +8,7 @@ import LocalNotificationsSection from './LocalNotificationsSection'
 import LocalFormationTrackingSection from './LocalFormationTrackingSection'
 import Logo from '../components/Logo'
 import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon } from '../components/Icons'
-import { stages, seed, today, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
+import { stages, today, cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 
 const NAV_ITEMS = [
@@ -63,10 +63,10 @@ function CompactKpiCard({ icon, label, value, sub, accent = 'green', onClick }) 
 
 function useLocalLeadStats() {
   const [leads, setLeads] = useState(() => {
-    try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); return raw ? normalizeCanonicalDemoClient(normalizeLeadsStage(raw)) : seed() } catch { return seed() }
+    try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); return cleanPreviewLeads(raw || []) } catch { return [] }
   })
   useEffect(() => {
-    const onStorage = () => { try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); setLeads(raw ? normalizeCanonicalDemoClient(normalizeLeadsStage(raw)) : seed()) } catch { /* ignore */ } }
+    const onStorage = () => { try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); setLeads(cleanPreviewLeads(raw || [])) } catch { /* ignore */ } }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])

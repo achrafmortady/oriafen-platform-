@@ -1061,7 +1061,7 @@ await check('Q2. applyPaymentValidation exige un pack sélectionné (même garde
 await check('Q3. applyPaymentValidation génère la répartition 50/25/25 pour un pack non "full", marque le premier paiement "paid", journalise et rend le lead visible dans Clients', () => {
   const pack = LOCAL_PACKS.find(p => p.paymentType !== 'full')
   assert.ok(pack, 'le catalogue doit contenir au moins un pack en plusieurs échéances')
-  const lead = { id: 'conv-2', stage: 'Client', packId: pack.id, finalPrice: pack.priceTtc, paymentValidated: false, activity: [] }
+  const lead = { id: 'conv-2', stage: 'Client', packId: pack.id, finalPrice: pack.priceTtc, paymentValidated: false, email: 'conv2@example.invalid', activity: [] }
   const next = applyPaymentValidation([lead], 'conv-2')
   const converted = next[0]
   assert.equal(converted.paymentValidated, true)
@@ -1070,7 +1070,7 @@ await check('Q3. applyPaymentValidation génère la répartition 50/25/25 pour u
   assert.equal(converted.payments[0].status, 'paid', 'seul le premier paiement doit être marqué réglé')
   assert.ok(converted.payments.slice(1).every(p => p.status === 'pending'))
   assert.ok(converted.convertedAt, 'la date de conversion doit être enregistrée')
-  assert.ok(converted.activity[0].text.includes('Paiement validé'), 'la conversion doit être journalisée dans l\'historique du lead')
+  assert.ok(converted.activity.some(a => a.text.includes('Paiement validé')), 'la conversion doit être journalisée dans l\'historique du lead')
 
   const { rows } = buildClientsOverview([converted])
   assert.equal(rows.length, 1, 'une fois le paiement validé, le lead doit apparaître dans la vue Clients (équivalent local de converted_user_id)')
@@ -1079,7 +1079,7 @@ await check('Q3. applyPaymentValidation génère la répartition 50/25/25 pour u
 await check('Q4. applyPaymentValidation génère une seule ligne à 100% pour un pack "full"', () => {
   const pack = LOCAL_PACKS.find(p => p.paymentType === 'full')
   assert.ok(pack, 'le catalogue doit contenir au moins un pack en paiement intégral')
-  const lead = { id: 'conv-3', stage: 'Client', packId: pack.id, finalPrice: pack.priceTtc, paymentValidated: false, activity: [] }
+  const lead = { id: 'conv-3', stage: 'Client', packId: pack.id, finalPrice: pack.priceTtc, paymentValidated: false, email: 'conv3@example.invalid', activity: [] }
   const next = applyPaymentValidation([lead], 'conv-3')
   const converted = next[0]
   assert.equal(converted.payments.length, 1)
@@ -1089,7 +1089,7 @@ await check('Q4. applyPaymentValidation génère une seule ligne à 100% pour un
 
 await check('Q5. applyPaymentValidation est idempotent : rejouée sur un lead déjà converti, elle ne duplique rien', () => {
   const pack = LOCAL_PACKS[0]
-  const lead = { id: 'conv-4', stage: 'Client', packId: pack.id, finalPrice: pack.priceTtc, paymentValidated: false, activity: [] }
+  const lead = { id: 'conv-4', stage: 'Client', packId: pack.id, finalPrice: pack.priceTtc, paymentValidated: false, email: 'conv4@example.invalid', activity: [] }
   const once = applyPaymentValidation([lead], 'conv-4')
   const twice = applyPaymentValidation(once, 'conv-4')
   assert.deepEqual(twice, once, 'un second appel sur un lead déjà validé ne doit rien changer (pas de nouvelle conversion, pas de doublon d\'activité)')

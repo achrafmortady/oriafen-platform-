@@ -1,5 +1,5 @@
 import React,{useState,useEffect,useRef} from 'react';
-import {stages,owners,sources,today,seed,selectLeads,normalizeLeadsStage,sortRecentFirst,normalizeCanonicalDemoClient,normalizeInconsistentClientStage} from './model';
+import {stages,owners,sources,today,blankLeadTemplate,selectLeads,cleanPreviewLeads,sortRecentFirst} from './model';
 import {getActiveIdentity} from './adapters/identity';
 import {getAdminSendStatus,getClientLastActivity,getClientSends,getImportantUnseen,getReminderCount,markClientSendOpened,markClientSendReminded,markClientSendSeen,replyToClientSend,setClientSendImportant,subscribeToClientTracking,createClientSupportRequest,respondToClientRequest} from './clientTrackingStore';
 import Logo from '../components/Logo';
@@ -16,7 +16,7 @@ import {LOCAL_PACKS,findPackById,basePriceFor,computeFinalPrice} from './packsDa
 import {formatNowLabel,toDisplayDateSafe} from './dateUtils';
 import {buildLeadTimeline,applyNextActionUpdate} from './clientHistory';
 import {buildClientsOverview} from './clientsOverviewData';
-import {applyPaymentValidation,canSetStageToClient,PAYMENT_GATE_MESSAGE} from './conversion';
+import {applyPaymentValidation,canSetStageToClient,PAYMENT_GATE_MESSAGE,EMAIL_GATE_MESSAGE,buildActivationEmail} from './conversion';
 import {addAppointment as addAppointmentPure,markAppointmentDone,APPOINTMENT_TYPE_LABELS as APPT_TYPE_LABELS} from './appointments';
 import {relanceReason,isToRelaunch,isRelanceOverdue,scheduleRelance,clearRelance,RELANCE_STAGE} from './relance';
 const money=n=>new Intl.NumberFormat('fr-MA').format(n)+' DH';
@@ -139,7 +139,7 @@ function NewProspectModal({ onClose, onCreated }) {
     const basePrice = basePriceFor(pack, form.pricingMode)
     const finalPrice = computeFinalPrice(pack, form.pricingMode, form.discountPercent)
     const lead = {
-      ...seed()[0],
+      ...blankLeadTemplate(),
       id: Date.now(),
       createdAt: Date.now(),
       name: fullName,
@@ -236,6 +236,30 @@ const LOCAL_SEND_STATUS = {
  waiting: { label: 'En attente de réponse', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
  replied: { label: 'Répondu', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
  no_response_required: { label: 'Information', cls: 'bg-orias-bg text-gray-600 border-orias-border' },
+}
+
+function ActivationEmailCard({ lead }) {
+ const email = lead.activationEmail || (lead.paymentValidated && lead.email ? buildActivationEmail(lead) : null);
+ if(!email)return null;
+ const mailto=`mailto:${encodeURIComponent(email.to)}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.text)}`;
+ return <section className="detailbox activation-email-card">
+  <h3>Email d'activation</h3>
+  <p className="muted" style={{marginBottom:'10px'}}>En preview locale, l'email ne part pas automatiquement depuis le navigateur. Le message est préparé ici avec le même contenu attendu ; en staging connecté, c'est la fonction serveur qui doit l'envoyer réellement.</p>
+  <div style={{border:'1px solid #e8e2d6',borderRadius:'12px',overflow:'hidden',background:'#fff',marginBottom:'12px'}}>
+   <div style={{background:'#0f3d2e',padding:'18px',textAlign:'center',color:'#c9a84c',fontWeight:700,fontSize:'22px',letterSpacing:'1px'}}>oriafen</div>
+   <div style={{padding:'18px'}}>
+    <p style={{fontWeight:700,color:'#1a3d2b',fontSize:'15px',margin:'0 0 10px'}}>Bienvenue {lead.name.split(' ')[0] || 'client'} 👋</p>
+    <p style={{fontSize:'12px',lineHeight:1.6,color:'#3c4f42',margin:'0 0 14px'}}>Votre compte Oriafen Academy a été créé par notre équipe. Cliquez sur le bouton ci-dessous pour choisir votre mot de passe et accéder à votre formation.</p>
+    <a href={email.activationLink} target="_blank" rel="noreferrer" style={{display:'inline-block',background:'#1a4a2e',color:'#c9a84c',fontSize:'12px',fontWeight:700,borderRadius:'999px',padding:'10px 18px',textDecoration:'none'}}>Activer mon compte →</a>
+   </div>
+  </div>
+  <p className="muted"><strong>Destinataire :</strong> {email.to}</p>
+  <p className="muted"><strong>Sujet :</strong> {email.subject}</p>
+  <div className="twocol" style={{marginTop:'10px'}}>
+   <a href={mailto} style={{textAlign:'center',background:'#214f36',color:'#fff',borderRadius:'7px',padding:'9px 12px',fontSize:'11px',fontWeight:600,textDecoration:'none'}}>Ouvrir l'email à envoyer</a>
+   <button onClick={()=>navigator.clipboard?.writeText(`${email.subject}\n\n${email.text}`)}>Copier le contenu</button>
+  </div>
+ </section>
 }
 
 // Reprend exactement le markup/style de LocalTrackedCommunications dans
@@ -561,7 +585,7 @@ function ClientSpace({onBack, overrideClientId}){
  )
 }
 export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null,clientId=null}){
- const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return raw&&raw.length?normalizeCanonicalDemoClient(normalizeInconsistentClientStage(normalizeLeadsStage(raw))):seed()}catch{return seed()}});
+ const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return cleanPreviewLeads(raw||[])}catch{return []}});
  const [filter,setFilter]=useState(defaults),[view,setView]=useState('Liste'),[selected,setSelected]=useState(null),[note,setNote]=useState(''),[saved,setSaved]=useState('Tous les prospects'),[creating,setCreating]=useState(false),[toast,setToast]=useState('');
  const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel');
  const [notesDraft,setNotesDraft]=useState('');
@@ -826,10 +850,13 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
      </>:<>
       <h3>Valider le premier paiement</h3>
       {convertAttempt&&<p className="muted" style={{color:'#a13636',fontWeight:600}}>{PAYMENT_GATE_MESSAGE}</p>}
+      {!String(lead.email||'').trim()&&<p className="muted" style={{color:'#a13636',fontWeight:600}}>{EMAIL_GATE_MESSAGE}</p>}
       <p className="muted">Crée le compte client, génère les paiements ({lead.packId&&findPackById(lead.packId)?.paymentType==='full'?'100%':'50% / 25% / 25%'}) et marque le premier comme réglé — cette action fait aussi passer le statut à "Client". Tant que cette action n'a pas été effectuée, ce prospect n'apparaît pas dans l'onglet Clients.</p>
-      <button className="primary" disabled={!lead.packId} onClick={()=>{validatePayment(lead.id);setConvertAttempt(false)}}>{lead.packId?'📌 Valider le paiement & créer le compte':'Sélectionnez un pack ci-dessus'}</button>
+      <button className="primary" disabled={!lead.packId||!String(lead.email||'').trim()} onClick={()=>{validatePayment(lead.id);setConvertAttempt(false)}}>{!lead.packId?'Sélectionnez un pack ci-dessus':!String(lead.email||'').trim()?'Ajoutez un email avant conversion':'📌 Valider le paiement & créer le compte'}</button>
      </>}
     </section>}
+
+    <ActivationEmailCard lead={lead}/>
 
     <section className="detailbox next">
      <h3>Prochaine action</h3>

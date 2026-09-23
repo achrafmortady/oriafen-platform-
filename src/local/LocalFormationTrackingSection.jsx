@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { seed, normalizeLeadsStage, normalizeCanonicalDemoClient } from './model'
+import { cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import { getFormationState, subscribeToFormationProgress } from './formationProgressStore'
 import { FORMATION_UNITS } from '../data/mockData'
@@ -25,7 +25,7 @@ const STORAGE_KEY = 'oriafen-isolated-crm-v1'
 // réécriture, ouvrir CET onglet en premier ne préserverait pas la correction
 // pour les autres vues qui liraient encore les données brutes.
 function normalizeAndPersist(raw) {
-  const normalized = normalizeCanonicalDemoClient(normalizeLeadsStage(raw))
+  const normalized = cleanPreviewLeads(raw || [])
   if (JSON.stringify(normalized) !== JSON.stringify(raw)) localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   return normalized
 }
@@ -34,14 +34,14 @@ function useLocalLeads() {
   const [leads, setLeads] = useState(() => {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-      return raw ? normalizeAndPersist(raw) : seed()
-    } catch { return seed() }
+      return normalizeAndPersist(raw || [])
+    } catch { return [] }
   })
   useEffect(() => {
     const refresh = () => {
       try {
         const raw = JSON.parse(localStorage.getItem(STORAGE_KEY))
-        if (raw) setLeads(normalizeAndPersist(raw))
+        setLeads(normalizeAndPersist(raw || []))
       } catch { /* ignore */ }
     }
     window.addEventListener('storage', refresh)

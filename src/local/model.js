@@ -66,6 +66,64 @@ export function seed(){return Array.from({length:24},(_,i)=>{
   return lead.id===CANONICAL_DEMO_CLIENT_ID?applyCanonicalDemoClientIdentity(lead):lead;
 })}
 
+export function blankLeadTemplate() {
+  const packRef = LOCAL_PACKS[0]
+  const pricingMode = 'ttc'
+  const discountPercent = 0
+  const basePrice = basePriceForSafe(packRef, pricingMode)
+  return {
+    id: Date.now(),
+    name: 'Prospect sans nom',
+    email: '',
+    phone: 'Non renseigné',
+    city: '',
+    stage: 'Nouveau',
+    owner: owners[0],
+    source: sources[0],
+    value: 0,
+    pack: packRef?.name || '',
+    packId: packRef?.id || '',
+    pricingMode,
+    discountPercent,
+    basePrice,
+    finalPrice: computeFinalPrice(packRef, pricingMode, discountPercent),
+    paymentValidated: false,
+    convertedAt: null,
+    payments: [],
+    message: '',
+    due: today,
+    action: 'Premier contact',
+    done: false,
+    appointments: [],
+    tasks: [],
+    createdAt: Date.now(),
+    activity: [],
+  }
+}
+
+function basePriceForSafe(pack, pricingMode) {
+  if (!pack) return 0
+  return pricingMode === 'ht' ? pack.priceHt : pack.priceTtc
+}
+
+export function isDemoLead(lead) {
+  const name = String(lead?.name || '').toLowerCase()
+  const email = String(lead?.email || '').toLowerCase()
+  const activityText = (lead?.activity || []).map(a => String(a?.text || '')).join(' ').toLowerCase()
+  return (
+    email.endsWith('@example.invalid') ||
+    name.includes('exemple') ||
+    name === CANONICAL_DEMO_CLIENT_NAME.toLowerCase() ||
+    activityText.includes('prospect fictif') ||
+    String(lead?.message || '').includes('ORIAS') && email.startsWith('prospect')
+  )
+}
+
+export function cleanPreviewLeads(raw) {
+  return normalizeCanonicalDemoClient(normalizeInconsistentClientStage(normalizeLeadsStage(raw || [])))
+    .filter(lead => !isDemoLead(lead))
+}
+
 // Champs d'identité forcés sur le lead canonique — préserve tout le reste
 // (activity, appointments, tasks, owner, source, value, message, due...) :
 // seule l'identité "qui est ce client" est standardisée, jamais son

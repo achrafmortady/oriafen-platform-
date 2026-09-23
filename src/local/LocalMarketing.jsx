@@ -4,6 +4,7 @@ import {
   createModificationRequest, setModificationStatus, updateMarketingProject,
   subscribeToMarketing, MODIFICATION_STATUSES,
   getMarketingChannels, updateMarketingChannel, CHANNEL_STATUSES,
+  getBrandIntake, submitBrandIntake,
 } from './marketingStore'
 import { getActiveClientId } from './adapters/identity'
 
@@ -20,8 +21,8 @@ const CHANNEL_STATUS_STYLE = {
 function ChannelsCard({ channels, editable = false, onUpdate }) {
   return (
     <section className="card p-6">
-      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-1">Progression par canal</h3>
-      <p className="text-xs text-gray-400 mb-4">Statut indépendant pour chaque canal — site, réseaux sociaux, gestionnaire de publicités.</p>
+      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-1">Étape 2 — Production par canal</h3>
+      <p className="text-xs text-gray-400 mb-4">Chaque partie avance séparément : Site web, Instagram, Facebook, Meta Business Manager / Ads Manager.</p>
       <div className="space-y-4">
         {channels.map(ch => (
           <div key={ch.id} className="border border-orias-border rounded-xl p-4">
@@ -77,6 +78,117 @@ function ChannelsCard({ channels, editable = false, onUpdate }) {
           </div>
         ))}
       </div>
+    </section>
+  )
+}
+
+function BrandIntakeForm({ clientName, onSubmit }) {
+  const [form, setForm] = useState({
+    brandName: '',
+    activity: '',
+    audience: '',
+    offer: '',
+    values: '',
+    tone: '',
+    colors: '',
+    logoStatus: 'À créer',
+    websiteGoal: '',
+    instagram: '',
+    facebook: '',
+    metaBusiness: '',
+    notes: '',
+  })
+  const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
+  const canSubmit = form.brandName.trim() && form.activity.trim() && form.websiteGoal.trim()
+
+  return (
+    <section className="card p-6">
+      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Brand kit & informations de marque</p>
+      <h3 className="text-xl font-bold text-orias-green mb-2">Avant Mon site & communication, envoyez les bases de votre marque</h3>
+      <p className="text-sm text-gray-500 mb-5">Ces informations lancent le brand kit, puis le site web, Instagram, Facebook, Meta Business Manager / Ads Manager et les livrables de communication.</p>
+      <form className="space-y-4" onSubmit={e => { e.preventDefault(); if (canSubmit) onSubmit(form) }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Nom de marque / cabinet *</span>
+            <input className="input-field text-sm" value={form.brandName} onChange={e => update('brandName', e.target.value)} placeholder={clientName || 'Nom du cabinet'} required />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Activité principale *</span>
+            <input className="input-field text-sm" value={form.activity} onChange={e => update('activity', e.target.value)} placeholder="Courtier assurance, mutuelle, prévoyance..." required />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Clientèle cible</span>
+            <input className="input-field text-sm" value={form.audience} onChange={e => update('audience', e.target.value)} placeholder="Particuliers, indépendants, TPE..." />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Offres à mettre en avant</span>
+            <input className="input-field text-sm" value={form.offer} onChange={e => update('offer', e.target.value)} placeholder="Santé, auto, habitation, pro..." />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Ton souhaité</span>
+            <select className="input-field text-sm" value={form.tone} onChange={e => update('tone', e.target.value)}>
+              <option value="">Sélectionner</option>
+              <option>Professionnel et rassurant</option>
+              <option>Premium et institutionnel</option>
+              <option>Simple et accessible</option>
+              <option>Dynamique et commercial</option>
+            </select>
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Logo</span>
+            <select className="input-field text-sm" value={form.logoStatus} onChange={e => update('logoStatus', e.target.value)}>
+              <option>À créer</option>
+              <option>J'ai déjà un logo</option>
+              <option>À améliorer</option>
+            </select>
+          </label>
+          <label className="block md:col-span-2">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Couleurs, valeurs, inspirations</span>
+            <input className="input-field text-sm" value={form.colors} onChange={e => update('colors', e.target.value)} placeholder="Couleurs, valeurs, sites ou marques de référence..." />
+          </label>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="block md:col-span-2">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Objectif du site web *</span>
+            <textarea className="input-field text-sm resize-none" rows={3} value={form.websiteGoal} onChange={e => update('websiteGoal', e.target.value)} placeholder="Ex : présenter le cabinet, capter des demandes de devis, prise de RDV..." required />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Instagram existant ou à créer</span>
+            <input className="input-field text-sm" value={form.instagram} onChange={e => update('instagram', e.target.value)} placeholder="@compte ou à créer" />
+          </label>
+          <label className="block">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Facebook existant ou à créer</span>
+            <input className="input-field text-sm" value={form.facebook} onChange={e => update('facebook', e.target.value)} placeholder="Page Facebook ou à créer" />
+          </label>
+          <label className="block md:col-span-2">
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Meta Business Manager / Ads Manager</span>
+            <input className="input-field text-sm" value={form.metaBusiness} onChange={e => update('metaBusiness', e.target.value)} placeholder="Accès existant, à créer, ou informations utiles" />
+          </label>
+        </div>
+        <label className="block">
+          <span className="block text-xs font-semibold text-gray-500 mb-1">Notes complémentaires</span>
+          <textarea className="input-field text-sm resize-none" rows={3} value={form.notes} onChange={e => update('notes', e.target.value)} placeholder="Contraintes, délais, exemples, informations légales..." />
+        </label>
+        <button type="submit" disabled={!canSubmit} className="btn-gold text-sm disabled:opacity-50">Envoyer mes informations de marque</button>
+      </form>
+    </section>
+  )
+}
+
+function BrandSummaryCard({ intake }) {
+  return (
+    <section className="card p-6 border-orias-gold/40">
+      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Brand kit reçu</p>
+      <h3 className="text-lg font-bold text-orias-green mb-4">{intake.brandName}</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Activité</p><p className="font-semibold text-gray-800">{intake.activity || 'Non renseigné'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Ton</p><p className="font-semibold text-gray-800">{intake.tone || 'Non renseigné'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Logo</p><p className="font-semibold text-gray-800">{intake.logoStatus}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Site web</p><p className="font-semibold text-gray-800">{intake.websiteGoal || 'Non renseigné'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Instagram</p><p className="font-semibold text-gray-800">{intake.instagram || 'À préciser'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Facebook / Meta</p><p className="font-semibold text-gray-800">{intake.facebook || intake.metaBusiness || 'À préciser'}</p></div>
+      </div>
+      <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
     </section>
   )
 }
@@ -201,16 +313,20 @@ function RequestsCard({ requests, onNewRequest }) {
 // pour libeller la notification admin ("Nouvelle demande de modification —
 // <nom>") — n'affecte rien d'autre.
 export function ClientMarketingPanel({ clientId, clientName = null }) {
+  const [brandIntake, setBrandIntake] = useState(() => getBrandIntake(clientId))
   const [project, setProject] = useState(() => getMarketingProject(clientId))
   const [channels, setChannels] = useState(() => getMarketingChannels(clientId))
   const [deliverables, setDeliverables] = useState(() => getDeliverables(clientId))
   const [requests, setRequests] = useState(() => getModificationRequests(clientId))
   const [showModal, setShowModal] = useState(false)
-  const refresh = () => { setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setDeliverables(getDeliverables(clientId)); setRequests(getModificationRequests(clientId)) }
+  const refresh = () => { setBrandIntake(getBrandIntake(clientId)); setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setDeliverables(getDeliverables(clientId)); setRequests(getModificationRequests(clientId)) }
   useEffect(() => subscribeToMarketing(refresh), [clientId])
 
   return (
     <div className="space-y-5">
+      {brandIntake
+        ? <BrandSummaryCard intake={brandIntake} />
+        : <BrandIntakeForm clientName={clientName} onSubmit={form => { submitBrandIntake(clientId, form, clientName); refresh() }} />}
       <ProjectOverviewCard project={project} />
       <ChannelsCard channels={channels} />
       <DeliverablesCard deliverables={deliverables} />

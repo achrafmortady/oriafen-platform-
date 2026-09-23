@@ -116,8 +116,10 @@ check('crmAdapter.convertToClient fixe stage=Client + paymentValidated en une se
   const updated = next.find(l => l.id === prospect.id)
   assert.equal(updated.stage, 'Client')
   assert.equal(updated.paymentValidated, true)
-  assert.equal(updated.activity.length, activityBefore + 1, 'une seule entrée d\'historique ajoutée, pas de doublon conversion/statut')
-  assert.match(updated.activity[0].text, /Paiement validé/)
+  // +2 : paiement + email d'activation préparé (buildActivationEmail) —
+  // toujours pas de 3e entrée "Statut changé" séparée.
+  assert.equal(updated.activity.length, activityBefore + 2, 'paiement + email d\'activation préparé, pas de doublon conversion/statut')
+  assert.ok(updated.activity.some(a => /Paiement validé/.test(a.text)))
 })
 
 check('crmAdapter expose la prochaine action / historique / RDV / relances sans réimplémenter clientHistory.js/relance.js/appointments.js', () => {

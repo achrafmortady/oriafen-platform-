@@ -45,6 +45,43 @@ import { formatNowLabel } from './dateUtils.js'
 // est bloquée faute de paiement validé — un seul texte, réutilisé partout où
 // le gate peut se déclencher, pour ne jamais désynchroniser le message.
 export const PAYMENT_GATE_MESSAGE = "Ce prospect ne peut pas passer au statut \"Client\" tant que le paiement n'a pas été validé. Utilisez le bouton \"Valider le paiement & créer le compte\" pour convertir ce prospect."
+export const EMAIL_GATE_MESSAGE = "Ajoutez l'email du prospect avant de créer le compte client. Il servira d'identifiant de connexion et évite un compte client incomplet."
+
+// origin : pris depuis window.location quand disponible (navigateur) —
+// jamais un accès direct non protégé, pour rester utilisable tel quel dans
+// les scripts de test Node (local-check-*.mjs, aucun window.location réel)
+// sans faire planter applyPaymentValidation, qui appelle cette fonction.
+export function buildActivationLink(lead) {
+  const origin = (typeof window !== 'undefined' && window.location?.origin) || ''
+  const params = new URLSearchParams({
+    email: String(lead?.email || '').trim(),
+    name: String(lead?.name || '').trim(),
+    localActivation: String(lead?.id || Date.now()),
+  })
+  return `${origin}/set-password?${params.toString()}`
+}
+
+export function buildActivationEmail(lead) {
+  const firstName = String(lead?.name || 'client').trim().split(/\s+/)[0] || 'client'
+  const activationLink = buildActivationLink(lead)
+  return {
+    to: String(lead?.email || '').trim(),
+    subject: 'Activez votre compte Oriafen Academy',
+    activationLink,
+    text: [
+      `Bienvenue ${firstName} 👋`,
+      '',
+      'Votre compte Oriafen Academy a été créé par notre équipe.',
+      'Cliquez sur le lien ci-dessous pour choisir votre mot de passe et accéder à votre formation.',
+      '',
+      activationLink,
+      '',
+      'Une question ? Contactez-nous sur WhatsApp.',
+      '',
+      'Oriafen Academy',
+    ].join('\n'),
+  }
+}
 
 // Seul point de vérité du gate paiement — un prospect ne peut passer à
 // stage==='Client' que si paymentValidated est déjà vrai (compte déjà créé
@@ -79,12 +116,14 @@ export function buildMockPaymentRows(pack, finalPrice) {
 export function applyPaymentValidation(leads, leadId) {
   const lead = leads.find(l => l.id === leadId)
   if (!lead || lead.paymentValidated) return leads
+  if (!String(lead.email || '').trim()) return leads
   const pack = findPackById(lead.packId)
   if (!pack) return leads // même garde-fou que le live : pas de pack -> pas de conversion possible
   const payments = buildMockPaymentRows(pack, lead.finalPrice ?? pack.priceTtc)
   if (payments.length) payments[0] = { ...payments[0], status: 'paid' }
   const now = formatNowLabel()
   const firstAmount = payments[0]?.amount ?? 0
+  const activationEmail = buildActivationEmail(lead)
   // stage: 'Client' fixé ICI, dans la même mise à jour que la validation du
   // paiement — c'est désormais la SEULE façon pour un prospect de devenir
   // "Client" (voir canSetStageToClient ci-dessus). Une seule entrée
@@ -107,7 +146,10 @@ export function applyPaymentValidation(leads, leadId) {
         convertedAt: now,
         payments,
         relance: null,
+        activationEmail,
+        activationEmailPreparedAt: now,
         activity: [
+          { text: `Email d'activation préparé pour ${activationEmail.to}`, at: now },
           { text: `Paiement validé — compte client créé (${firstAmount} DH réglés)`, at: now },
           ...(l.activity || []),
         ],
