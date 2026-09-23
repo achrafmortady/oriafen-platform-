@@ -28,7 +28,7 @@ function ProtectedRoute({ children, requiredRole }) {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
-  const isAdminLike = user.role === 'admin' || user.role === 'super_admin'
+  const isAdminLike = ['admin', 'super_admin', 'juridique', 'marketing'].includes(user.role)
   const hasAccess = requiredRole === 'admin' ? isAdminLike : user.role === requiredRole
   if (requiredRole && !hasAccess) {
     return <Navigate to={isAdminLike ? '/admin' : '/dashboard'} replace />
@@ -39,7 +39,7 @@ function ProtectedRoute({ children, requiredRole }) {
 function AppRoutes() {
   const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
-  const isAdminLike = user && (user.role === 'admin' || user.role === 'super_admin')
+  const isAdminLike = user && ['admin', 'super_admin', 'juridique', 'marketing'].includes(user.role)
 
   return (
     <Routes>

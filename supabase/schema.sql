@@ -11,10 +11,16 @@ CREATE TABLE IF NOT EXISTS public.users (
   id             uuid        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   email          text        UNIQUE NOT NULL,
   full_name      text,
-  role           text        NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin')),
+  role           text        NOT NULL DEFAULT 'student' CHECK (role IN ('student', 'admin', 'super_admin', 'juridique', 'marketing')),
   pack_purchased text,
   created_at     timestamptz DEFAULT now()
 );
+
+-- Keep existing installations compatible with collaborator roles added by the dashboard.
+ALTER TABLE public.users DROP CONSTRAINT IF EXISTS users_role_check;
+ALTER TABLE public.users
+  ADD CONSTRAINT users_role_check
+  CHECK (role IN ('student', 'admin', 'super_admin', 'juridique', 'marketing'));
 
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 

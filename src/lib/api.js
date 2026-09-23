@@ -717,7 +717,7 @@ export async function createClient(fullName, email, packId, discountPercent = 0,
 }
 
 // Super-admin only: create a colleague admin account (no finance access)
-export async function createAdminAccount(fullName, email) {
+export async function createAdminAccount(fullName, email, role = 'admin') {
   if (!isConfigured) return { success: false, error: 'Supabase non configuré.' }
   try {
     const { data: { session } } = await supabase.auth.getSession()
@@ -727,7 +727,7 @@ export async function createAdminAccount(fullName, email) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${session?.access_token}`,
       },
-      body: JSON.stringify({ fullName, email, role: 'admin' }),
+      body: JSON.stringify({ fullName, email, role }),
     })
     const result = await res.json()
     if (!result.success) return { success: false, error: result.error }
@@ -1177,7 +1177,7 @@ export async function fetchAdmins() {
     const { data, error } = await supabase
       .from('users')
       .select('id, email, full_name, role, blocked, created_at')
-      .in('role', ['admin', 'super_admin'])
+      .in('role', ['admin', 'super_admin', 'juridique', 'marketing'])
       .order('created_at', { ascending: false })
     if (error) throw error
     return data ?? []

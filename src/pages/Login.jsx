@@ -33,8 +33,9 @@ export default function Login() {
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
   }, [])
 
-  if (user) return <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} replace />
-  const doRedirect = (role) => navigate(role === 'admin' ? '/admin' : '/dashboard', { replace: true })
+  const isAdminLike = role => ['admin', 'super_admin', 'juridique', 'marketing'].includes(role)
+  if (user) return <Navigate to={isAdminLike(user.role) ? '/admin' : '/dashboard'} replace />
+  const doRedirect = (role) => navigate(isAdminLike(role) ? '/admin' : '/dashboard', { replace: true })
 
   const handleSubmit = async (e) => {
     e.preventDefault()

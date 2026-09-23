@@ -31,6 +31,14 @@ const NAV_ITEMS = [
 const FINANCE_NAV_ITEM = { id: 'finance', label: 'Finance', icon: <TrendingUpIcon className="w-4 h-4" /> }
 const TEAM_NAV_ITEM = { id: 'equipe', label: 'Équipe', icon: <UsersIcon className="w-4 h-4" /> }
 
+// Onglets visibles pour les rôles collaborateurs à accès restreint. super_admin et admin
+// classique gardent le comportement existant (voir plus bas) ; Finance et Équipe restent
+// réservés au super admin dans tous les cas — personne d'autre ne voit les revenus.
+const ROLE_TAB_IDS = {
+  juridique: ['dossiers', 'formation', 'clients', 'notifs'],
+  marketing: ['clients', 'marketing', 'notifs'],
+}
+
 function StatCard({ icon, label, value, sub, color }) {
   return (
     <div className={`rounded-2xl p-5 border ${color}`}>
@@ -53,9 +61,16 @@ const PACK_CATEGORY_LABELS = {
   combine:   '⭐ Packs Combinés',
 }
 
+const COLLAB_ROLES = [
+  { value: 'admin',     label: 'Admin (accès complet, sans Finance)', desc: 'Clients, CRM, Marketing, Dossiers, Formation, Notifications.' },
+  { value: 'juridique', label: 'Juridique',                            desc: 'Dossiers, Formation, Clients et Notifications uniquement.' },
+  { value: 'marketing', label: 'Marketing',                            desc: 'Clients, Marketing et Notifications uniquement.' },
+]
+
 function AddAdminModal({ onClose, onAdd }) {
   const [fullName, setFullName] = useState('')
   const [email,    setEmail]    = useState('')
+  const [role,     setRole]     = useState('admin')
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
   const [success,  setSuccess]  = useState(null)
@@ -64,7 +79,7 @@ function AddAdminModal({ onClose, onAdd }) {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const result = await createAdminAccount(fullName, email)
+    const result = await createAdminAccount(fullName, email, role)
     setLoading(false)
     if (result.success) {
       setSuccess(true)
@@ -109,8 +124,14 @@ function AddAdminModal({ onClose, onAdd }) {
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} required
                   className="input-field" placeholder="collegue@oriafen.com" />
               </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Type de collaborateur</label>
+                <select value={role} onChange={e => setRole(e.target.value)} className="input-field">
+                  {COLLAB_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-700">
-                Ce compte aura accès à Clients, Dossiers, Formation et Notifications — mais pas à la section Finance.
+                {COLLAB_ROLES.find(r => r.value === role)?.desc} Aucun collaborateur (hors super admin) n'a accès à la section Finance ni aux revenus.
               </div>
               <button type="submit" disabled={loading} className="btn-gold w-full flex items-center justify-center gap-2 disabled:opacity-70">
                 {loading
@@ -3307,8 +3328,15 @@ function TeamSection() {
                 <td className="px-5 py-3 font-semibold text-gray-800">{admin.full_name}</td>
                 <td className="px-4 py-3 text-gray-500">{admin.email}</td>
                 <td className="px-4 py-3">
-                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${admin.role === 'super_admin' ? 'bg-orias-gold/20 text-orias-gold' : 'bg-orias-green/10 text-orias-green'}`}>
-                    {admin.role === 'super_admin' ? 'Super admin' : 'Admin'}
+                  <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                    admin.role === 'super_admin' ? 'bg-orias-gold/20 text-orias-gold' :
+                    admin.role === 'juridique'   ? 'bg-blue-100 text-blue-700' :
+                    admin.role === 'marketing'   ? 'bg-purple-100 text-purple-700' :
+                    'bg-orias-green/10 text-orias-green'
+                  }`}>
+                    {admin.role === 'super_admin' ? 'Super admin' :
+                     admin.role === 'juridique'   ? 'Juridique' :
+                     admin.role === 'marketing'   ? 'Marketing' : 'Admin'}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -3858,10 +3886,19 @@ export default function AdminDashboard() {
   }
 
   const isSuperAdmin = user?.role === 'super_admin'
-  const navItems = isSuperAdmin ? [...NAV_ITEMS, TEAM_NAV_ITEM, FINANCE_NAV_ITEM] : NAV_ITEMS
+  // Collaborateurs à accès restreint : juridique (Dossiers, Formation, Clients, Notifications)
+  // et marketing (Clients, Marketing, Notifications). Personne à part le super admin ne voit Finance/Équipe.
+  const navItems = isSuperAdmin
+    ? [...NAV_ITEMS, TEAM_NAV_ITEM, FINANCE_NAV_ITEM]
+    : ROLE_TAB_IDS[user?.role]
+      ? NAV_ITEMS.filter(item => ROLE_TAB_IDS[user.role].includes(item.id))
+      : NAV_ITEMS
+
+  const allowedTabIds = navItems.map(n => n.id)
+  const safeActiveTab = allowedTabIds.includes(activeTab) ? activeTab : navItems[0]?.id
 
   const renderSection = () => {
-    switch (activeTab) {
+    switch (safeActiveTab) {
       case 'clients':   return <ClientsSection isSuperAdmin={isSuperAdmin} />
       case 'leads':     return <CRMSection />
       case 'marketing': return <MarketingSection isSuperAdmin={isSuperAdmin} />
@@ -3942,7 +3979,7 @@ export default function AdminDashboard() {
                 key={item.id}
                 onClick={() => handleTabClick(item.id)}
                 className={`relative flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                  activeTab === item.id
+                  safeActiveTab === item.id
                     ? 'bg-orias-green text-white shadow-sm'
                     : 'text-gray-600 hover:text-orias-green hover:bg-orias-bg'
                 }`}
@@ -3969,7 +4006,7 @@ export default function AdminDashboard() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         <div className="mb-5">
           <h2 className="text-xl font-bold text-orias-green">
-            {navItems.find(n => n.id === activeTab)?.label}
+            {navItems.find(n => n.id === safeActiveTab)?.label}
           </h2>
         </div>
         {renderSection()}
