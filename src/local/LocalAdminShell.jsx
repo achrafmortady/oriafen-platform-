@@ -83,8 +83,13 @@ export default function LocalAdminShell() {
   const actionsEnRetard = leads.filter(l => !l.done && l.due < today).length
   const { kpis: clientKpis, rows: clientRows } = buildClientsOverview(leads)
   const reponsesEnAttente = clientRows.filter(r => r.nextAction === 'Attendre réponse').length
-  const latestClientPreview = clientRows[0]
-    ? { id: clientRows[0].id, name: `${clientRows[0].prenom || ''} ${clientRows[0].nom || ''}`.trim() || clientRows[0].email || `Client #${clientRows[0].id}`, email: clientRows[0].email || null }
+  // Même logique que LocalCRM.jsx (client réellement converti le plus
+  // récent — jamais clientRows[0], qui est trié par priorité de statut, pas
+  // par date de conversion) : garantit que "Voir l'espace client" et
+  // l'onglet Marketing pointent toujours vers le même client réel.
+  const latestConvertedLead = leads.filter(l => l.stage === 'Client' && l.paymentValidated).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))[0] || null
+  const latestClientPreview = latestConvertedLead
+    ? { id: latestConvertedLead.id, name: latestConvertedLead.name, email: latestConvertedLead.email || null }
     : null
 
   const handleTabClick = (id) => setActiveTab(id)
@@ -134,7 +139,7 @@ export default function LocalAdminShell() {
       )
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
-    if (activeTab === 'marketing') return <AdminMarketingPanel />
+    if (activeTab === 'marketing') return <AdminMarketingPanel clientId={latestClientPreview?.id} />
     if (activeTab === 'dossiers') return <LocalDossierSection />
     if (activeTab === 'formation') return <LocalFormationTrackingSection />
     if (activeTab === 'notifs') return <LocalNotificationsSection />

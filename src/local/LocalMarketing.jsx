@@ -6,7 +6,6 @@ import {
   getMarketingChannels, updateMarketingChannel, CHANNEL_STATUSES,
   getBrandIntake, submitBrandIntake,
 } from './marketingStore'
-import { getActiveClientId } from './adapters/identity'
 
 const CHANNEL_STATUS_STYLE = {
   'À démarrer': 'bg-gray-50 text-gray-500 border-gray-200',
@@ -90,16 +89,22 @@ function BrandIntakeForm({ clientName, onSubmit }) {
     offer: '',
     values: '',
     tone: '',
-    colors: '',
+    colors: ['#1a3d2b', '#c9a84c', '#ffffff'],
     logoStatus: 'À créer',
+    logoInfo: '',
     websiteGoal: '',
+    instagramStatus: 'À créer',
     instagram: '',
+    facebookStatus: 'À créer',
     facebook: '',
+    metaBusinessStatus: 'À créer',
     metaBusiness: '',
     notes: '',
   })
   const update = (key, value) => setForm(prev => ({ ...prev, [key]: value }))
+  const updateColor = (index, value) => setForm(prev => ({ ...prev, colors: prev.colors.map((c, i) => i === index ? value : c) }))
   const canSubmit = form.brandName.trim() && form.activity.trim() && form.websiteGoal.trim()
+  const assetOptions = ['À créer', 'Existe déjà', 'À améliorer']
 
   return (
     <section className="card p-6">
@@ -137,14 +142,30 @@ function BrandIntakeForm({ clientName, onSubmit }) {
           <label className="block">
             <span className="block text-xs font-semibold text-gray-500 mb-1">Logo</span>
             <select className="input-field text-sm" value={form.logoStatus} onChange={e => update('logoStatus', e.target.value)}>
-              <option>À créer</option>
-              <option>J'ai déjà un logo</option>
-              <option>À améliorer</option>
+              {assetOptions.map(opt => <option key={opt}>{opt}</option>)}
             </select>
           </label>
+          {form.logoStatus !== 'À créer' && (
+            <label className="block md:col-span-2">
+              <span className="block text-xs font-semibold text-gray-500 mb-1">Lien ou infos du logo existant</span>
+              <input className="input-field text-sm" value={form.logoInfo} onChange={e => update('logoInfo', e.target.value)} placeholder="Lien Drive, site actuel, fichier à envoyer, remarques..." />
+            </label>
+          )}
+          <div className="md:col-span-2">
+            <span className="block text-xs font-semibold text-gray-500 mb-2">Couleurs souhaitées</span>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {form.colors.map((color, index) => (
+                <label key={index} className="flex items-center gap-3 rounded-xl border border-orias-border bg-orias-bg/40 px-3 py-2">
+                  <input type="color" value={color} onChange={e => updateColor(index, e.target.value)} className="h-9 w-12 cursor-pointer rounded border border-orias-border bg-white p-1" />
+                  <span className="text-xs font-semibold text-gray-600">Couleur {index + 1}</span>
+                  <span className="ml-auto text-xs text-gray-400">{color}</span>
+                </label>
+              ))}
+            </div>
+          </div>
           <label className="block md:col-span-2">
-            <span className="block text-xs font-semibold text-gray-500 mb-1">Couleurs, valeurs, inspirations</span>
-            <input className="input-field text-sm" value={form.colors} onChange={e => update('colors', e.target.value)} placeholder="Couleurs, valeurs, sites ou marques de référence..." />
+            <span className="block text-xs font-semibold text-gray-500 mb-1">Valeurs, inspirations</span>
+            <input className="input-field text-sm" value={form.values} onChange={e => update('values', e.target.value)} placeholder="Valeurs, sites ou marques de référence..." />
           </label>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -152,18 +173,39 @@ function BrandIntakeForm({ clientName, onSubmit }) {
             <span className="block text-xs font-semibold text-gray-500 mb-1">Objectif du site web *</span>
             <textarea className="input-field text-sm resize-none" rows={3} value={form.websiteGoal} onChange={e => update('websiteGoal', e.target.value)} placeholder="Ex : présenter le cabinet, capter des demandes de devis, prise de RDV..." required />
           </label>
-          <label className="block">
-            <span className="block text-xs font-semibold text-gray-500 mb-1">Instagram existant ou à créer</span>
-            <input className="input-field text-sm" value={form.instagram} onChange={e => update('instagram', e.target.value)} placeholder="@compte ou à créer" />
-          </label>
-          <label className="block">
-            <span className="block text-xs font-semibold text-gray-500 mb-1">Facebook existant ou à créer</span>
-            <input className="input-field text-sm" value={form.facebook} onChange={e => update('facebook', e.target.value)} placeholder="Page Facebook ou à créer" />
-          </label>
-          <label className="block md:col-span-2">
-            <span className="block text-xs font-semibold text-gray-500 mb-1">Meta Business Manager / Ads Manager</span>
-            <input className="input-field text-sm" value={form.metaBusiness} onChange={e => update('metaBusiness', e.target.value)} placeholder="Accès existant, à créer, ou informations utiles" />
-          </label>
+          <div className="space-y-2">
+            <label className="block">
+              <span className="block text-xs font-semibold text-gray-500 mb-1">Instagram</span>
+              <select className="input-field text-sm" value={form.instagramStatus} onChange={e => update('instagramStatus', e.target.value)}>
+                <option>À créer</option>
+                <option>Existe déjà</option>
+                <option>À récupérer / améliorer</option>
+              </select>
+            </label>
+            {form.instagramStatus !== 'À créer' && <input className="input-field text-sm" value={form.instagram} onChange={e => update('instagram', e.target.value)} placeholder="@compte, lien, identifiant ou infos d'accès" />}
+          </div>
+          <div className="space-y-2">
+            <label className="block">
+              <span className="block text-xs font-semibold text-gray-500 mb-1">Facebook</span>
+              <select className="input-field text-sm" value={form.facebookStatus} onChange={e => update('facebookStatus', e.target.value)}>
+                <option>À créer</option>
+                <option>Existe déjà</option>
+                <option>À récupérer / améliorer</option>
+              </select>
+            </label>
+            {form.facebookStatus !== 'À créer' && <input className="input-field text-sm" value={form.facebook} onChange={e => update('facebook', e.target.value)} placeholder="Lien page Facebook, nom de page ou infos d'accès" />}
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <label className="block">
+              <span className="block text-xs font-semibold text-gray-500 mb-1">Meta Business Manager / Ads Manager</span>
+              <select className="input-field text-sm" value={form.metaBusinessStatus} onChange={e => update('metaBusinessStatus', e.target.value)}>
+                <option>À créer</option>
+                <option>Existe déjà</option>
+                <option>À configurer / relier</option>
+              </select>
+            </label>
+            {form.metaBusinessStatus !== 'À créer' && <input className="input-field text-sm" value={form.metaBusiness} onChange={e => update('metaBusiness', e.target.value)} placeholder="Business ID, email admin, lien Business Manager ou infos utiles" />}
+          </div>
         </div>
         <label className="block">
           <span className="block text-xs font-semibold text-gray-500 mb-1">Notes complémentaires</span>
@@ -183,11 +225,63 @@ function BrandSummaryCard({ intake }) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Activité</p><p className="font-semibold text-gray-800">{intake.activity || 'Non renseigné'}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Ton</p><p className="font-semibold text-gray-800">{intake.tone || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Logo</p><p className="font-semibold text-gray-800">{intake.logoStatus}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Logo</p><p className="font-semibold text-gray-800">{intake.logoStatus}{intake.logoInfo ? ` — ${intake.logoInfo}` : ''}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Site web</p><p className="font-semibold text-gray-800">{intake.websiteGoal || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Instagram</p><p className="font-semibold text-gray-800">{intake.instagram || 'À préciser'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Facebook / Meta</p><p className="font-semibold text-gray-800">{intake.facebook || intake.metaBusiness || 'À préciser'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Instagram</p><p className="font-semibold text-gray-800">{intake.instagramStatus || 'À créer'}{intake.instagram ? ` — ${intake.instagram}` : ''}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Facebook</p><p className="font-semibold text-gray-800">{intake.facebookStatus || 'À créer'}{intake.facebook ? ` — ${intake.facebook}` : ''}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Meta Ads</p><p className="font-semibold text-gray-800">{intake.metaBusinessStatus || 'À créer'}{intake.metaBusiness ? ` — ${intake.metaBusiness}` : ''}</p></div>
       </div>
+      {Array.isArray(intake.colors) && intake.colors.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />{color}</span>)}
+        </div>
+      )}
+      <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
+    </section>
+  )
+}
+
+function AdminBrandIntakeCard({ intake }) {
+  if (!intake) {
+    return (
+      <section className="card p-6 border-dashed border-orias-border">
+        <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brief client</p>
+        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-2">Informations de marque non reçues</h3>
+        <p className="text-sm text-gray-400">Le client n'a pas encore envoyé son brand kit / brief projet.</p>
+      </section>
+    )
+  }
+  const rows = [
+    ['Marque / cabinet', intake.brandName],
+    ['Activité', intake.activity],
+    ['Clientèle cible', intake.audience],
+    ['Offres', intake.offer],
+    ['Ton', intake.tone],
+    ['Logo', `${intake.logoStatus || 'À créer'}${intake.logoInfo ? ` — ${intake.logoInfo}` : ''}`],
+    ['Objectif site', intake.websiteGoal],
+    ['Instagram', `${intake.instagramStatus || 'À créer'}${intake.instagram ? ` — ${intake.instagram}` : ''}`],
+    ['Facebook', `${intake.facebookStatus || 'À créer'}${intake.facebook ? ` — ${intake.facebook}` : ''}`],
+    ['Meta Business / Ads', `${intake.metaBusinessStatus || 'À créer'}${intake.metaBusiness ? ` — ${intake.metaBusiness}` : ''}`],
+    ['Valeurs / inspirations', intake.values],
+    ['Notes', intake.notes],
+  ]
+  return (
+    <section className="card p-6">
+      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brief client reçu</p>
+      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Demandes client pour brand kit, site, réseaux et ads</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+        {rows.map(([label, value]) => (
+          <div key={label} className="rounded-xl border border-orias-border bg-orias-bg/40 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+            <p className="mt-1 font-semibold text-gray-800 whitespace-pre-wrap">{value || 'Non renseigné'}</p>
+          </div>
+        ))}
+      </div>
+      {Array.isArray(intake.colors) && intake.colors.length > 0 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />Couleur {index + 1}: {color}</span>)}
+        </div>
+      )}
       <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
     </section>
   )
@@ -342,20 +436,37 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
 }
 
 // Vue ADMIN — feedback #8 : traiter les demandes du client (changement de
-// statut), garder l'historique. Résolu via l'adaptateur identity.js (jamais
-// un id en dur ici) — un seul client de démo aujourd'hui, le même que
-// ClientSpace et la fiche admin "Clients".
-export function AdminMarketingPanel({ clientId = getActiveClientId() }) {
-  const [project, setProject] = useState(() => getMarketingProject(clientId))
-  const [channels, setChannels] = useState(() => getMarketingChannels(clientId))
-  const [requests, setRequests] = useState(() => getModificationRequests(clientId))
+// statut), garder l'historique. clientId transmis explicitement par
+// LocalAdminShell (client réellement converti le plus récent) — SANS repli
+// implicite sur le client de démo : tant qu'aucun client réel n'est
+// converti, clientId reste null et cette vue affiche un état vide explicite
+// (même garantie que "Voir l'espace client" dans LocalCRM.jsx).
+export function AdminMarketingPanel({ clientId = null }) {
+  const [brandIntake, setBrandIntake] = useState(() => clientId != null ? getBrandIntake(clientId) : null)
+  const [project, setProject] = useState(() => clientId != null ? getMarketingProject(clientId) : null)
+  const [channels, setChannels] = useState(() => clientId != null ? getMarketingChannels(clientId) : [])
+  const [requests, setRequests] = useState(() => clientId != null ? getModificationRequests(clientId) : [])
   const [phaseDraft, setPhaseDraft] = useState('')
-  const refresh = () => { setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setRequests(getModificationRequests(clientId)) }
+  const refresh = () => {
+    if (clientId == null) return
+    setBrandIntake(getBrandIntake(clientId)); setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setRequests(getModificationRequests(clientId))
+  }
   useEffect(() => subscribeToMarketing(refresh), [clientId])
-  useEffect(() => { setPhaseDraft(project.phase) }, [project.phase])
+  useEffect(() => { if (project) setPhaseDraft(project.phase) }, [project?.phase])
+
+  if (clientId == null) {
+    return (
+      <section className="card p-10 max-w-2xl mx-auto text-center border-dashed border-orias-border">
+        <span className="text-[10px] font-bold tracking-wide text-orias-gold uppercase">Marketing</span>
+        <h1 className="text-xl font-bold text-orias-green mt-2 mb-2">Aucun client converti pour l'instant</h1>
+        <p className="text-sm text-gray-500">Convertissez d'abord un prospect en client (paiement validé) pour voir son brief marketing ici.</p>
+      </section>
+    )
+  }
 
   return (
     <div className="space-y-5">
+      <AdminBrandIntakeCard intake={brandIntake} />
       <section className="card p-6">
         <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
         <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client (démo) — basé sur les informations transmises par le client</h3>
