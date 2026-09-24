@@ -270,11 +270,15 @@ function LocalTrackedCommunications({ items, drafts, setDrafts, sendingId, sendR
   <div className="space-y-3">
    {items.map(item => {
     const status = LOCAL_SEND_STATUS[item.status] || LOCAL_SEND_STATUS.waiting
+    const isFromClient = item.senderType === 'client'
     return (
      <article key={item.id} className="rounded-2xl border border-[#e8e2d6] bg-white p-5 space-y-3 shadow-[0_4px_18px_rgba(26,61,43,0.04)]">
       <div className="flex items-start justify-between gap-3 flex-wrap">
        <div className="min-w-0">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-orias-gold">{item.kind}</span>
+        <span className={`inline-block text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ${isFromClient ? 'bg-orias-green/10 text-orias-green' : 'bg-orias-gold/10 text-orias-gold'}`}>
+         {isFromClient ? 'Vous' : 'Équipe Oriafen'}
+        </span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 ml-2">{item.kind}</span>
         <h3 className="font-bold text-orias-green mt-1">{item.title}</h3>
        </div>
        <time className="text-xs text-gray-400 flex-shrink-0">{item.sentAt}</time>
@@ -382,7 +386,7 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
   setShowNewTicket(false);
   setItems(getClientSends(clientId));
  }
- const nav=[['dossier','Mon Dossier'],['marketing','Mon site & communication'],['formation','Formation IAS1'],['commercial','Vente & Scripts'],['documents','Documents'],['support','Mes échanges']];
+ const nav=[['dossier','Mon Dossier'],['marketing','Mon site & communication'],['formation','Formation IAS1'],['commercial','Vente & Scripts'],['documents','Documents'],['support','Support']];
  const clientName=identity.name;
  const clientPack='Pack Accélération';
  const initials=clientName.split(' ').map(n=>n[0]).join('').slice(0,2);
@@ -469,9 +473,9 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
        border:'1px solid rgba(201,168,76,0.18)',
       }}>
        <div style={{height:'2px', background:'linear-gradient(90deg, transparent, #c9a84c, transparent)', marginBottom:'22px', borderRadius:'2px'}} />
-       <p style={{margin:0, color:'#c9a84c', fontSize:'10px', fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:"'Montserrat', sans-serif"}}>Espace client · Support &amp; messages</p>
-       <h2 style={{margin:'8px 0 6px', color:'#fff', fontSize:'30px', fontWeight:400, letterSpacing:'0.5px', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Mes échanges</h2>
-       <p style={{margin:0, color:'rgba(255,255,255,0.68)', fontSize:'13px', fontWeight:300, fontFamily:"'Montserrat', sans-serif"}}>🛟 C'est ici que vous ouvrez une demande de support et suivez la réponse de l'équipe, en plus des documents et messages reçus. Chaque demande garde sa propre conversation ci-dessous. Pour les alertes ponctuelles (réponse reçue, document traité…), consultez la cloche 🔔 en haut à droite — elle ne remplace jamais la conversation.</p>
+       <p style={{margin:0, color:'#c9a84c', fontSize:'10px', fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:"'Montserrat', sans-serif"}}>Espace client</p>
+       <h2 style={{margin:'8px 0 6px', color:'#fff', fontSize:'30px', fontWeight:400, letterSpacing:'0.5px', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Support</h2>
+       <p style={{margin:0, color:'rgba(255,255,255,0.68)', fontSize:'13px', fontWeight:300, fontFamily:"'Montserrat', sans-serif"}}>🛟 Posez vos questions à l'équipe et suivez les réponses ici. Chaque demande garde sa propre conversation ci-dessous.</p>
        <p style={{margin:'16px 0 0', color:'rgba(255,255,255,0.42)', fontSize:'10px', fontFamily:"'Montserrat', sans-serif"}}>Démonstration locale · données fictives</p>
       </div>
       <div style={{marginTop:'22px', display:'flex', justifyContent:'flex-end'}}>
@@ -548,7 +552,7 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
      // Ne s'affiche que si activeTab prenait une valeur hors de `nav`.
      <div className="card p-10 max-w-2xl mx-auto text-center">
       <h1 className="text-2xl font-bold text-orias-green mb-2">Section inconnue</h1>
-      <button onClick={()=>setActiveTab('support')} className="btn-outline-green mt-5">Voir Mes échanges</button>
+      <button onClick={()=>setActiveTab('support')} className="btn-outline-green mt-5">Voir Support</button>
      </div>
     )}
    </main>

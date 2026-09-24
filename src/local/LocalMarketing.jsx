@@ -241,7 +241,55 @@ function BrandSummaryCard({ intake }) {
   )
 }
 
-function AdminBrandIntakeCard({ intake }) {
+// Génère un fichier texte lisible (nom/email client + date d'envoi + tout
+// le brief) que l'équipe peut ouvrir directement — aucun accès réseau,
+// aucune dépendance Supabase, uniquement un Blob local téléchargé par le
+// navigateur (feedback : "l'admin doit pouvoir télécharger/exporter le
+// brief brand kit").
+function buildBrandIntakeText(intake, clientName, clientEmail) {
+  return [
+    'ORIAFEN — BRIEF BRAND KIT CLIENT',
+    '================================',
+    '',
+    `Client : ${clientName || intake.brandName || 'Non renseigné'}`,
+    `Email : ${clientEmail || 'Non renseigné'}`,
+    `Envoyé le : ${intake.submittedAt || 'Non renseigné'}`,
+    '',
+    `Marque / cabinet : ${intake.brandName || 'Non renseigné'}`,
+    `Activité : ${intake.activity || 'Non renseigné'}`,
+    `Clientèle cible : ${intake.audience || 'Non renseigné'}`,
+    `Offres à mettre en avant : ${intake.offer || 'Non renseigné'}`,
+    `Ton / style souhaité : ${intake.tone || 'Non renseigné'}`,
+    `Valeurs / inspirations : ${intake.values || 'Non renseigné'}`,
+    '',
+    `Logo : ${intake.logoStatus || 'À créer'}${intake.logoInfo ? ` — ${intake.logoInfo}` : ''}`,
+    `Couleurs choisies : ${(Array.isArray(intake.colors) ? intake.colors : []).join(', ') || 'Non renseigné'}`,
+    `Objectif du site web : ${intake.websiteGoal || 'Non renseigné'}`,
+    '',
+    `Instagram : ${intake.instagramStatus || 'À créer'}${intake.instagram ? ` — ${intake.instagram}` : ''}`,
+    `Facebook : ${intake.facebookStatus || 'À créer'}${intake.facebook ? ` — ${intake.facebook}` : ''}`,
+    `Meta Business Manager / Ads Manager : ${intake.metaBusinessStatus || 'À créer'}${intake.metaBusiness ? ` — ${intake.metaBusiness}` : ''}`,
+    '',
+    'Notes complémentaires :',
+    intake.notes || 'Non renseigné',
+  ].join('\n')
+}
+
+function downloadBrandIntake(intake, clientName, clientEmail) {
+  const text = buildBrandIntakeText(intake, clientName, clientEmail)
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const safeName = (clientName || intake.brandName || 'client').replace(/[^a-z0-9]+/gi, '-').toLowerCase()
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `brief-brand-kit-${safeName}.txt`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+function AdminBrandIntakeCard({ intake, clientName = null, clientEmail = null }) {
   if (!intake) {
     return (
       <section className="card p-6 border-dashed border-orias-border">
@@ -267,8 +315,13 @@ function AdminBrandIntakeCard({ intake }) {
   ]
   return (
     <section className="card p-6">
-      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brief client reçu</p>
-      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Demandes client pour brand kit, site, réseaux et ads</h3>
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+        <div>
+          <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brief client reçu</p>
+          <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide">Demandes client pour brand kit, site, réseaux et ads</h3>
+        </div>
+        <button type="button" className="btn-outline-green text-sm flex-shrink-0" onClick={() => downloadBrandIntake(intake, clientName, clientEmail)}>⬇ Télécharger le brief brand kit</button>
+      </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
         {rows.map(([label, value]) => (
           <div key={label} className="rounded-xl border border-orias-border bg-orias-bg/40 p-3">
@@ -441,7 +494,7 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
 // implicite sur le client de démo : tant qu'aucun client réel n'est
 // converti, clientId reste null et cette vue affiche un état vide explicite
 // (même garantie que "Voir l'espace client" dans LocalCRM.jsx).
-export function AdminMarketingPanel({ clientId = null }) {
+export function AdminMarketingPanel({ clientId = null, clientName = null, clientEmail = null }) {
   const [brandIntake, setBrandIntake] = useState(() => clientId != null ? getBrandIntake(clientId) : null)
   const [project, setProject] = useState(() => clientId != null ? getMarketingProject(clientId) : null)
   const [channels, setChannels] = useState(() => clientId != null ? getMarketingChannels(clientId) : [])
@@ -466,7 +519,7 @@ export function AdminMarketingPanel({ clientId = null }) {
 
   return (
     <div className="space-y-5">
-      <AdminBrandIntakeCard intake={brandIntake} />
+      <AdminBrandIntakeCard intake={brandIntake} clientName={clientName} clientEmail={clientEmail} />
       <section className="card p-6">
         <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
         <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client (démo) — basé sur les informations transmises par le client</h3>

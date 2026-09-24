@@ -6,8 +6,9 @@ import LocalAdminNotificationBell from './LocalAdminNotificationBell'
 import LocalDossierSection from './LocalDossierSection'
 import LocalNotificationsSection from './LocalNotificationsSection'
 import LocalFormationTrackingSection from './LocalFormationTrackingSection'
+import LocalFinanceSection from './LocalFinanceSection'
 import Logo from '../components/Logo'
-import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon } from '../components/Icons'
+import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon, TrendingUpIcon } from '../components/Icons'
 import { stages, today, cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 
@@ -15,6 +16,7 @@ const NAV_ITEMS = [
   { id: 'clients',    label: 'Clients',      icon: <UsersIcon className="w-4 h-4" /> },
   { id: 'crm',         label: 'CRM',          icon: <TargetIcon className="w-4 h-4" /> },
   { id: 'marketing',  label: 'Marketing',     icon: <StarIcon className="w-4 h-4" /> },
+  { id: 'finance',    label: 'Finance',       icon: <TrendingUpIcon className="w-4 h-4" /> },
   { id: 'dossiers',   label: 'Dossiers',      icon: <EyeIcon className="w-4 h-4" /> },
   { id: 'formation',  label: 'Formation',     icon: <BookIcon className="w-4 h-4" /> },
   { id: 'notifs',     label: 'Notifications', icon: <BellIcon className="w-4 h-4" /> },
@@ -139,7 +141,8 @@ export default function LocalAdminShell() {
       )
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
-    if (activeTab === 'marketing') return <AdminMarketingPanel clientId={latestClientPreview?.id} />
+    if (activeTab === 'marketing') return <AdminMarketingPanel clientId={latestClientPreview?.id} clientName={latestClientPreview?.name} clientEmail={latestClientPreview?.email} />
+    if (activeTab === 'finance') return <LocalFinanceSection leads={leads} />
     if (activeTab === 'dossiers') return <LocalDossierSection />
     if (activeTab === 'formation') return <LocalFormationTrackingSection />
     if (activeTab === 'notifs') return <LocalNotificationsSection />
