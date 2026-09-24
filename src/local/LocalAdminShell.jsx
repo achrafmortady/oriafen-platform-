@@ -77,11 +77,15 @@ export default function LocalAdminShell() {
   const [activeTab, setActiveTab] = useState('crm')
   const [showReportIssue, setShowReportIssue] = useState(false)
   const [clientPreview, setClientPreview] = useState(false)
+  const [clientPreviewIdentity, setClientPreviewIdentity] = useState(null)
   const leads = useLocalLeadStats()
   const dossiersEnCours = leads.filter(l => !['Client', 'Perdu'].includes(l.stage)).length
   const actionsEnRetard = leads.filter(l => !l.done && l.due < today).length
   const { kpis: clientKpis, rows: clientRows } = buildClientsOverview(leads)
   const reponsesEnAttente = clientRows.filter(r => r.nextAction === 'Attendre réponse').length
+  const latestClientPreview = clientRows[0]
+    ? { id: clientRows[0].id, name: `${clientRows[0].prenom || ''} ${clientRows[0].nom || ''}`.trim() || clientRows[0].email || `Client #${clientRows[0].id}`, email: clientRows[0].email || null }
+    : null
 
   const handleTabClick = (id) => setActiveTab(id)
 
@@ -121,9 +125,11 @@ export default function LocalAdminShell() {
       return (
         <LocalCRM
           mode={clientPreview ? 'client' : 'admin'}
-          onEnterClient={() => setClientPreview(true)}
-          onExitClient={() => setClientPreview(false)}
+          onEnterClient={(identity = latestClientPreview) => { setClientPreviewIdentity(identity); setClientPreview(true) }}
+          onExitClient={() => { setClientPreview(false); setClientPreviewIdentity(null) }}
           presetRequest={crmPresetRequest}
+          clientId={clientPreviewIdentity?.id}
+          clientIdentity={clientPreviewIdentity}
         />
       )
     }

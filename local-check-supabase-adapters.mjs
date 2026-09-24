@@ -113,9 +113,9 @@ check('identity.supabase.js renvoie authUser.id tel quel (jamais un id synthéti
 check('LocalCRM.jsx accepte un prop clientId (transmis à ClientSpace) — plus de repli "Client Démo" forcé quand un clientId réel est fourni', () => {
   const src = readFileSync('./src/local/LocalCRM.jsx', 'utf8')
   assert.match(src, /export default function LocalCRM\(\{/, 'précondition : signature LocalCRM trouvée')
-  assert.match(src, /clientId\s*=\s*null\}\)\{/, 'LocalCRM doit accepter un prop clientId optionnel (défaut null = comportement Preview inchangé)')
+  assert.match(src, /export default function LocalCRM\(\{[\s\S]{0,300}?clientId\s*=\s*null/, 'LocalCRM doit accepter un prop clientId optionnel (défaut null = comportement Preview inchangé)')
   assert.match(src, /overrideClientId=\{clientId\}/, 'LocalCRM doit transmettre ce prop à ClientSpace')
-  assert.match(src, /getActiveIdentity\(overrideClientId[^)]*\)/, 'ClientSpace doit utiliser le mécanisme d\'override existant de getActiveIdentity, jamais un second système d\'identité')
+  assert.match(src, /getActiveIdentity\(overrideIdentity[\s\S]{0,60}?overrideClientId/, 'ClientSpace doit utiliser le mécanisme d\'override existant de getActiveIdentity, jamais un second système d\'identité')
 })
 
 check('productionEntry.proposal.jsx fournit clientId={user.id} au shell client (jamais un id en dur/démo)', () => {
