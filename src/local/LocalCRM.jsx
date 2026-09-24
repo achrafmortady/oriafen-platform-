@@ -24,6 +24,15 @@ const money=n=>new Intl.NumberFormat('fr-MA').format(n)+' DH';
 // ici plutôt qu'importé, src/local/* n'important jamais src/lib/api.js
 // (couche live), même pour une simple constante de libellés.
 const TICKET_CATEGORY_LABELS={formation:'Formation IAS1',marketing:'Marketing & communication',dossier:'Dossier ORIAS',facturation:'Facturation',autre:'Autre'};
+// Correctif "catégorie support affichée SUPPORT au lieu du choix du client"
+// (audit inspection navigateur, 2026-09-24) : une demande de support garde
+// toujours kind==='Support' (type d'envoi), mais la catégorie réellement
+// choisie par le client (ex: "Dossier ORIAS") est stockée séparément sur
+// item.category (createClientSupportRequest, clientTrackingStore.js) et
+// n'était jamais lue à l'affichage — le badge retombait donc toujours sur
+// le kind générique. Préfère désormais le libellé de catégorie quand il
+// existe, sans jamais rien retirer pour les envois qui n'en ont pas.
+const itemBadgeLabel=item=>(item.category&&TICKET_CATEGORY_LABELS[item.category])||item.kind;
 // FAQItem — reprend exactement src/pages/student/Support.jsx (live non
 // modifié) : accordéon simple, contenu réel réutilisé depuis FAQ_ITEMS
 // (src/data/mockData.js).
@@ -74,7 +83,7 @@ function ClientSendTracking({lead}){
  const canRemind=item.responseRequired&&!item.response&&item.senderType!=='client';
  const awaitingAdminReply=item.senderType==='client'&&item.responseRequired&&!item.response;
  const responseAuthor=item.response?.author||'Client';
- return <article className="senditem" key={item.id}><div className="senditemtop"><div><span className={`sender-badge ${item.senderType==='client'?'client':'team'}`}>{item.senderType==='client'?'Client':'Équipe Oriafen'}</span><span className="sendkind">{item.kind}</span><strong>{item.title}</strong></div><small>{item.sentAt}</small></div>{item.message&&<p className="sendmessage">{item.message}</p>}{item.fileName&&<p className="sendfile">{item.fileName}</p>}<div className="send-meta"><span className={status.className}>{status.label}</span><span className={`adminstatus ${adminStatus.key}`}>{adminStatus.label}</span>{item.important&&<span className="important-badge">Important</span>}</div><div className="senddates"><span>Vu : {item.seenAt||'—'}</span><span>Ouvert : {item.openedAt||'—'}</span><span>Réponse : {item.repliedAt||'—'}</span></div>{item.response&&<div className="sendreply"><small><span className={`sender-badge ${responseAuthor==='Équipe'?'team':'client'}`}>{responseAuthor}</span> Réponse reçue · {item.response.respondedAt}</small><p>{item.response.message}</p></div>}{reminderCount>0&&<div className="reminders-history"><small>{reminderCount} relance{reminderCount>1?'s':''} effectuée{reminderCount>1?'s':''} :</small><ul>{item.reminders.map((r,i)=>({r,n:i+1})).reverse().map(({r,n})=><li key={n}>Relance n°{n} — {r.at} · {r.by}</li>)}</ul></div>}{awaitingAdminReply&&<div className="admin-reply-box"><textarea placeholder="Répondre à cette demande du client…" value={replyDrafts[item.id]||''} onChange={e=>setReplyDrafts(prev=>({...prev,[item.id]:e.target.value}))}/><button className="primary" disabled={!(replyDrafts[item.id]||'').trim()} onClick={()=>sendAdminReply(item.id)}>Répondre</button></div>}{canRemind&&<button className="remind-button" onClick={()=>markClientSendReminded(item.id)}>Relancer{reminderCount>0?` (relance n°${reminderCount+1})`:''}</button>}<button className="important-toggle" onClick={()=>setClientSendImportant(item.id,!item.important)}>{item.important?'Retirer Important':'Marquer Important'}</button></article>})}</div></section>;
+ return <article className="senditem" key={item.id}><div className="senditemtop"><div><span className={`sender-badge ${item.senderType==='client'?'client':'team'}`}>{item.senderType==='client'?'Client':'Équipe Oriafen'}</span><span className="sendkind">{itemBadgeLabel(item)}</span><strong>{item.title}</strong></div><small>{item.sentAt}</small></div>{item.message&&<p className="sendmessage">{item.message}</p>}{item.fileName&&<p className="sendfile">{item.fileName}</p>}<div className="send-meta"><span className={status.className}>{status.label}</span><span className={`adminstatus ${adminStatus.key}`}>{adminStatus.label}</span>{item.important&&<span className="important-badge">Important</span>}</div><div className="senddates"><span>Vu : {item.seenAt||'—'}</span><span>Ouvert : {item.openedAt||'—'}</span><span>Réponse : {item.repliedAt||'—'}</span></div>{item.response&&<div className="sendreply"><small><span className={`sender-badge ${responseAuthor==='Équipe'?'team':'client'}`}>{responseAuthor}</span> Réponse reçue · {item.response.respondedAt}</small><p>{item.response.message}</p></div>}{reminderCount>0&&<div className="reminders-history"><small>{reminderCount} relance{reminderCount>1?'s':''} effectuée{reminderCount>1?'s':''} :</small><ul>{item.reminders.map((r,i)=>({r,n:i+1})).reverse().map(({r,n})=><li key={n}>Relance n°{n} — {r.at} · {r.by}</li>)}</ul></div>}{awaitingAdminReply&&<div className="admin-reply-box"><textarea placeholder="Répondre à cette demande du client…" value={replyDrafts[item.id]||''} onChange={e=>setReplyDrafts(prev=>({...prev,[item.id]:e.target.value}))}/><button className="primary" disabled={!(replyDrafts[item.id]||'').trim()} onClick={()=>sendAdminReply(item.id)}>Répondre</button></div>}{canRemind&&<button className="remind-button" onClick={()=>markClientSendReminded(item.id)}>Relancer{reminderCount>0?` (relance n°${reminderCount+1})`:''}</button>}<button className="important-toggle" onClick={()=>setClientSendImportant(item.id,!item.important)}>{item.important?'Retirer Important':'Marquer Important'}</button></article>})}</div></section>;
 }
 // Reproduit la structure exacte de AddLeadModal (src/pages/admin/Dashboard.jsx,
 // fichier live non modifié, lu seulement comme référence visuelle) : même
@@ -155,7 +164,13 @@ function NewProspectModal({ onClose, onCreated }) {
       message,
       stage: 'Nouveau',
       owner: form.owner,
-      value: 0,
+      // Correctif "Potentiel reste à 0" (audit inspection navigateur,
+      // 2026-09-24) : le potentiel commercial restait à 0 par défaut quel
+      // que soit le pack choisi (finalPrice était pourtant déjà calculé
+      // ci-dessus) — initialisé désormais depuis le montant final du pack
+      // sélectionné, toujours éditable ensuite depuis la fiche Prospect
+      // ("Potentiel (DH)", indépendant du prix du pack).
+      value: finalPrice,
       source: form.source || 'Autre',
       due: today,
       done: false,
@@ -278,7 +293,7 @@ function LocalTrackedCommunications({ items, drafts, setDrafts, sendingId, sendR
         <span className={`inline-block text-[10px] font-bold uppercase tracking-[0.1em] px-2 py-0.5 rounded-full ${isFromClient ? 'bg-orias-green/10 text-orias-green' : 'bg-orias-gold/10 text-orias-gold'}`}>
          {isFromClient ? 'Vous' : 'Équipe Oriafen'}
         </span>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 ml-2">{item.kind}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 ml-2">{itemBadgeLabel(item)}</span>
         <h3 className="font-bold text-orias-green mt-1">{item.title}</h3>
        </div>
        <time className="text-xs text-gray-400 flex-shrink-0">{item.sentAt}</time>
@@ -339,6 +354,18 @@ function LocalTrackedCommunications({ items, drafts, setDrafts, sendingId, sendR
 function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
  const identity=getActiveIdentity(overrideIdentity || (overrideClientId != null ? { id: overrideClientId } : null))
  const clientId=identity.id;
+ // Correctif "Pack Accélération" en dur (audit inspection navigateur,
+ // 2026-09-24) : l'en-tête affichait toujours ce pack, quel que soit le
+ // pack réellement choisi/payé par le prospect converti. On relit le lead
+ // réel (même storage/nettoyage que useLocalLeadStats dans
+ // LocalAdminShell.jsx) pour en tirer le pack ET la date de conversion
+ // réels — jamais une valeur en dur.
+ const [clientLead,setClientLead]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return cleanPreviewLeads(raw||[]).find(l=>l.id===clientId)||null}catch{return null}});
+ useEffect(()=>{
+  const refreshLead=()=>{try{const raw=JSON.parse(localStorage.getItem(storage));setClientLead(cleanPreviewLeads(raw||[]).find(l=>l.id===clientId)||null)}catch{setClientLead(null)}};
+  window.addEventListener('storage',refreshLead);
+  return ()=>window.removeEventListener('storage',refreshLead);
+ },[clientId]);
  const [items,setItems]=useState(()=>getClientSends(clientId));
  const [drafts,setDrafts]=useState({});
  const [sending,setSending]=useState(null);
@@ -388,7 +415,7 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
  }
  const nav=[['dossier','Mon Dossier'],['marketing','Mon site & communication'],['formation','Formation IAS1'],['commercial','Vente & Scripts'],['documents','Documents'],['support','Support']];
  const clientName=identity.name;
- const clientPack='Pack Accélération';
+ const clientPack=clientLead?.pack||null;
  const initials=clientName.split(' ').map(n=>n[0]).join('').slice(0,2);
 
  // Header/nav/footer ci-dessous reproduisent exactement (mêmes styles inline)
@@ -419,7 +446,7 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
        <LocalNotificationBell clientId={clientId} onNavigate={setActiveTab} dark />
        <div style={{textAlign:'right', display:'flex', flexDirection:'column'}}>
         <span style={{color:'#fff', fontWeight:'600', fontSize:'13px', fontFamily:"'Montserrat', sans-serif"}}>{clientName}</span>
-        <span style={{color:'#c9a84c', fontSize:'11px', fontFamily:"'Montserrat', sans-serif", fontWeight:'400'}}>Pack {clientPack}</span>
+        {clientPack&&<span style={{color:'#c9a84c', fontSize:'11px', fontFamily:"'Montserrat', sans-serif", fontWeight:'400'}}>{clientPack}</span>}
        </div>
        <div style={{width:'38px', height:'38px', borderRadius:'50%', background:'rgba(201,168,76,0.15)', border:'2px solid rgba(201,168,76,0.5)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:'700', color:'#c9a84c', flexShrink:0, fontFamily:"'Montserrat', sans-serif"}}>
         {initials}
@@ -750,7 +777,7 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
      <div className="timeline">
       {(lead.appointments||[]).map(a=><article key={a.id}><i/><div>
         <p>{APPOINTMENT_TYPE_LABELS[a.type]||a.type}{a.status==='effectue'?' · ✓ Effectué':''}</p>
-        <small>{a.scheduledAt}</small>
+        <small>{toDisplayDateSafe(a.scheduledAt)||a.scheduledAt}</small>
         {a.status!=='effectue'&&<button className="rdv-done-btn" onClick={()=>completeAppointment(lead.id,a.id)}>Marquer le RDV comme effectué</button>}
       </div></article>)}
      </div>
@@ -805,6 +832,16 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
     <section className="detailbox">
      <h3>Statut</h3>
      <select value={lead.stage} onChange={e=>{const next=e.target.value;if(next==='Client'&&!canSetStageToClient(lead)){setConvertAttempt(true)}patch(lead.id,{stage:next},'Étape : '+next)}}>{stages.map(s=><option key={s}>{s}</option>)}</select>
+     {/* Correctif "aucun retour visible près du select au refus" (audit
+         inspection navigateur, 2026-09-24) : passer le Statut à "Client"
+         était silencieusement refusé (patch() renvoie false, voir plus
+         haut) — la seule explication visible se trouvait dans la carte
+         "Valider le premier paiement", parfois loin du select dans la mise
+         en page deux colonnes. Message immédiat affiché ici aussi, sans
+         rien retirer de la carte de paiement (qui reste le point central
+         pour agir). */}
+     {convertAttempt&&<p className="muted" style={{color:'#a13636',fontWeight:600,marginTop:'8px'}}>{PAYMENT_GATE_MESSAGE}</p>}
+     {convertAttempt&&!String(lead.email||'').trim()&&<p className="muted" style={{color:'#a13636',fontWeight:600}}>{EMAIL_GATE_MESSAGE}</p>}
      {lead.stage==='Perdu'&&<>
       <label>Raison de la perte (optionnel)<textarea style={{minHeight:'60px'}} value={lossReasonDraft} onChange={e=>setLossReasonDraft(e.target.value)}/></label>
       <button disabled={!lossReasonDraft.trim()||lossReasonDraft.trim()===(lead.lossReason||'')} onClick={()=>saveLossReason(lead.id)}>Enregistrer la raison</button>

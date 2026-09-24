@@ -1,5 +1,6 @@
 import { logActivity } from './activityLog'
 import { addAdminNotification } from './adminNotificationsStore'
+import { isCanonicalDemoClientId } from './adapters/identity'
 
 const STORAGE_KEY = 'oriafen-client-tracking-v1'
 const CHANGE_EVENT = 'oriafen-client-tracking-change'
@@ -18,6 +19,17 @@ function parseLocalDate(value) {
   const match = String(value).match(/^(\d{2})\/(\d{2})\/(\d{4}) · (\d{2}):(\d{2})$/)
   if (!match) return new Date(value).getTime() || 0
   return new Date(`${match[3]}-${match[2]}-${match[1]}T${match[4]}:${match[5]}:00`).getTime()
+}
+
+// Correctif "faux support/messages sur un nouveau prospect/client" (audit
+// inspection navigateur, 2026-09-24) : mockItems() était utilisé pour
+// N'IMPORTE QUEL clientId encore absent du store, donc aussi pour chaque
+// nouveau prospect/client réel, qui affichait "3 envois" datés avant même
+// sa création. Réservé désormais au seul client de démo canonique — tout
+// autre client démarre avec un historique vide (aucun envoi tant que
+// l'équipe ou le client n'en crée un réellement).
+function initialItemsFor(clientId) {
+  return isCanonicalDemoClientId(clientId) ? mockItems(clientId) : []
 }
 
 function mockItems(clientId) {
@@ -182,8 +194,16 @@ function backfillActivityFromItem(clientId, item) {
     })
   })
   if (item.repliedAt && item.response) {
+    // Correctif "réponse étiquetée Client au lieu de Équipe" (audit
+    // inspection navigateur, 2026-09-24) : cette entrée d'historique
+    // affichait toujours author:'Client', y compris pour une réponse de
+    // l'ÉQUIPE à une demande de support initiée par le client
+    // (item.response.author==='Équipe', voir respondToClientRequest) — donc
+    // visible côté admin comme "Client · Réponse envoyée" alors que c'est
+    // l'équipe qui a répondu.
+    const isTeamReply = item.response.author === 'Équipe'
     logActivity(clientId, {
-      author: 'Client',
+      author: isTeamReply ? 'Équipe' : 'Client',
       action: 'Réponse envoyée',
       detail: item.response.message?.length > 80 ? `${item.response.message.slice(0, 80)}…` : item.response.message,
       dedupeKey: `replied:${item.id}`,
@@ -210,7 +230,7 @@ function sortSendsRecentFirst(items) {
 export function getClientSends(clientId) {
   const data = readAll()
   if (!data[clientId]) {
-    data[clientId] = mockItems(clientId)
+    data[clientId] = initialItemsFor(clientId)
     writeAll(data)
   } else {
     const normalized = data[clientId].map(normalizeItem)
@@ -318,7 +338,7 @@ export function getAdminSendStatus(item) {
 // notification, on réutilise exactement ce qui existe déjà.
 export function addClientNotification(clientId, { kind = 'Document', title, message, important = false, dedupeKey = null }) {
   const data = readAll()
-  if (!data[clientId]) data[clientId] = mockItems(clientId)
+  if (!data[clientId]) data[clientId] = initialItemsFor(clientId)
 
   if (dedupeKey) {
     const existing = data[clientId].find(i => i.dedupeKey === dedupeKey)
@@ -395,7 +415,7 @@ export function createClientSupportRequest(clientId, { subject, message, categor
   const clean = (message || '').trim()
   if (!clientId || !title || !clean) return null
   const data = readAll()
-  if (!data[clientId]) data[clientId] = mockItems(clientId)
+  if (!data[clientId]) data[clientId] = initialItemsFor(clientId)
   const item = normalizeItem({
     id: `support-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     clientId,
@@ -455,19 +475,20 @@ export function respondToClientRequest(sendId, message) {
         repliedAt,
         lastActivityAt: repliedAt,
         response: { message: cleanMessage, respondedAt: repliedAt, author: 'Équipe' },
+        // Correctif "réponse dupliquée" (audit inspection navigateur,
+        // 2026-09-24) : cette fonction créait AUSSI un item distinct
+        // ("Nouvelle réponse support" via addClientNotification ci-dessous,
+        // supprimé) qui s'affichait comme une deuxième carte dans Support,
+        // en plus de la réponse déjà visible sous la question d'origine.
+        // On repasse seulement l'item existant à "non vu" pour que la
+        // cloche cliente compte bien cette réponse comme nouvelle, sans
+        // dupliquer le fil de discussion.
+        seenAt: null,
       }
     })
   })
 
-  if (updated) {
-    writeAll(data)
-    addClientNotification(clientId, {
-      kind: 'Support',
-      title: 'Nouvelle réponse support',
-      message: cleanMessage,
-      important: true,
-    })
-  }
+  if (updated) writeAll(data)
   return updated
 }
 

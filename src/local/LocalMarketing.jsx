@@ -17,6 +17,20 @@ const CHANNEL_STATUS_STYLE = {
 // Progression PAR CANAL, affichée séparément pour chaque canal (correctif
 // 2026-09-22, retour client) — jamais un statut global unique. Même carte
 // réutilisée côté client (lecture seule) et admin (`editable`).
+//
+// Correctif "progression incohérente avec le statut" (audit inspection
+// navigateur, 2026-09-24) : statut et pourcentage étaient deux contrôles
+// totalement indépendants — choisir "Terminé" laissait la barre à 0%, et
+// passer à "En cours" ne bougeait jamais un pourcentage resté à 0%. La
+// progression déduite reste un point de départ raisonnable ; l'admin garde
+// la main pour l'ajuster ensuite via le curseur (jamais figée).
+function statusToPatch(status, currentProgressPct) {
+  if (status === 'Terminé') return { status, progressPct: 100 }
+  if (status === 'En cours' && currentProgressPct === 0) return { status, progressPct: 40 }
+  if (status === 'À démarrer') return { status, progressPct: 0 }
+  return { status }
+}
+
 function ChannelsCard({ channels, editable = false, onUpdate }) {
   return (
     <section className="card p-6">
@@ -30,7 +44,7 @@ function ChannelsCard({ channels, editable = false, onUpdate }) {
               {editable ? (
                 <select
                   value={ch.status}
-                  onChange={e => onUpdate(ch.id, { status: e.target.value })}
+                  onChange={e => onUpdate(ch.id, statusToPatch(e.target.value, ch.progressPct))}
                   className={`text-xs font-bold px-2 py-1 rounded-full border cursor-pointer ${CHANNEL_STATUS_STYLE[ch.status]}`}
                 >
                   {CHANNEL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
@@ -222,15 +236,29 @@ function BrandSummaryCard({ intake }) {
     <section className="card p-6 border-orias-gold/40">
       <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Brand kit reçu</p>
       <h3 className="text-lg font-bold text-orias-green mb-4">{intake.brandName}</h3>
+      {/* Correctif "résumé client incomplet" (audit inspection navigateur,
+          2026-09-24) : audience/offres/valeurs/notes étaient bien envoyées
+          et sauvegardées (submitBrandIntake), mais jamais réaffichées ici —
+          le client ne pouvait donc pas relire ce qu'il avait réellement
+          transmis. Ajoutés sans rien retirer des champs déjà présents. */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Activité</p><p className="font-semibold text-gray-800">{intake.activity || 'Non renseigné'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Clientèle cible</p><p className="font-semibold text-gray-800">{intake.audience || 'Non renseigné'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Offres à mettre en avant</p><p className="font-semibold text-gray-800">{intake.offer || 'Non renseigné'}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Ton</p><p className="font-semibold text-gray-800">{intake.tone || 'Non renseigné'}</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Valeurs / inspirations</p><p className="font-semibold text-gray-800">{intake.values || 'Non renseigné'}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Logo</p><p className="font-semibold text-gray-800">{intake.logoStatus}{intake.logoInfo ? ` — ${intake.logoInfo}` : ''}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Site web</p><p className="font-semibold text-gray-800">{intake.websiteGoal || 'Non renseigné'}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Instagram</p><p className="font-semibold text-gray-800">{intake.instagramStatus || 'À créer'}{intake.instagram ? ` — ${intake.instagram}` : ''}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Facebook</p><p className="font-semibold text-gray-800">{intake.facebookStatus || 'À créer'}{intake.facebook ? ` — ${intake.facebook}` : ''}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Meta Ads</p><p className="font-semibold text-gray-800">{intake.metaBusinessStatus || 'À créer'}{intake.metaBusiness ? ` — ${intake.metaBusiness}` : ''}</p></div>
       </div>
+      {intake.notes && (
+        <div className="mt-4">
+          <p className="text-[11px] text-gray-400 font-semibold uppercase">Notes complémentaires</p>
+          <p className="text-sm font-semibold text-gray-800 whitespace-pre-wrap mt-1">{intake.notes}</p>
+        </div>
+      )}
       {Array.isArray(intake.colors) && intake.colors.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
           {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />{color}</span>)}
@@ -362,11 +390,18 @@ function ProjectOverviewCard({ project }) {
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Statut</p><p className="font-bold text-orias-green mt-0.5">{project.status}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Phase actuelle</p><p className="font-bold text-gray-800 mt-0.5">{project.phase}</p></div>
         <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Dernière mise à jour</p><p className="font-bold text-gray-800 mt-0.5">{project.lastUpdate}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Progression</p><p className="font-bold text-gray-800 mt-0.5">{project.progressPct}%</p></div>
+        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Progression du brief</p><p className="font-bold text-gray-800 mt-0.5">{project.progressPct}%</p></div>
       </div>
       <div className="mt-4 h-2 rounded-full bg-orias-bg overflow-hidden">
         <div className="h-full bg-orias-gold" style={{ width: `${project.progressPct}%` }} />
       </div>
+      {/* Correctif "progression globale incohérente avec les canaux" (audit
+          inspection navigateur, 2026-09-24) : ce pourcentage ne mesure QUE
+          la réception/l'avancement du brief (Étape 1), jamais une moyenne
+          des canaux ci-dessous (Site web/Instagram/Facebook/Meta Business
+          Manager, chacun avec sa propre progression indépendante) — précisé
+          explicitement pour ne pas laisser croire à un résumé global. */}
+      <p className="text-[11px] text-gray-400 mt-2">Ce pourcentage mesure uniquement l'avancement du brief (Étape 1) — la progression de chaque canal (Site web, Instagram, Facebook, Meta Business Manager) est suivie séparément ci-dessous.</p>
     </section>
   )
 }
@@ -489,12 +524,30 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
 }
 
 // Vue ADMIN — feedback #8 : traiter les demandes du client (changement de
-// statut), garder l'historique. clientId transmis explicitement par
-// LocalAdminShell (client réellement converti le plus récent) — SANS repli
-// implicite sur le client de démo : tant qu'aucun client réel n'est
-// converti, clientId reste null et cette vue affiche un état vide explicite
-// (même garantie que "Voir l'espace client" dans LocalCRM.jsx).
-export function AdminMarketingPanel({ clientId = null, clientName = null, clientEmail = null }) {
+// statut), garder l'historique.
+//
+// Correctif "pas de sélecteur de client" (audit inspection navigateur,
+// 2026-09-24) : avec plusieurs clients convertis, cette vue n'affichait
+// toujours que le dernier converti, sans aucun moyen de choisir un autre
+// client ni indication claire de qui était affiché. `clients` (liste
+// complète des clients réellement convertis, transmise par
+// LocalAdminShell via buildClientsOverview — même source que l'onglet
+// "Clients") remplace le clientId unique ; `defaultClientId` (client
+// converti le plus récent, même sélection que "Voir l'espace client")
+// reste le choix par défaut tant que l'admin n'a rien sélectionné lui-même.
+// SANS repli implicite sur le client de démo : tant qu'aucun client réel
+// n'est converti, `clients` est vide et cette vue affiche un état vide
+// explicite (même garantie que "Voir l'espace client" dans LocalCRM.jsx).
+export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
+  const [selectedClientId, setSelectedClientId] = useState(defaultClientId)
+  useEffect(() => {
+    if (selectedClientId == null || !clients.some(c => c.id === selectedClientId)) setSelectedClientId(defaultClientId)
+  }, [defaultClientId, clients])
+  const clientId = selectedClientId
+  const selectedClient = clients.find(c => c.id === clientId) || null
+  const clientName = selectedClient?.name || null
+  const clientEmail = selectedClient?.email || null
+
   const [brandIntake, setBrandIntake] = useState(() => clientId != null ? getBrandIntake(clientId) : null)
   const [project, setProject] = useState(() => clientId != null ? getMarketingProject(clientId) : null)
   const [channels, setChannels] = useState(() => clientId != null ? getMarketingChannels(clientId) : [])
@@ -504,10 +557,11 @@ export function AdminMarketingPanel({ clientId = null, clientName = null, client
     if (clientId == null) return
     setBrandIntake(getBrandIntake(clientId)); setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setRequests(getModificationRequests(clientId))
   }
+  useEffect(refresh, [clientId])
   useEffect(() => subscribeToMarketing(refresh), [clientId])
   useEffect(() => { if (project) setPhaseDraft(project.phase) }, [project?.phase])
 
-  if (clientId == null) {
+  if (!clients.length || clientId == null) {
     return (
       <section className="card p-10 max-w-2xl mx-auto text-center border-dashed border-orias-border">
         <span className="text-[10px] font-bold tracking-wide text-orias-gold uppercase">Marketing</span>
@@ -519,10 +573,21 @@ export function AdminMarketingPanel({ clientId = null, clientName = null, client
 
   return (
     <div className="space-y-5">
+      <section className="card p-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-wide text-orias-gold mb-0.5">Client affiché</p>
+          <p className="font-bold text-gray-800 truncate">{clientName}{clientEmail ? <span className="text-gray-400 font-normal"> · {clientEmail}</span> : ''}</p>
+        </div>
+        {clients.length > 1 && (
+          <select value={clientId} onChange={e => setSelectedClientId(Number(e.target.value))} className="input-field text-sm w-auto flex-shrink-0">
+            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        )}
+      </section>
       <AdminBrandIntakeCard intake={brandIntake} clientName={clientName} clientEmail={clientEmail} />
       <section className="card p-6">
         <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
-        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client (démo) — basé sur les informations transmises par le client</h3>
+        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client — basé sur les informations transmises par le client</h3>
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex-1 min-w-[220px]">
             <label className="block text-xs font-semibold text-gray-500 mb-1">Phase actuelle</label>

@@ -6,6 +6,9 @@ import { ORIAS_STEPS, defaultStepIndexFor } from './clientsOverviewData'
 import { getClientDocuments, subscribeToDocuments } from './documentsStore'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getFormationState, subscribeToFormationProgress } from './formationProgressStore'
+import { cleanPreviewLeads } from './model'
+
+const CRM_STORAGE_KEY = 'oriafen-isolated-crm-v1'
 
 // Reprend la structure/le style (styles inline) de
 // src/pages/student/MonDossier.jsx (fichier live non modifié) — MAIS les
@@ -46,8 +49,14 @@ export default function LocalMonDossier({ clientId = getActiveClientId() }) {
     return () => unsub.forEach(u => u())
   }, [])
 
+  // Correctif "Pack Accélération" en dur (audit inspection navigateur,
+  // 2026-09-24) : ce widget affichait toujours ce pack, quel que soit le
+  // pack réellement choisi/payé par le prospect converti — même correctif
+  // que l'en-tête ClientSpace dans LocalCRM.jsx, même lecture directe du
+  // lead réel (aucun store dédié "pack du client" n'existe séparément).
+  const clientLead = (() => { try { const raw = JSON.parse(localStorage.getItem(CRM_STORAGE_KEY)); return cleanPreviewLeads(raw || []).find(l => l.id === clientId) || null } catch { return null } })()
   const dossierNumber = 'OR-2026-1236'
-  const pack = 'Pack Accélération'
+  const pack = clientLead?.pack || 'Non renseigné'
   const status = 'En cours'
 
   // Étape courante : MÊME store que l'onglet admin "Dossiers"

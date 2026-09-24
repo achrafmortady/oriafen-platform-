@@ -60,6 +60,12 @@ export default function LocalDossierSection() {
   const selected = clients.find(c => c.id === selectedId) || null
   const currentStep = selected ? getDossierStep(selected.id, selected.stepIndex + 1) : 1
   const pendingCount = selected ? selected.pendingDocs : 0
+  // Correctif "Valider fonctionne même avec des documents manquants" (audit
+  // inspection navigateur, 2026-09-24) : "Valider →" faisait toujours
+  // avancer l'étape, y compris avec des documents jamais envoyés
+  // (selected.missingDocs, même calcul que la fiche Client) — bloqué avec
+  // une raison explicite plutôt qu'une simple confirmation, comme demandé.
+  const missingDocsCount = selected ? selected.missingDocs : 0
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -120,7 +126,16 @@ export default function LocalDossierSection() {
                         <span className={`text-sm font-medium ${done ? 'text-emerald-700' : active ? 'text-amber-700' : 'text-gray-400'}`}>{step}</span>
                       </div>
                       {active && stepNum < STEP_LABELS.length && (
-                        <button onClick={() => setDossierStep(selected.id, Math.min(stepNum + 1, STEP_LABELS.length))} className="text-xs font-semibold px-3 py-1 rounded-full bg-orias-gold/20 text-orias-gold hover:bg-orias-gold/30 border border-orias-gold/40 transition-colors">Valider →</button>
+                        missingDocsCount > 0 ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-200 cursor-not-allowed"
+                            title={`Validation bloquée : ${missingDocsCount} document${missingDocsCount > 1 ? 's' : ''} manquant${missingDocsCount > 1 ? 's' : ''}. Complétez les documents du client avant de faire avancer l'étape.`}
+                          >
+                            🔒 {missingDocsCount} doc{missingDocsCount > 1 ? 's' : ''} manquant{missingDocsCount > 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <button onClick={() => setDossierStep(selected.id, Math.min(stepNum + 1, STEP_LABELS.length))} className="text-xs font-semibold px-3 py-1 rounded-full bg-orias-gold/20 text-orias-gold hover:bg-orias-gold/30 border border-orias-gold/40 transition-colors">Valider →</button>
+                        )
                       )}
                       {done && <span className="text-xs text-emerald-600 font-semibold">✓ Validé</span>}
                     </div>

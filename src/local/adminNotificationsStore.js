@@ -14,6 +14,8 @@
 // et dans marketingStore (demandes de modification) : ce store ne duplique
 // aucune donnée métier, seulement une référence (clientId + contexte de
 // navigation) vers l'endroit où traiter la demande.
+import { isCanonicalDemoClientId } from './adapters/identity'
+
 const STORAGE_KEY = 'oriafen-admin-notifications-v1'
 const CHANGE_EVENT = 'oriafen-admin-notifications-change'
 
@@ -23,8 +25,37 @@ function nowLabel() {
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// Correctif "vieilles notifications de démo dans la cloche admin" (audit
+// inspection navigateur, 2026-09-24) : ce store n'a jamais seedé de
+// notification de démo lui-même — mais un navigateur qui a déjà navigué le
+// client de démo (CANONICAL_DEMO_CLIENT_ID) avant ce correctif peut avoir
+// accumulé des notifications ("Client Démo", "QA TEST"…) qui n'ont plus de
+// sens dans une session V2 normale. Nettoyage non destructif à la lecture
+// (même principe que cleanPreviewLeads dans model.js) : jamais réappliqué à
+// une notification créée par une action réelle sur un client réel.
+// Détection volontairement stricte sur clientId (jamais sur clientName/
+// title/message) : un client réel peut légitimement s'appeler "Client
+// Démo" dans un test ou un cas limite, une notification ne doit donc
+// JAMAIS être écartée sur la seule base d'un texte qui ressemble à de la
+// démo — seul le lien direct avec CANONICAL_DEMO_CLIENT_ID, ou la mention
+// explicite "QA TEST" (jamais un texte légitime), déclenche le nettoyage.
+function isDemoAdminNotification(n) {
+  if (!n) return true
+  if (isCanonicalDemoClientId(n.clientId)) return true
+  const haystack = `${n.title || ''} ${n.message || ''}`.toLowerCase()
+  return haystack.includes('qa test')
+}
+
+function cleanAdminNotifications(list) {
+  return (list || []).filter(n => !isDemoAdminNotification(n))
+}
+
 function readAll() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [] } catch { return [] }
+  let raw
+  try { raw = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [] } catch { return [] }
+  const cleaned = cleanAdminNotifications(raw)
+  if (cleaned.length !== raw.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
+  return cleaned
 }
 
 function writeAll(list) {

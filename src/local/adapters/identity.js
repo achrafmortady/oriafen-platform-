@@ -89,3 +89,14 @@ export function getActiveClientId(override = null) {
 export function getActiveClientName(override = null) {
   return getActiveIdentity(override).name
 }
+
+// Seul point autorisé pour qu'un store (documentsStore.js,
+// clientTrackingStore.js, adminNotificationsStore.js…) sache si un clientId
+// donné est le client de démo canonique — ex: pour réserver le seed de
+// démonstration (documents/messages fictifs) au seul client de démo, jamais
+// à un client réellement converti. Ces stores n'importent JAMAIS
+// CANONICAL_DEMO_CLIENT_ID directement (voir invariant vérifié par
+// local-check-adapters.mjs) — ils passent par cette fonction.
+export function isCanonicalDemoClientId(id) {
+  return id != null && Number(id) === CANONICAL_DEMO_CLIENT_ID
+}

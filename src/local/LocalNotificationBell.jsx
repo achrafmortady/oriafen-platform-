@@ -39,6 +39,15 @@ export default function LocalNotificationBell({ clientId, onNavigate, dark = fal
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Correctif "Échap ne ferme pas la cloche" (audit inspection navigateur,
+  // 2026-09-24) : même correctif que la cloche admin (LocalAdminNotificationBell.jsx).
+  useEffect(() => {
+    if (!open) return
+    const handleEscape = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [open])
+
   const toggleOpen = () => {
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect()

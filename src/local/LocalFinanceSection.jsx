@@ -47,6 +47,15 @@ function buildFinanceData(leads) {
         clientName: lead.name,
         clientEmail: lead.email || null,
         pack: lead.pack || null,
+        // Correctif "HT/TTC mélangés" (audit inspection navigateur,
+        // 2026-09-24) : chaque montant est déjà dérivé du pricingMode
+        // réellement choisi pour CE lead (computeFinalPrice dans
+        // packsData.js, base des payments générés par
+        // buildMockPaymentRows) — jamais recalculé ici. Ce qui manquait,
+        // c'était l'étiquette HT/TTC elle-même, donnant l'impression
+        // trompeuse d'montants incohérents entre deux clients sur le même
+        // pack alors qu'ils avaient simplement choisi un mode différent.
+        pricingMode: lead.pricingMode || 'ttc',
         milestone: p.milestone,
         amount: p.amount,
         status: p.status,
@@ -68,6 +77,7 @@ export default function LocalFinanceSection({ leads }) {
         <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Administration</p>
         <h1 className="text-2xl font-bold text-orias-green">Finance</h1>
         <p className="text-sm text-gray-500 mt-1">Vue locale (aperçu V2) — dérivée des clients réellement convertis et de leurs paiements. Aucune donnée Supabase live, aucune logique Finance en production touchée ici.</p>
+        <p className="text-xs text-gray-400 mt-1">Les totaux ci-dessous agrègent les montants réellement choisis par chaque client (HT ou TTC selon son mode de tarification) — chaque ligne de paiement précise HT/TTC individuellement.</p>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -107,7 +117,7 @@ export default function LocalFinanceSection({ leads }) {
               <div key={r.key} className="rounded-xl border border-orias-border p-4 flex items-center justify-between gap-4 flex-wrap">
                 <div className="min-w-0">
                   <p className="font-semibold text-gray-800">{r.clientName}{r.clientEmail ? <span className="text-gray-400 font-normal"> · {r.clientEmail}</span> : ''}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{r.pack || '—'} · {MILESTONE_LABELS[r.milestone] ?? r.milestone}{r.convertedAt ? ` · converti le ${r.convertedAt}` : ''}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{r.pack || '—'} · {MILESTONE_LABELS[r.milestone] ?? r.milestone} · {r.pricingMode === 'ht' ? 'HT' : 'TTC'}{r.convertedAt ? ` · converti le ${r.convertedAt}` : ''}</p>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                   <span className="font-bold text-gray-800">{money(r.amount)}</span>

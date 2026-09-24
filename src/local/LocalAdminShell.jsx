@@ -11,6 +11,7 @@ import Logo from '../components/Logo'
 import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon, TrendingUpIcon } from '../components/Icons'
 import { stages, today, cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
+import { getAllClientInitiatedItems, getAdminSendStatus, subscribeToClientTracking } from './clientTrackingStore'
 
 const NAV_ITEMS = [
   { id: 'clients',    label: 'Clients',      icon: <UsersIcon className="w-4 h-4" /> },
@@ -81,10 +82,28 @@ export default function LocalAdminShell() {
   const [clientPreview, setClientPreview] = useState(false)
   const [clientPreviewIdentity, setClientPreviewIdentity] = useState(null)
   const leads = useLocalLeadStats()
-  const dossiersEnCours = leads.filter(l => !['Client', 'Perdu'].includes(l.stage)).length
   const actionsEnRetard = leads.filter(l => !l.done && l.due < today).length
   const { kpis: clientKpis, rows: clientRows } = buildClientsOverview(leads)
-  const reponsesEnAttente = clientRows.filter(r => r.nextAction === 'Attendre réponse').length
+  // Correctif KPIs header admin (audit inspection navigateur, 2026-09-24) :
+  // - "Dossiers en cours" comptait les PROSPECTS pas encore Client/Perdu —
+  //   donc 0 dès qu'il ne restait plus de prospect en pipeline, alors même
+  //   qu'un dossier client réellement ouvert existait. kpis.actifs
+  //   (buildClientsOverview) est la même source déjà utilisée par l'onglet
+  //   "Clients" pour "clients dont le dossier n'est pas encore Complété" —
+  //   réutilisé tel quel, jamais un second calcul.
+  // - "Réponses en attente" ne comptait que les lignes dont le
+  //   `nextAction` synthétique valait exactement 'Attendre réponse' — or
+  //   ce champ suit une priorité (Bloqué/À relancer prime toujours), donc
+  //   une vraie demande de support en attente pouvait rester masquée
+  //   (ex: client tout juste converti avec des documents non envoyés ->
+  //   statut "Bloqué" -> reste à 0 même avec une question client en
+  //   attente). Recompté directement depuis les envois initiés par le
+  //   client encore sans réponse (même source que LocalNotificationsSection.jsx),
+  //   indépendamment du statut de dossier.
+  const dossiersEnCours = clientKpis.actifs
+  const [pendingClientReplies, setPendingClientReplies] = useState(() => getAllClientInitiatedItems().filter(item => getAdminSendStatus(item).key !== 'replied').length)
+  useEffect(() => subscribeToClientTracking(() => setPendingClientReplies(getAllClientInitiatedItems().filter(item => getAdminSendStatus(item).key !== 'replied').length)), [])
+  const reponsesEnAttente = pendingClientReplies
   // Même logique que LocalCRM.jsx (client réellement converti le plus
   // récent — jamais clientRows[0], qui est trié par priorité de statut, pas
   // par date de conversion) : garantit que "Voir l'espace client" et
@@ -141,7 +160,7 @@ export default function LocalAdminShell() {
       )
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
-    if (activeTab === 'marketing') return <AdminMarketingPanel clientId={latestClientPreview?.id} clientName={latestClientPreview?.name} clientEmail={latestClientPreview?.email} />
+    if (activeTab === 'marketing') return <AdminMarketingPanel clients={clientRows.map(r => ({ id: r.id, name: r.name, email: r.email }))} defaultClientId={latestClientPreview?.id ?? null} />
     if (activeTab === 'finance') return <LocalFinanceSection leads={leads} />
     if (activeTab === 'dossiers') return <LocalDossierSection />
     if (activeTab === 'formation') return <LocalFormationTrackingSection />
@@ -169,7 +188,7 @@ export default function LocalAdminShell() {
                   <MessageIcon className="w-4 h-4" />
                   Signaler un problème
                 </button>
-                <span className="text-white font-semibold text-sm">Salma Démo</span>
+                <span className="text-white font-semibold text-sm">Salma</span>
                 <button className="flex items-center gap-2 text-green-300 hover:text-white text-sm font-medium transition-colors px-3 py-1.5 rounded-lg hover:bg-white/10">
                   <LogoutIcon className="w-4 h-4" />
                   Déconnexion

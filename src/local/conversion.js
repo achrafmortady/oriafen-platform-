@@ -146,6 +146,16 @@ export function applyPaymentValidation(leads, leadId) {
         convertedAt: now,
         payments,
         relance: null,
+        // action/done (correctif "Premier contact" persistant en Agenda,
+        // audit inspection navigateur 2026-09-24) : la prochaine action
+        // pré-conversion (ex: "Premier contact") n'a plus de sens une fois
+        // le client converti — jamais nettoyée avant ce correctif, elle
+        // restait affichée indéfiniment dans les vues Agenda/Calendrier du
+        // CRM. `done: true` la fait apparaître "✓ Terminée" (même
+        // convention d'affichage que toute autre action terminée), et la
+        // retire aussi de "Actions en retard" (qui filtre déjà sur !done).
+        action: 'Aucune action programmée',
+        done: true,
         activationEmail,
         activationEmailPreparedAt: now,
         activity: [

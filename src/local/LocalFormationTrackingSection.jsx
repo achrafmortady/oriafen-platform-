@@ -60,7 +60,17 @@ export default function LocalFormationTrackingSection() {
   return (
     <div className="space-y-4">
       <div className="card p-6">
-        <h3 className="font-bold text-orias-green text-lg mb-5">Suivi des formations</h3>
+        <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
+          <h3 className="font-bold text-orias-green text-lg">Suivi des formations</h3>
+          {/* Correctif "UX manquante/confuse" #16 (audit inspection
+              navigateur, 2026-09-24) : aucun contrôle d'édition n'existe ici
+              — la progression avance uniquement depuis l'espace client
+              (LocalMaFormation.jsx, quand l'élève termine un chapitre).
+              Étiqueté clairement en lecture seule plutôt que de laisser
+              croire à un oubli. */}
+          <span className="text-[10px] font-bold uppercase tracking-wide text-gray-400 bg-orias-bg border border-orias-border rounded-full px-2.5 py-1">🔒 Lecture seule — la progression avance depuis l'espace client</span>
+        </div>
+        <p className="text-xs text-gray-400 mb-5">Cette vue reflète en temps réel la progression que chaque client valide lui-même dans son espace Formation IAS1.</p>
         {clients.length === 0 ? (
           <p className="text-center text-gray-400 py-8">Aucun étudiant inscrit pour l'instant.</p>
         ) : (

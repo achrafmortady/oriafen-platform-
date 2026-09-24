@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { stages, cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
-import { buildLeadTimeline, findConversionEntry, findFirstEntry, applyStatusChange, addManualComment, STAGE_BADGE_STYLES } from './clientHistory'
+import { buildLeadTimeline, findFirstEntry, applyStatusChange, addManualComment, STAGE_BADGE_STYLES } from './clientHistory'
 import { toDisplayDateSafe } from './dateUtils'
 import { findPackById } from './packsData'
 import ProgressBar from '../components/ProgressBar'
@@ -13,6 +13,7 @@ import { getClientDocuments, subscribeToDocuments, rejectDocument, validateDocum
 import { listAssociateDocCategories } from './associateDocuments'
 import { getHasAssociate, setHasAssociate, subscribeToAssociate } from './associateStore'
 import { getDossierStep, getDossierStepHistory, STEP_LABELS } from './dossierStepStore'
+import { getMarketingProject } from './marketingStore'
 
 // ============================================================
 // SOURCE DE VÉRITÉ VISUELLE UNIQUE : src/pages/admin/Dashboard.jsx,
@@ -563,7 +564,6 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
   useEffect(() => { if (openClientRequest?.clientId != null) setSelectedId(openClientRequest.clientId) }, [openClientRequest])
   const selected = rows.find(r => r.id === selectedId) || allRows.find(r => r.id === selectedId) || null
 
-  const conversionEntry = selected ? findConversionEntry({ activity: selected.leadActivity }) : null
   const firstEntry = selected ? findFirstEntry({ activity: selected.leadActivity }) : null
 
   const handleStatusChange = (clientId, newStage) => {
@@ -742,7 +742,13 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                 </div>
                 <div className="bg-orias-bg rounded-xl p-3 border border-orias-border">
                   <p className="text-xs text-gray-500 font-medium">Marketing</p>
-                  <p className="text-sm font-semibold text-gray-400">Non modélisé en local</p>
+                  {/* Correctif "Marketing: Non modélisé en local" (audit
+                      inspection navigateur, 2026-09-24) : ce texte datait
+                      d'avant l'ajout du store Marketing local complet
+                      (marketingStore.js) — remplacé par la phase réelle du
+                      projet marketing de ce client, même source que l'onglet
+                      admin Marketing. */}
+                  <p className="text-sm font-semibold text-gray-700 truncate">{getMarketingProject(selected.id).phase}</p>
                 </div>
               </div>
               <div className="mt-3">
@@ -767,7 +773,7 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                 Prochaine action, Suivi des envois. Objectif : aucune grande zone vide,
                 les deux colonnes se remplissent naturellement à hauteur comparable. */}
             <div className="p-6 pt-4">
-              <p className="text-[11px] font-bold text-orias-gold uppercase tracking-wide mb-4">Fonctionnalités locales (en plus du live)</p>
+              <p className="text-[11px] font-bold text-orias-gold uppercase tracking-wide mb-4">Détails complémentaires</p>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-start">
                 {/* Colonne gauche */}
                 <div className="space-y-4">
@@ -832,7 +838,16 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                       <InfoField label="Source" value={selected.source} />
                       <InfoField label="Responsable" value={selected.owner} />
                       <InfoField label="Date de création (lead)" value={firstEntry?.at ? (toDisplayDateSafe(firstEntry.at) || firstEntry.at) : 'Non renseigné'} />
-                      <InfoField label="Date de conversion client" value={conversionEntry?.at ? (toDisplayDateSafe(conversionEntry.at) || conversionEntry.at) : 'Non renseigné'} />
+                      {/* Correctif "Date de conversion: Non renseigné" (audit
+                          inspection navigateur, 2026-09-24) : cherchait une
+                          entrée d'historique "Étape : Client" qui n'est plus
+                          jamais créée depuis le correctif payment-gate
+                          (conversion.js écrit désormais "Paiement validé —
+                          compte client créé…", jamais "Étape : Client") —
+                          lu directement depuis lead.convertedAt (même champ
+                          que celui déjà fixé par applyPaymentValidation),
+                          jamais recalculé/deviné. */}
+                      <InfoField label="Date de conversion client" value={selected.convertedAt || 'Non renseigné'} />
                     </div>
                   </div>
 

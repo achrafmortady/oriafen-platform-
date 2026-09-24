@@ -220,9 +220,14 @@ console.log('PASS: règle "Clients à relancer" (stage seul, relance datée, ret
   // Idempotent : une deuxième tentative de réponse ne duplique rien.
   const again = respondToClientRequest(ticket.id, 'Autre message')
   assert.equal(again, false)
-  // Une notification "Nouvelle réponse support" doit apparaître (cloche).
-  const notif = getClientSends(demoClientId).find(i => i.title === 'Nouvelle réponse support')
-  assert.ok(notif, 'une réponse de l\'équipe à une demande support doit déclencher une notification client')
+  // Correctif "réponse dupliquée" (audit inspection navigateur, 2026-09-24) :
+  // la réponse ne doit JAMAIS créer un second item ("Nouvelle réponse
+  // support") en plus de celle déjà attachée à la demande d'origine — un
+  // seul thread, jamais deux cartes pour la même réponse. La cloche cliente
+  // (même store) alerte via ce même item repassé à "non vu" (seenAt=null).
+  const allItemsAfterReply = getClientSends(demoClientId)
+  assert.equal(allItemsAfterReply.length, afterCreate.length, 'aucun item supplémentaire ne doit être créé par la réponse de l\'équipe')
+  assert.equal(item.seenAt, null, 'l\'item repasse à "non vu" pour que la cloche compte bien la nouvelle réponse')
   // Une demande vide (sans sujet ou message) est ignorée, jamais une fausse entrée.
   assert.equal(createClientSupportRequest(demoClientId, { subject: '', message: 'x' }), null)
   assert.equal(createClientSupportRequest(demoClientId, { subject: 'x', message: '' }), null)

@@ -28,6 +28,15 @@ export default function LocalAdminNotificationBell({ onNavigate }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Correctif "Échap ne ferme pas la cloche" (audit inspection navigateur,
+  // 2026-09-24) : seul un clic en dehors du panneau le fermait.
+  useEffect(() => {
+    if (!open) return
+    const handleEscape = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [open])
+
   const toggleOpen = () => {
     if (!open && btnRef.current) {
       const rect = btnRef.current.getBoundingClientRect()
@@ -98,6 +107,16 @@ export default function LocalAdminNotificationBell({ onNavigate }) {
                     </div>
                     {item.message && <p className="text-xs text-gray-500 truncate mt-0.5">{item.message}</p>}
                     <p className="text-[11px] text-gray-400 mt-1">{item.clientName ? `${item.clientName} · ` : ''}{item.createdAt}</p>
+                    {/* Correctif "pas de contrôle de réponse dans l'inbox"
+                        (audit inspection navigateur, 2026-09-24) : une
+                        demande de support client passait à "Vu" au clic sans
+                        aucune indication qu'elle ouvre la fiche client où
+                        répondre réellement (ClientSendTracking, admin-reply-
+                        box) — action explicite ajoutée ici, jamais une
+                        deuxième zone de réponse dupliquée dans ce popup. */}
+                    {item.type === 'support' && (
+                      <p className="text-[11px] font-semibold text-orias-green mt-1">Ouvrir et répondre →</p>
+                    )}
                   </div>
                 </button>
               ))

@@ -20,7 +20,7 @@ export const CANONICAL_DEMO_CLIENT_PACK_ID = 'combine-acceleration' // "Pack Acc
 // des anciennes données). "Intéressé – à relancer" passe en 2e position,
 // juste après "Nouveau", comme demandé.
 export const stages = ['Nouveau','Intéressé – à relancer','Qualifié','Engagé (Commit)','Client','Injoignable','Perdu'];
-export const owners = ['Salma Démo','Yanis Démo','Non attribué'];
+export const owners = ['Salma','Yanis','Non attribué'];
 export const sources = ['WhatsApp','Site web','Instagram','Facebook','Autre'];
 export const today = new Date().toISOString().slice(0,10);
 

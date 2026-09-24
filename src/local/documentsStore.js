@@ -1,6 +1,7 @@
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { logActivity } from './activityLog'
 import { addClientNotification } from './clientTrackingStore'
+import { isCanonicalDemoClientId } from './adapters/identity'
 
 // Complète localement (aucun Supabase, aucun appel réseau) ce que le live
 // gère déjà partiellement pour les documents client — mêmes conventions
@@ -26,9 +27,16 @@ function writeAll(data) {
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT))
 }
 
-// État de démo déterministe (par client) : un mélange de statuts pour que
-// la démonstration montre tout de suite un document rejeté, un en attente,
-// un validé et un non soumis.
+// État de démo déterministe — UNIQUEMENT pour le client de démo canonique
+// (CANONICAL_DEMO_CLIENT_ID) : un mélange de statuts pour que la
+// démonstration montre tout de suite un document rejeté, un en attente, un
+// validé et un non soumis. Correctif "faux documents/rejets sur un nouveau
+// client converti" (audit inspection navigateur, 2026-09-24) : cette
+// fonction était appelée pour N'IMPORTE QUEL clientId encore absent du
+// store, donc aussi pour chaque nouveau prospect réellement converti — un
+// client fraîchement créé se retrouvait avec cin.pdf/domicile.pdf déjà
+// "envoyés" et parfois "Refusé" alors qu'il n'avait rien téléversé. Voir
+// emptyDocs() ci-dessous pour tout autre client.
 function seedDocs(clientId) {
   const docs = {}
   REQUIRED_DOCUMENTS.forEach((req, i) => {
@@ -62,6 +70,32 @@ function seedDocs(clientId) {
     }
   })
   return docs
+}
+
+// État initial réel pour tout client hors démo : aucun document envoyé,
+// aucun rejet — le client/l'admin doit explicitement ajouter/téléverser un
+// document pour qu'un statut autre que 'none' apparaisse.
+function emptyDocs() {
+  const docs = {}
+  REQUIRED_DOCUMENTS.forEach(req => {
+    docs[req.id] = {
+      category: req.id,
+      categoryLabel: req.label,
+      status: 'none',
+      fileName: null,
+      fileUrl: null,
+      rejectionReason: null,
+      rejectedAt: null,
+      rejectedBy: null,
+      uploadedAt: null,
+      versions: [],
+    }
+  })
+  return docs
+}
+
+function initialDocsFor(clientId) {
+  return isCanonicalDemoClientId(clientId) ? seedDocs(clientId) : emptyDocs()
 }
 
 // Rejoue dans le journal + les notifications les rejets déjà connus d'un
@@ -101,7 +135,7 @@ function backfillDocActivity(clientId, doc) {
 export function getClientDocuments(clientId) {
   const data = readAll()
   if (!data[clientId]) {
-    data[clientId] = seedDocs(clientId)
+    data[clientId] = initialDocsFor(clientId)
     writeAll(data)
   }
   Object.values(data[clientId]).forEach(doc => backfillDocActivity(clientId, doc))
@@ -141,7 +175,7 @@ export function subscribeToDocuments(callback) {
 // ── Admin : rejeter un document avec motif ─────────────────────────
 export function rejectDocument(clientId, categoryId, reason, rejectedBy = 'Équipe Oriafen') {
   const data = readAll()
-  if (!data[clientId]) data[clientId] = seedDocs(clientId)
+  if (!data[clientId]) data[clientId] = initialDocsFor(clientId)
   const doc = data[clientId][categoryId]
   if (!doc || !doc.fileName) return false // rien à rejeter (aucun fichier envoyé)
 
@@ -189,7 +223,7 @@ export function rejectDocument(clientId, categoryId, reason, rejectedBy = 'Équi
 // ── Admin : valider un document ─────────────────────────────────────
 export function validateDocument(clientId, categoryId, validatedBy = 'Équipe Oriafen') {
   const data = readAll()
-  if (!data[clientId]) data[clientId] = seedDocs(clientId)
+  if (!data[clientId]) data[clientId] = initialDocsFor(clientId)
   const doc = data[clientId][categoryId]
   if (!doc || !doc.fileName) return false
 
@@ -207,7 +241,7 @@ export function validateDocument(clientId, categoryId, validatedBy = 'Équipe Or
 // ── Client : envoyer / remplacer un document ────────────────────────
 export function uploadDocument(clientId, categoryId, categoryLabel, file) {
   const data = readAll()
-  if (!data[clientId]) data[clientId] = seedDocs(clientId)
+  if (!data[clientId]) data[clientId] = initialDocsFor(clientId)
   const existing = data[clientId][categoryId] || { category: categoryId, categoryLabel, versions: [] }
   const wasRejected = existing.status === 'missing' || existing.status === 'correction'
 

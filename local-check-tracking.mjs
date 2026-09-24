@@ -50,6 +50,7 @@ const {
   getAdminSendStatus,
   replyToClientSend,
   getReminderCount,
+  addClientNotification,
 } = await import('./src/local/clientTrackingStore.js')
 
 const {
@@ -67,7 +68,7 @@ const { setDossierStep } = await import('./src/local/dossierStepStore.js')
 const { REQUIRED_DOCUMENTS } = await import('./src/data/mockData.js')
 
 const { LOCAL_PACKS, PACK_CATEGORY_LABELS, packsByCategory, findPackByName, findPackById, basePriceFor, computeFinalPrice, TVA_RATE } = await import('./src/local/packsData.js')
-const { stages, seed, normalizeLeadsStage, MIGRATION_RDV_PRIS_TO } = await import('./src/local/model.js')
+const { stages, seed, normalizeLeadsStage, MIGRATION_RDV_PRIS_TO, CANONICAL_DEMO_CLIENT_ID } = await import('./src/local/model.js')
 const { applyPaymentValidation, buildMockPaymentRows } = await import('./src/local/conversion.js')
 const { buildLeadTimeline, findConversionEntry, findFirstEntry, applyStatusChange, addManualComment, applyNextActionUpdate, STAGE_BADGE_STYLES } = await import('./src/local/clientHistory.js')
 const { formatNowLabel, toDisplayDateSafe } = await import('./src/local/dateUtils.js')
@@ -97,7 +98,14 @@ async function check(label, fn) {
 // ================================================================
 console.log('A-D. Tracking local des envois (clientTrackingStore.js)')
 
-const trackingClientId = 'track-client-1'
+// Correctif "faux support/messages sur un nouveau prospect/client" (audit
+// inspection navigateur, 2026-09-24) : le seed de démonstration
+// (mockItems, clientTrackingStore.js) est désormais réservé au seul client
+// de démo canonique — un clientId arbitraire ('track-client-1') démarre
+// maintenant avec un historique vide, comme n'importe quel client réel.
+// Ce test vérifie le tracking (seen/opened/reminder/important) sur des
+// items EXISTANTS, donc utilise volontairement le client de démo ici.
+const trackingClientId = CANONICAL_DEMO_CLIENT_ID
 const sends = getClientSends(trackingClientId)
 assert.equal(sends.length, 3)
 const [msgItem, fileItem, docItem] = sends
@@ -159,6 +167,12 @@ await check('A3. no-response-required : le statut client reste "no_response_requ
 
 await check('A4. régression priorité de statut : un envoi "reminded" qui est ensuite ouvert repasse "opened", pas "remind" (contradiction historique corrigée)', () => {
   const regressionClientId = 'track-client-regression'
+  // Correctif "faux support/messages sur un nouveau prospect/client" (audit
+  // inspection navigateur, 2026-09-24) : ce clientId arbitraire ne démarre
+  // plus avec un seed implicite (réservé au client de démo canonique) —
+  // fixture créée explicitement via addClientNotification, comme le ferait
+  // n'importe quelle action réelle.
+  addClientNotification(regressionClientId, { kind: 'Message', title: 'Point de suivi', message: 'Test régression' })
   const [item] = getClientSends(regressionClientId)
   markClientSendReminded(item.id)
   let after = getClientSends(regressionClientId).find(i => i.id === item.id)
@@ -175,9 +189,14 @@ await check('A4. régression priorité de statut : un envoi "reminded" qui est e
 console.log('E-G. Documents rejetés / remplacés / versioning (documentsStore.js)')
 
 const docsClientId = 'docs-client-1'
+// Correctif "faux documents/rejets sur un nouveau client converti" (audit
+// inspection navigateur, 2026-09-24) : le seed de démonstration
+// (documentsStore.js) est désormais réservé au seul client de démo
+// canonique — un clientId arbitraire démarre avec 0 document envoyé.
+// Fixture créée explicitement via uploadDocument, comme le ferait un
+// vrai envoi client, avant de tester le rejet.
+uploadDocument(docsClientId, REQUIRED_DOCUMENTS[0].id, REQUIRED_DOCUMENTS[0].label, { name: `${REQUIRED_DOCUMENTS[0].id}.pdf` })
 const docsBefore = getClientDocuments(docsClientId)
-// Le document 'cin' (index 0, cycle 0 => 'valid') n'a pas de fichier à rejeter :
-// on prend celui qui a un fichier ET n'est pas déjà 'missing'.
 const targetCategory = Object.values(docsBefore).find(d => d.fileName && d.status !== 'missing').category
 
 await check('E. rejectDocument enregistre motif + rejectedAt + archive une version + notifie', () => {
@@ -229,6 +248,7 @@ await check('G. getDocVersions expose l\'historique complet (rejeté + courant)'
 
 await check('C2. remplacement : le numéro de version incrémente et les versions précédentes restent inchangées', () => {
   const versionsClientId = 'docs-client-versions'
+  uploadDocument(versionsClientId, REQUIRED_DOCUMENTS[0].id, REQUIRED_DOCUMENTS[0].label, { name: `${REQUIRED_DOCUMENTS[0].id}.pdf` })
   const category = Object.values(getClientDocuments(versionsClientId)).find(d => d.fileName && d.status !== 'missing').category
 
   rejectDocument(versionsClientId, category, 'Motif 1', 'Admin Test')
@@ -259,6 +279,7 @@ console.log('D. Notification injectée localement lors d\'un rejet de document')
 
 await check('D. La notification de rejet a le bon destinataire, le bon contenu, cible Documents, et peut être marquée lue', () => {
   const notifClientId = 'docs-client-notif'
+  uploadDocument(notifClientId, REQUIRED_DOCUMENTS[0].id, REQUIRED_DOCUMENTS[0].label, { name: `${REQUIRED_DOCUMENTS[0].id}.pdf` })
   const category = Object.values(getClientDocuments(notifClientId)).find(d => d.fileName && d.status !== 'missing').category
   const reason = 'Photo trop sombre'
 
@@ -291,6 +312,27 @@ await check('E2. login / message_seen / document_opened / reply_sent / reminder_
   // message_seen / document_opened / reply_sent / reminder_sent (via le tracking existant)
   // a = message (important, responseRequired), b = fichier (non important,
   // responseRequired=false), c = document (non important, responseRequired).
+  //
+  // Correctif "faux support/messages sur un nouveau prospect/client" (audit
+  // inspection navigateur, 2026-09-24) : le seed implicite (mockItems) est
+  // réservé au client de démo canonique — cette fixture précise (item
+  // important+responseRequired / fichier sans réponse requise / document
+  // avec réponse requise) n'est pas reproductible via les fonctions
+  // exportées (addClientNotification force toujours responseRequired à
+  // false), donc écrite directement dans le même format de stockage que
+  // clientTrackingStore.js, fusionnée avec les données déjà présentes
+  // (jamais un écrasement des autres clientId déjà utilisés par ce fichier).
+  const trackingRaw = JSON.parse(localStorage.getItem('oriafen-client-tracking-v1') || '{}')
+  trackingRaw[journalClientId] = [
+    // getClientSends() trie du plus récent au plus ancien : sentAt décroît
+    // volontairement de a -> c pour que [a, b, c] = getClientSends(...)
+    // retombe bien dans cet ordre (même convention que mockItems()).
+    { id: `a-${journalClientId}`, clientId: journalClientId, kind: 'Message', senderType: 'team', title: 'Point de suivi', sentAt: '01/01/2026 · 09:02', responseRequired: true, status: 'waiting', message: 'Point de suivi', important: true },
+    { id: `b-${journalClientId}`, clientId: journalClientId, kind: 'Fichier', senderType: 'team', title: 'Présentation', sentAt: '01/01/2026 · 09:01', responseRequired: false, status: 'no_response_required', message: null, important: false, fileName: 'presentation.pdf' },
+    { id: `c-${journalClientId}`, clientId: journalClientId, kind: 'Document', senderType: 'team', title: 'Proposition', sentAt: '01/01/2026 · 09:00', responseRequired: true, status: 'waiting', message: 'Proposition', important: false, fileName: 'proposition.pdf' },
+  ]
+  localStorage.setItem('oriafen-client-tracking-v1', JSON.stringify(trackingRaw))
+
   const [a, b, c] = getClientSends(journalClientId)
   markClientSendSeen(b.id)          // b non important -> "Message consulté" (pas "Notification importante consultée")
   markClientSendOpened(c.id)        // -> "Fichier/document ouvert"
@@ -408,6 +450,32 @@ function setDossierState(id, { step = 1, validDocs = 0, pendingDocs = 0 } = {}) 
   setDossierStep(id, step, 'Admin Test')
   setDocsState(id, validDocs, pendingDocs)
 }
+// Correctif "faux support/messages sur un nouveau prospect/client" (audit
+// inspection navigateur, 2026-09-24) : le seed implicite (mockItems) est
+// réservé au client de démo canonique — plusieurs tests "I." (nextAction
+// dérivé) ont besoin d'un item team->client avec responseRequired=true pour
+// isoler le signal "réponse en attente" testé. Écrit directement dans le
+// même format que clientTrackingStore.js, fusionné avec les données déjà
+// présentes (jamais un écrasement des autres clientId déjà utilisés).
+function seedResponseRequiredItem(id) {
+  const raw = JSON.parse(localStorage.getItem('oriafen-client-tracking-v1') || '{}')
+  raw[id] = [{ id: `seed-${id}`, clientId: id, kind: 'Message', senderType: 'team', title: 'Point de suivi', sentAt: '01/01/2026 · 09:00', responseRequired: true, status: 'waiting', message: 'Point de suivi', important: false }]
+  localStorage.setItem('oriafen-client-tracking-v1', JSON.stringify(raw))
+}
+// Même besoin que seedResponseRequiredItem, mais pour les tests qui
+// destructurent [, , item] = getClientSends(clientId) (3e item = celui qui
+// requiert une réponse) — même forme que l'ancien mockItems() (message
+// team->client répondu, fichier sans réponse requise, document avec
+// réponse requise), reproduite explicitement pour un clientId de test.
+function seedThreeItemFixture(id) {
+  const raw = JSON.parse(localStorage.getItem('oriafen-client-tracking-v1') || '{}')
+  raw[id] = [
+    { id: `msg-${id}`, clientId: id, kind: 'Message', senderType: 'team', title: 'Point de suivi', sentAt: '01/01/2026 · 09:02', responseRequired: true, status: 'waiting', message: 'Point de suivi', important: true },
+    { id: `file-${id}`, clientId: id, kind: 'Fichier', senderType: 'team', title: 'Présentation', sentAt: '01/01/2026 · 09:01', responseRequired: false, status: 'no_response_required', message: null, important: false, fileName: 'presentation.pdf' },
+    { id: `doc-${id}`, clientId: id, kind: 'Document', senderType: 'team', title: 'Proposition commerciale', sentAt: '01/01/2026 · 09:00', responseRequired: true, status: 'waiting', message: 'Proposition', important: false, fileName: 'proposition.pdf' },
+  ]
+  localStorage.setItem('oriafen-client-tracking-v1', JSON.stringify(raw))
+}
 function makeClientLead(id) {
   // paymentValidated: true — buildClientsOverview ne fait apparaître un lead
   // stage==='Client' dans la vue Clients qu'une fois le paiement réellement
@@ -445,6 +513,7 @@ await check('I2. Réponse requise sans réponse (aucun autre signal) => statut "
   // 1 document manquant (missingDocs=1) suffit, quelle que soit l'étape.
   const id = 9002
   setDossierState(id, { step: 1, validDocs: 5, pendingDocs: 0 })
+  seedResponseRequiredItem(id)
   const items = getClientSends(id)
   assert.ok(items.some(i => i.responseRequired), 'au moins un item de démo requiert une réponse')
 
@@ -477,6 +546,7 @@ await check('I3. Envoi à relancer (signal réel du tracking) => "Relancer le cl
   // le client". Ce test couvre spécifiquement ce cas, désormais corrigé.
   const id = 9004
   setDossierState(id, { step: 1, validDocs: 5, pendingDocs: 0 })
+  seedResponseRequiredItem(id)
   const [item] = getClientSends(id)
   markClientSendReminded(item.id)
   const after = getClientSends(id).find(i => i.id === item.id)
@@ -503,6 +573,7 @@ await check('I4. Document manquant / attendu => "Attendre document"', () => {
   // donc on neutralise ce signal ici pour isoler le cas "document manquant").
   const idBloque = 9006
   setDossierState(idBloque, { step: 1, validDocs: 0, pendingDocs: 0 }) // missingDocs=6
+  seedResponseRequiredItem(idBloque)
   getClientSends(idBloque).filter(i => i.responseRequired).forEach(i => markClientSendSeen(i.id))
   const rowBloque = nextActionFor(idBloque)
   assert.equal(rowBloque.status, 'Bloqué')
@@ -513,6 +584,7 @@ await check('I4. Document manquant / attendu => "Attendre document"', () => {
   // réponse en attente) : doit aussi retomber sur "Attendre document".
   const idEnCours = 9007
   setDossierState(idEnCours, { step: 1, validDocs: 5, pendingDocs: 0 }) // missingDocs=1
+  seedResponseRequiredItem(idEnCours)
   // Neutraliser le signal "réponse en attente" pour isoler ce cas précis :
   // marquer comme répondu le seul item qui requiert une réponse.
   getClientSends(idEnCours).filter(i => i.responseRequired).forEach(i => replyToClientSend(i.id, 'ok'))
@@ -530,6 +602,7 @@ await check('I5. "Vérifier le dossier" : dossier sans document manquant mais é
   // atteignable et testable : étape 1 (< 5), 0 document manquant.
   const id = 9008
   setDossierState(id, { step: 1, validDocs: 6, pendingDocs: 0 }) // missingDocs=0, step<5 => pas 'Complété'
+  seedResponseRequiredItem(id)
   // Neutralise les signaux "réponse en attente" / "à relancer" pour isoler
   // le repli "Vérifier le dossier" (replyToClientSend efface aussi le
   // statut 'remind' — voir getAdminSendStatus, 'replied' est prioritaire).
@@ -552,6 +625,7 @@ await check('I6. Dossier complet, aucun signal en attente => "Aucune action"', (
 await check('I7. Priorités : document remplacé reste prioritaire même avec statut "À relancer" ou réponse en attente', () => {
   const id = 9010
   setDossierState(id, { step: 1, validDocs: 4, pendingDocs: 0 }) // missingDocs=2 => 'À relancer'
+  seedResponseRequiredItem(id)
   // Ajoute en plus un signal de réponse en attente + relance réelle, pour
   // vérifier qu'aucun de ces signaux ne prend le dessus sur le document à
   // vérifier une fois qu'il est présent.
@@ -931,6 +1005,7 @@ console.log('N. Relance illimitée + indicateur émetteur (clientTrackingStore.j
 
 await check('N1. Le bouton "Relancer" reste disponible tant qu\'aucune réponse n\'est arrivée : relances multiples possibles, jamais plafonnées', () => {
   const clientId = 'relance-client-1'
+  seedThreeItemFixture(clientId)
   const [, , item] = getClientSends(clientId) // docItem : responseRequired=true
   assert.equal(getReminderCount(item), 0)
   assert.equal(item.responseRequired && !item.response, true, 'le bouton doit être affichable dès le départ (réponse attendue, aucune réponse)')
@@ -953,6 +1028,7 @@ await check('N1. Le bouton "Relancer" reste disponible tant qu\'aucune réponse 
 
 await check('N2. Le bouton "Relancer" disparaît uniquement une fois la réponse du client reçue (pas simplement vue/ouverte)', () => {
   const clientId = 'relance-client-2'
+  seedThreeItemFixture(clientId)
   const [, , item] = getClientSends(clientId)
   markClientSendOpened(item.id) // vu + ouvert, mais pas encore répondu
   const opened = getClientSends(clientId).find(i => i.id === item.id)
@@ -965,6 +1041,7 @@ await check('N2. Le bouton "Relancer" disparaît uniquement une fois la réponse
 
 await check('N3. lastActivityAt est mis à jour à chaque relance et chaque relance est journalisée individuellement (append, jamais overwrite)', () => {
   const clientId = 'relance-client-3'
+  seedThreeItemFixture(clientId)
   const [, , item] = getClientSends(clientId)
   markClientSendReminded(item.id)
   markClientSendReminded(item.id)
@@ -978,6 +1055,7 @@ await check('N3. lastActivityAt est mis à jour à chaque relance et chaque rela
 
 await check('N4. Indicateur d\'émetteur : chaque envoi porte un senderType exploitable ("team" = Équipe Oriafen), jamais deviné/absent', () => {
   const clientId = 'sender-client-1'
+  seedThreeItemFixture(clientId)
   const items = getClientSends(clientId)
   assert.ok(items.length > 0)
   items.forEach(item => {
@@ -990,6 +1068,7 @@ await check('N4. Indicateur d\'émetteur : chaque envoi porte un senderType expl
 
 await check('N5. Une réponse client reste identifiable comme provenant du client (via item.response, jamais confondue avec un envoi de l\'équipe)', () => {
   const clientId = 'sender-client-2'
+  seedThreeItemFixture(clientId)
   const [, , item] = getClientSends(clientId)
   replyToClientSend(item.id, 'Message du client.')
   const replied = getClientSends(clientId).find(i => i.id === item.id)

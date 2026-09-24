@@ -115,9 +115,13 @@ console.log('PASS ISSUE 1: une demande marketing -> une notification admin, aucu
   const okAgain = respondToClientRequest(req1.id, 'Autre message')
   assert.equal(okAgain, false)
 
-  // Client-facing notification for the reply — exactly one.
-  const replyNotifs = getClientSends(clientId).filter(i => i.title === 'Nouvelle réponse support')
-  assert.equal(replyNotifs.length, 1, 'une réponse de l\'équipe -> une seule notification côté client')
+  // Correctif "réponse dupliquée" (audit inspection navigateur, 2026-09-24) :
+  // la réponse ne crée plus jamais un second item ("Nouvelle réponse
+  // support") — elle reste attachée au thread d'origine (t1.response,
+  // déjà vérifié ci-dessus), et ce même item repasse à "non vu" pour que
+  // la cloche cliente alerte sans dupliquer la conversation.
+  assert.equal(getClientSends(clientId).filter(i => i.title === 'Nouvelle réponse support').length, 0, 'la réponse ne doit plus jamais créer un item séparé — un seul thread par demande')
+  assert.equal(t1.seenAt, null, 'le thread d\'origine repasse à "non vu" pour signaler la nouvelle réponse à la cloche cliente')
 
   // Trying to reply via the wrong function (client-side reply) must not work on a client-initiated thread.
   const { replyToClientSend } = await import('./src/local/clientTrackingStore.js')
@@ -158,7 +162,17 @@ console.log('PASS ISSUE 2: support -> notification admin par demande, threads s�
 
   // Same ID used consistently across every store: documents, associate
   // documents, marketing, support/messages, notifications.
-  const clientId = CANONICAL_DEMO_CLIENT_ID
+  //
+  // Un id RÉEL arbitraire est utilisé ici plutôt que CANONICAL_DEMO_CLIENT_ID
+  // (audit inspection navigateur, 2026-09-24, item 7 "no demo notifications
+  // in normal V2") : adminNotificationsStore.js filtre désormais
+  // volontairement toute notification liée au client de démo canonique (une
+  // vraie session V2 ne génère d'ailleurs jamais d'action sur ce lead —
+  // cleanPreviewLeads l'exclut déjà des leads visibles). Cette partie du
+  // test vérifie un invariant indépendant de cet id précis (cohérence d'un
+  // même clientId à travers tous les stores) — un id arbitraire le
+  // démontre tout aussi bien, sans entrer en conflit avec le nettoyage.
+  const clientId = 'consistency-check-client'
   uploadDocument(clientId, 'associate_cin_recto', "CIN de l'associé — Recto", { name: 'cin-recto.pdf' })
   const docs = getClientDocuments(clientId)
   assert.equal(docs.associate_cin_recto.fileName, 'cin-recto.pdf')
@@ -236,7 +250,15 @@ function loadLeadsLikeAdminClientsTab(raw) {
   assert.equal(getClientDocuments(demoRow.id).associate_cin_verso.fileName, 'verso.pdf')
   const support = createClientSupportRequest(demoRow.id, { subject: 'Test bout-en-bout', message: 'Vérification finale' }, CANONICAL_DEMO_CLIENT_NAME)
   assert.ok(getClientSends(demoRow.id).some(i => i.id === support.id))
-  assert.ok(getAdminNotifications().some(n => n.clientId === demoRow.id && n.title.includes('Client Démo')))
+  // Correctif "vieilles notifications de démo dans la cloche admin" (audit
+  // inspection navigateur, 2026-09-24, item 7) : adminNotificationsStore.js
+  // filtre désormais volontairement toute notification liée au client de
+  // démo canonique — une vraie session V2 n'en génère d'ailleurs jamais
+  // (cleanPreviewLeads exclut ce lead des leads visibles). Le comportement
+  // attendu s'est donc inversé par rapport à l'ancienne assertion : la
+  // notification créée ci-dessus ne doit PLUS apparaître dans la cloche
+  // admin, même si le support request lui-même reste bien enregistré.
+  assert.equal(getAdminNotifications().some(n => n.clientId === demoRow.id), false, 'les notifications liées au client de démo canonique ne doivent plus jamais apparaître dans la cloche admin')
 }
 console.log('PASS RÉGRESSION: le jeu de données réel d\'Admin > Clients (buildClientsOverview) contient "Client Démo", y compris avec des leads déjà persistés, sans doublon')
 

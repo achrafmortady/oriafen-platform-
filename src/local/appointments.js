@@ -8,9 +8,18 @@
 // effectué reste une action distincte de l'utilisateur (bouton dédié dans
 // LocalCRM.jsx, qui réutilise patch()/le select Statut existant).
 
-import { formatNowLabel } from './dateUtils'
+import { formatNowLabel, toDisplayDateSafe } from './dateUtils'
 
 export const APPOINTMENT_TYPE_LABELS = { appel: 'Appel téléphonique', visio: 'Visio', presentiel: 'En personne' }
+
+// Correctif "date RDV brute dans l'historique" (audit inspection navigateur,
+// 2026-09-24) : l'historique affichait la valeur ISO telle que saisie par
+// l'input datetime-local ("2026-09-26T10:00") au lieu d'un format FR
+// lisible. `scheduledAt` reste stocké tel quel sur l'objet appointment (tri/
+// édition), seul l'AFFICHAGE (historique + liste RDV) est formaté.
+function displayScheduledAt(scheduledAt) {
+  return toDisplayDateSafe(scheduledAt) || scheduledAt
+}
 
 export function addAppointment(leads, leadId, { scheduledAt, type }) {
   if (!scheduledAt) return leads
@@ -20,7 +29,7 @@ export function addAppointment(leads, leadId, { scheduledAt, type }) {
     ? {
         ...l,
         appointments: [...(l.appointments || []), { id: Date.now(), scheduledAt, type, status: 'planifie' }],
-        activity: [{ text: `RDV planifié (${label}) — ${scheduledAt}`, at: now }, ...(l.activity || [])],
+        activity: [{ text: `RDV planifié (${label}) — ${displayScheduledAt(scheduledAt)}`, at: now }, ...(l.activity || [])],
         lastActivityAt: now,
       }
     : l)
@@ -40,7 +49,7 @@ export function markAppointmentDone(leads, leadId, appointmentId) {
     ? {
         ...l,
         appointments: l.appointments.map(a => a.id === appointmentId ? { ...a, status: 'effectue', completedAt: now } : a),
-        activity: [{ text: `RDV effectué (${label}) — ${appt.scheduledAt}`, at: now }, ...(l.activity || [])],
+        activity: [{ text: `RDV effectué (${label}) — ${displayScheduledAt(appt.scheduledAt)}`, at: now }, ...(l.activity || [])],
         lastActivityAt: now,
       }
     : l)

@@ -126,17 +126,17 @@ check('LocalMarketing.jsx : AdminBrandIntakeCard affiche marque, activité, audi
 //    admin : clientId=null (pas getActiveClientId()) par défaut, état vide
 //    explicite tant qu'aucun client réel n'est converti.
 // ================================================================
-check('LocalMarketing.jsx : AdminMarketingPanel ne retombe JAMAIS implicitement sur getActiveClientId()/le client de démo — clientId=null par défaut avec état vide explicite', () => {
+check('LocalMarketing.jsx : AdminMarketingPanel ne retombe JAMAIS implicitement sur getActiveClientId()/le client de démo — état vide explicite tant qu\'aucun client réel n\'existe (clients=[])', () => {
   const src = readFileSync('./src/local/LocalMarketing.jsx', 'utf8')
-  assert.doesNotMatch(src, /AdminMarketingPanel\(\{\s*clientId\s*=\s*getActiveClientId/, 'plus de repli implicite sur getActiveClientId()')
-  assert.match(src, /export function AdminMarketingPanel\(\{\s*clientId\s*=\s*null/, 'clientId doit être null par défaut, jamais un id de démo')
-  assert.match(src, /if \(clientId == null\)/, 'un état vide explicite doit être rendu tant qu\'aucun client réel n\'existe')
+  assert.doesNotMatch(src, /getActiveClientId/, 'plus aucun repli implicite sur getActiveClientId() dans ce fichier')
+  assert.match(src, /export function AdminMarketingPanel\(\{\s*clients\s*=\s*\[\]/, 'clients doit être [] par défaut, jamais un id de démo')
+  assert.match(src, /if \(!clients\.length \|\| clientId == null\)/, 'un état vide explicite doit être rendu tant qu\'aucun client réel n\'existe')
 })
 
-check('LocalAdminShell.jsx : latestClientPreview (utilisé pour "Voir l\'espace client" ET l\'onglet Marketing) sélectionne le client réellement converti le plus récent, pas clientRows[0] (trié par priorité de statut)', () => {
+check('LocalAdminShell.jsx : latestClientPreview (utilisé pour "Voir l\'espace client" ET comme client par défaut de l\'onglet Marketing) sélectionne le client réellement converti le plus récent, pas clientRows[0] (trié par priorité de statut)', () => {
   const src = readFileSync('./src/local/LocalAdminShell.jsx', 'utf8')
   assert.match(src, /leads\.filter\(l => l\.stage === 'Client' && l\.paymentValidated\)\.sort\(\(a, b\) => \(b\.createdAt \|\| 0\) - \(a\.createdAt \|\| 0\)\)\[0\] \|\| null/, 'même logique que LocalCRM.jsx (createdAt desc), jamais clientRows[0]')
-  assert.match(src, /AdminMarketingPanel clientId=\{latestClientPreview\?\.id\}/, 'l\'onglet Marketing doit recevoir le même id que "Voir l\'espace client"')
+  assert.match(src, /AdminMarketingPanel clients=\{clientRows\.map[\s\S]{0,80}defaultClientId=\{latestClientPreview\?\.id/, 'l\'onglet Marketing doit recevoir la même sélection par défaut que "Voir l\'espace client"')
 })
 
 console.log(`PASS (${passed} checks): brief brand kit (logo/Instagram/Facebook/Meta Business Manager conditionnels + 3 couleurs) sauvegardé et visible intégralement côté admin, jamais de repli sur le client de démo.`)
