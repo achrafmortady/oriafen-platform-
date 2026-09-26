@@ -81,11 +81,21 @@ function hasDocumentAwaitingRevalidation(clientId) {
   )
 }
 
-// Étape par défaut (avant toute action admin réelle) — même formule
-// déterministe qu'avant, exportée pour être réutilisée telle quelle par les
-// autres vues (ex: LocalMonDossier.jsx côté client) plutôt que dupliquée.
-export function defaultStepIndexFor(clientId) {
-  return Number(clientId) % ORIAS_STEPS.length
+// Étape par défaut (avant toute action admin réelle) — exportée pour être
+// réutilisée telle quelle par les autres vues (ex: LocalMonDossier.jsx côté
+// client) plutôt que dupliquée.
+//
+// Correctif "timeline d'un nouveau client incorrecte" (audit inspection
+// navigateur, 2026-09-26) : reposait sur `clientId % ORIAS_STEPS.length`,
+// une formule qui donnait un "hasard" déterministe pratique pour varier les
+// clients de démonstration (ids petits 1-24) — mais un vrai client converti
+// a un id = Date.now() (13 chiffres), donc un modulo qui pouvait retomber
+// sur n'importe quelle étape 1-6, y compris tard dans le parcours, pour un
+// dossier qui vient tout juste d'être créé. Toujours 0 (étape 1) tant
+// qu'aucune action admin réelle n'a eu lieu (setDossierStep prime toujours
+// sur cette valeur par défaut, voir dossierStepStore.getDossierStep).
+export function defaultStepIndexFor() {
+  return 0
 }
 
 function deriveDossier(lead) {
@@ -125,6 +135,17 @@ function deriveDossier(lead) {
   const validDocs = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'valid').length
   const pendingDocs = REQUIRED_DOCUMENTS.filter(r => docs[r.id]?.status === 'pending').length
   const missingDocs = REQUIRED_DOCS_COUNT - validDocs - pendingDocs
+  // Correctif "nouveau client Bloqué à 67%" (audit inspection navigateur,
+  // 2026-09-26) : un client fraîchement converti démarre désormais avec 6/6
+  // documents 'none' (jamais envoyés — voir documentsStore.js). missingDocs
+  // (ci-dessus) les compte comme "incomplet", ce qui est correct pour
+  // l'affichage des compteurs — mais le STATUT global se basait sur ce même
+  // total, faisant passer TOUT nouveau client à "Bloqué" (>=4) alors qu'il
+  // n'a simplement encore rien soumis. "Bloqué" doit signaler un vrai
+  // problème (documents refusés par l'équipe), jamais "n'a pas encore
+  // commencé" — rejectedDocs isole donc les seuls documents réellement
+  // refusés ('missing'/'correction', jamais 'none') pour ce seuil.
+  const rejectedDocs = REQUIRED_DOCUMENTS.filter(r => ['missing', 'correction'].includes(docs[r.id]?.status)).length
   const awaitingDocRevalidation = hasDocumentAwaitingRevalidation(lead.id)
 
   // Le statut repose sur l'étape/les documents (déterministe, stable dans le
@@ -135,8 +156,8 @@ function deriveDossier(lead) {
   // consulté pour affiner la prochaine action ci-dessous.
   let status
   if (stepIndex >= ORIAS_STEPS.length - 2 && missingDocs === 0) status = 'Complété'
-  else if (missingDocs >= 4) status = 'Bloqué'
-  else if (missingDocs >= 2) status = 'À relancer'
+  else if (rejectedDocs >= 4) status = 'Bloqué'
+  else if (rejectedDocs >= 2) status = 'À relancer'
   else status = 'En cours'
 
   // "Vérifier le document remplacé" prime sur tout le reste tant qu'il est
@@ -194,6 +215,7 @@ function deriveDossier(lead) {
     validDocs,
     pendingDocs,
     missingDocs,
+    rejectedDocs,
     formationDoneH,
     formationTotalH,
     lastActivity: activity,

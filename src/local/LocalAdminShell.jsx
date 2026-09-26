@@ -264,7 +264,7 @@ export default function LocalAdminShell() {
             </div>
             <div className="p-6 space-y-4 text-sm text-gray-600">
               <p>Cette fonctionnalité envoie normalement un ticket au super admin.</p>
-              <p className="text-xs text-gray-400">Démonstration locale · aucun envoi réel n'est effectué ici.</p>
+              <p className="text-xs text-gray-400">Environnement de test — aucun ticket réel n'est envoyé au super admin depuis cet écran.</p>
               <button onClick={() => setShowReportIssue(false)} className="btn-gold w-full">Fermer</button>
             </div>
           </div>

@@ -55,7 +55,12 @@ export default function LocalMonDossier({ clientId = getActiveClientId() }) {
   // que l'en-tête ClientSpace dans LocalCRM.jsx, même lecture directe du
   // lead réel (aucun store dédié "pack du client" n'existe séparément).
   const clientLead = (() => { try { const raw = JSON.parse(localStorage.getItem(CRM_STORAGE_KEY)); return cleanPreviewLeads(raw || []).find(l => l.id === clientId) || null } catch { return null } })()
-  const dossierNumber = 'OR-2026-1236'
+  // Correctif "numéro de dossier dupliqué OR-2026-1236" (audit inspection
+  // navigateur, 2026-09-26) : identique en dur pour tous les clients —
+  // dérivé désormais du clientId (déterministe, unique par client, jamais
+  // stocké séparément puisqu'aucune donnée réelle "numéro de dossier"
+  // n'existe ailleurs dans ce store local).
+  const dossierNumber = `OR-${new Date().getFullYear()}-${String(Math.abs(Number(clientId) || 0) % 9000 + 1000)}`
   const pack = clientLead?.pack || 'Non renseigné'
   const status = 'En cours'
 

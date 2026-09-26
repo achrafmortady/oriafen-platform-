@@ -4,7 +4,7 @@ import {
   createModificationRequest, setModificationStatus, updateMarketingProject,
   subscribeToMarketing, MODIFICATION_STATUSES,
   getMarketingChannels, updateMarketingChannel, CHANNEL_STATUSES,
-  getBrandIntake, submitBrandIntake,
+  getBrandIntake, submitBrandIntake, addDeliverable, DELIVERABLE_TYPES,
 } from './marketingStore'
 
 const CHANNEL_STATUS_STYLE = {
@@ -406,22 +406,52 @@ function ProjectOverviewCard({ project }) {
   )
 }
 
-function DeliverablesCard({ deliverables }) {
+// Correctif "livrables non séparés par type" (audit inspection navigateur,
+// 2026-09-26) : regroupe désormais les livrables par type
+// (DELIVERABLE_TYPES, marketingStore.js) au lieu d'une liste plate unique —
+// admin peut voir chaque type séparément, et publier un nouveau livrable
+// (editable=true) via addDeliverable().
+function DeliverablesCard({ deliverables, editable = false, onAdd }) {
+  const [form, setForm] = useState({ type: 'posts', name: '', url: '' })
+  const grouped = Object.keys(DELIVERABLE_TYPES).map(type => ({
+    type,
+    label: DELIVERABLE_TYPES[type],
+    items: deliverables.filter(d => (d.type || 'other') === type),
+  })).filter(g => g.items.length > 0 || editable)
+
   return (
     <section className="card p-6">
       <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Livrables</h3>
-      {!deliverables.length && <p className="text-sm text-gray-400">Aucun livrable pour le moment.</p>}
-      <div className="space-y-2">
-        {deliverables.map(d => (
-          <div key={d.id} className="flex items-center justify-between gap-3 border border-orias-border rounded-xl px-4 py-3">
-            <div className="min-w-0">
-              <p className="font-bold text-gray-800 text-sm truncate">{d.name}</p>
-              <p className="text-xs text-gray-400">{d.kind} · {d.version} · {d.updatedAt}</p>
+      {!deliverables.length && !editable && <p className="text-sm text-gray-400">Aucun livrable pour le moment.</p>}
+      <div className="space-y-4">
+        {grouped.map(g => (
+          <div key={g.type}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-orias-gold mb-2">{g.label} ({g.items.length})</p>
+            {!g.items.length && <p className="text-xs text-gray-400 mb-2">Aucun livrable de ce type pour le moment.</p>}
+            <div className="space-y-2">
+              {g.items.map(d => (
+                <div key={d.id} className="flex items-center justify-between gap-3 border border-orias-border rounded-xl px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="font-bold text-gray-800 text-sm truncate">{d.name}</p>
+                    <p className="text-xs text-gray-400">{d.version} · {d.updatedAt}</p>
+                  </div>
+                  {d.url && <a href={d.url} target="_blank" rel="noreferrer" className="btn-outline-green text-xs flex-shrink-0">Ouvrir</a>}
+                </div>
+              ))}
             </div>
-            {d.url && <a href={d.url} target="_blank" rel="noreferrer" className="btn-outline-green text-xs flex-shrink-0">Ouvrir</a>}
           </div>
         ))}
       </div>
+      {editable && (
+        <form className="mt-4 pt-4 border-t border-orias-border flex flex-wrap gap-2 items-end" onSubmit={e => { e.preventDefault(); if (!form.name.trim()) return; onAdd(form); setForm({ type: form.type, name: '', url: '' }) }}>
+          <select value={form.type} onChange={e => setForm(prev => ({ ...prev, type: e.target.value }))} className="input-field text-sm w-auto">
+            {Object.entries(DELIVERABLE_TYPES).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+          </select>
+          <input value={form.name} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} placeholder="Nom du livrable" className="input-field text-sm flex-1 min-w-[160px]" />
+          <input value={form.url} onChange={e => setForm(prev => ({ ...prev, url: e.target.value }))} placeholder="Lien (optionnel)" className="input-field text-sm flex-1 min-w-[160px]" />
+          <button type="submit" disabled={!form.name.trim()} className="btn-gold text-sm disabled:opacity-50">＋ Publier</button>
+        </form>
+      )}
     </section>
   )
 }
@@ -551,11 +581,12 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
   const [brandIntake, setBrandIntake] = useState(() => clientId != null ? getBrandIntake(clientId) : null)
   const [project, setProject] = useState(() => clientId != null ? getMarketingProject(clientId) : null)
   const [channels, setChannels] = useState(() => clientId != null ? getMarketingChannels(clientId) : [])
+  const [deliverables, setDeliverables] = useState(() => clientId != null ? getDeliverables(clientId) : [])
   const [requests, setRequests] = useState(() => clientId != null ? getModificationRequests(clientId) : [])
   const [phaseDraft, setPhaseDraft] = useState('')
   const refresh = () => {
     if (clientId == null) return
-    setBrandIntake(getBrandIntake(clientId)); setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setRequests(getModificationRequests(clientId))
+    setBrandIntake(getBrandIntake(clientId)); setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setDeliverables(getDeliverables(clientId)); setRequests(getModificationRequests(clientId))
   }
   useEffect(refresh, [clientId])
   useEffect(() => subscribeToMarketing(refresh), [clientId])
@@ -598,6 +629,7 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
         <p className="text-[11px] text-gray-400 mt-3">Statut : {project.status} · Dernière mise à jour : {project.lastUpdate}</p>
       </section>
       <ChannelsCard channels={channels} editable onUpdate={(channelId, patch) => { updateMarketingChannel(clientId, channelId, patch); refresh() }} />
+      <DeliverablesCard deliverables={deliverables} editable onAdd={form => { addDeliverable(clientId, form, clientName); refresh() }} />
       <section className="card p-6">
         <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Demandes de modification client</h3>
         {!requests.length && <p className="text-sm text-gray-400">Aucune demande reçue.</p>}

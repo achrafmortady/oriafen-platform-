@@ -159,6 +159,48 @@ export function getDeliverables(clientId) {
   return ensureClient(readAll(), clientId).deliverables
 }
 
+// Correctif "livrables non séparés par type" (audit inspection navigateur,
+// 2026-09-26, item 7) : aucune fonction n'existait pour ajouter un livrable
+// — getDeliverables() renvoyait donc toujours [] (defaultDeliverables),
+// sans aucun moyen pour l'admin d'en publier un. DELIVERABLE_TYPES fixe la
+// classification demandée (posts/stories/scripts/calendrier/autre),
+// réutilisée à la fois pour le formulaire admin et le regroupement
+// d'affichage (DeliverablesCard, LocalMarketing.jsx) — jamais une 2e liste.
+export const DELIVERABLE_TYPES = {
+  posts: 'Posts',
+  stories: 'Stories',
+  scripts: 'Scripts',
+  calendar: 'Calendrier de publication',
+  other: 'Autre livrable',
+}
+
+export function addDeliverable(clientId, { type = 'other', name, url = null }, clientName = null) {
+  const cleanName = (name || '').trim()
+  if (!clientId || !cleanName) return null
+  const data = readAll()
+  const client = ensureClient(data, clientId)
+  const at = formatNowLabel()
+  const deliverable = {
+    id: `deliverable-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    type: DELIVERABLE_TYPES[type] ? type : 'other',
+    name: cleanName,
+    kind: DELIVERABLE_TYPES[type] || DELIVERABLE_TYPES.other,
+    version: 'v1',
+    url: url || null,
+    updatedAt: at,
+  }
+  client.deliverables = [...client.deliverables, deliverable]
+  writeAll(data)
+  logActivity(clientId, { author: 'Équipe', action: 'Livrable publié', detail: `${deliverable.kind} — ${cleanName}` })
+  addClientNotification(clientId, {
+    kind: 'Marketing',
+    title: `Nouveau livrable — ${deliverable.kind}`,
+    message: cleanName,
+    important: true,
+  })
+  return deliverable
+}
+
 export function getModificationRequests(clientId) {
   return ensureClient(readAll(), clientId).requests.slice().sort((a, b) => b.ts - a.ts)
 }

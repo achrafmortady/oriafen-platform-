@@ -58,7 +58,12 @@ function DocRow({ required, doc, uploading, onUpload, optional = false }) {
           <span style={{ padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600', background: sc.bg, color: sc.color, border: `1px solid ${sc.border}`, whiteSpace: 'nowrap', fontFamily: "'Montserrat', sans-serif" }}>
             {status === 'valid' ? '✓ ' : status === 'pending' ? '⏳ ' : status === 'missing' ? '✕ ' : status === 'correction' ? '💬 ' : '— '}{sc.label}
           </span>
-          {status !== 'valid' && (
+          {/* Correctif "bouton Envoyer actif sur un document Non requis"
+              (audit inspection navigateur, 2026-09-26) : une catégorie
+              facultative encore vide (status='none' && optional) affiche
+              "Non requis", mais gardait quand même un bouton d'envoi actif
+              — retiré, cohérent avec le badge affiché. */}
+          {status !== 'valid' && !(status === 'none' && optional) && (
             <>
               <input ref={inputRef} type="file" accept={required.accept} style={{ display: 'none' }} onChange={handleFileChange} />
               <button onClick={() => inputRef.current?.click()} disabled={uploading}
@@ -214,7 +219,12 @@ export default function LocalMesDocuments({ clientId }) {
 
       <div style={{ marginTop: '16px', display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '14px 16px', borderRadius: '14px', background: '#fefce8', border: '1px solid #fde68a', fontSize: '12px', color: '#78716c', fontFamily: "'Montserrat', sans-serif" }}>
         <span style={{ flexShrink: 0 }}>ℹ️</span>
-        <p style={{ margin: 0, lineHeight: '1.6' }}>Formats acceptés : <strong style={{ color: '#b45309' }}>PDF, JPG, PNG</strong> — max 10 Mo. Vérification sous <strong style={{ color: '#b45309' }}>24–48h</strong> par votre conseiller. Démonstration locale · aucun fichier n'est réellement téléversé.</p>
+        {/* Correctif "wording upload simulé" (audit inspection navigateur,
+            2026-09-26) : "aucun fichier n'est réellement téléversé" sonnait
+            comme un aveu de fausse fonctionnalité — reformulé en état
+            professionnel de staging (stockage réel à brancher plus tard sur
+            Supabase Storage), sans jamais prétendre qu'un envoi a déjà lieu. */}
+        <p style={{ margin: 0, lineHeight: '1.6' }}>Formats acceptés : <strong style={{ color: '#b45309' }}>PDF, JPG, PNG</strong> — max 10 Mo. Vérification sous <strong style={{ color: '#b45309' }}>24–48h</strong> par votre conseiller. Environnement de test — stockage réel des fichiers à brancher sur l'environnement de production.</p>
       </div>
     </div>
 

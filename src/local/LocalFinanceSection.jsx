@@ -130,6 +130,15 @@ export default function LocalFinanceSection({ leads }) {
           </div>
         )}
       </section>
+
+      {/* Correctif item 8 (audit inspection navigateur, 2026-09-26) :
+          l'export/la génération de factures n'est pas implémenté(e) en
+          staging V2 — étiqueté clairement "à brancher" plutôt que laissé
+          absent sans explication ou simulé par un faux fichier. */}
+      <section className="card p-6 border-dashed border-orias-border">
+        <p className="text-[11px] font-bold text-orias-gold uppercase tracking-wide mb-1">Factures & export</p>
+        <p className="text-sm text-gray-500">🔒 Génération de factures et export comptable — à brancher sur l'environnement de production (aucun fichier de facture simulé ici).</p>
+      </section>
     </div>
   )
 }

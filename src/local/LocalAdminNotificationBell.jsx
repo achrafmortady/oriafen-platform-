@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from 'react'
 import { BellIcon, XIcon } from '../components/Icons'
 import { getAdminNotifications, markAdminNotificationSeen, markAllAdminNotificationsSeen, subscribeToAdminNotifications } from './adminNotificationsStore'
 
-const TYPE_ICON = { marketing: '🎯', support: '🛟' }
+const TYPE_ICON = { marketing: '🎯', support: '🛟', document: '📄', conversion: '✅' }
 // Correctif "centre d'activité" (2026-09-22, retour client) : présentation
 // alignée sur source/sender, type/contexte, lu/non lu — sans fusionner
 // adminNotificationsStore.js avec les autres modèles (clientTrackingStore).
-const TYPE_LABEL = { marketing: 'Marketing', support: 'Support' }
+const TYPE_LABEL = { marketing: 'Marketing', support: 'Support', document: 'Document', conversion: 'Conversion' }
 
 // Clone de LocalNotificationBell.jsx (même markup/comportement) côté ADMIN —
 // avant ce correctif, le bouton cloche du header admin était statique (pas

@@ -2,6 +2,7 @@ import React,{useState,useEffect,useRef} from 'react';
 import {stages,owners,sources,today,blankLeadTemplate,selectLeads,cleanPreviewLeads,sortRecentFirst} from './model';
 import {getActiveIdentity} from './adapters/identity';
 import {getAdminSendStatus,getClientLastActivity,getClientSends,getImportantUnseen,getReminderCount,markClientSendOpened,markClientSendReminded,markClientSendSeen,replyToClientSend,setClientSendImportant,subscribeToClientTracking,createClientSupportRequest,respondToClientRequest} from './clientTrackingStore';
+import {addAdminNotification} from './adminNotificationsStore';
 import Logo from '../components/Logo';
 import {LogoutIcon,WhatsAppIcon,CalendarIcon,MessageIcon,ChevronDownIcon} from '../components/Icons';
 import {FAQ_ITEMS} from '../data/mockData';
@@ -253,13 +254,29 @@ const LOCAL_SEND_STATUS = {
  no_response_required: { label: 'Information', cls: 'bg-orias-bg text-gray-600 border-orias-border' },
 }
 
+// Correctif "honnêteté de l'email d'activation" (audit inspection
+// navigateur, 2026-09-26) : le panneau doit rester clair sur le fait que
+// l'envoi réel n'est pas encore branché (aucun backend email connecté en
+// staging V2 local), jamais laisser croire qu'un email est parti. Un badge
+// de statut explicite (préparé / copié / mailto ouvert) remplace la seule
+// phrase disclaimer, et le bouton "Envoi réel" reste visible mais désactivé
+// pour indiquer où brancher le futur backend (Supabase Edge Function /
+// route Vercel) — jamais un vrai envoi déclenché depuis cette Preview.
 function ActivationEmailCard({ lead }) {
+ const [status,setStatus]=useState('prepared');
  const email = lead.activationEmail || (lead.paymentValidated && lead.email ? buildActivationEmail(lead) : null);
  if(!email)return null;
  const mailto=`mailto:${encodeURIComponent(email.to)}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.text)}`;
+ const STATUS_BADGE={
+  prepared:{label:'📝 Préparé — envoi réel non branché',cls:'',color:'#a17a1a'},
+  copied:{label:'📋 Contenu copié',color:'#1a6b3a'},
+  opened:{label:'✉️ Mailto ouvert dans votre client email',color:'#1a6b3a'},
+ };
+ const badge=STATUS_BADGE[status]||STATUS_BADGE.prepared;
  return <section className="detailbox activation-email-card">
   <h3>Email d'activation</h3>
-  <p className="muted" style={{marginBottom:'10px'}}>En preview locale, l'email ne part pas automatiquement depuis le navigateur. Le message est préparé ici avec le même contenu attendu ; en staging connecté, c'est la fonction serveur qui doit l'envoyer réellement.</p>
+  <span className="muted" style={{display:'inline-block',fontWeight:700,fontSize:'11px',color:badge.color,marginBottom:'8px'}}>{badge.label}</span>
+  <p className="muted" style={{marginBottom:'10px'}}>Aucun backend d'envoi réel n'est branché sur cet environnement de staging (Supabase/Vercel) : cet email est préparé avec le contenu final, mais ne part pas automatiquement. Utilisez "Ouvrir l'email à envoyer" (votre client email local) ou "Copier le contenu" pour l'envoyer manuellement en attendant que l'envoi réel soit branché.</p>
   <div style={{border:'1px solid #e8e2d6',borderRadius:'12px',overflow:'hidden',background:'#fff',marginBottom:'12px'}}>
    <div style={{background:'#0f3d2e',padding:'18px',textAlign:'center',color:'#c9a84c',fontWeight:700,fontSize:'22px',letterSpacing:'1px'}}>oriafen</div>
    <div style={{padding:'18px'}}>
@@ -271,9 +288,10 @@ function ActivationEmailCard({ lead }) {
   <p className="muted"><strong>Destinataire :</strong> {email.to}</p>
   <p className="muted"><strong>Sujet :</strong> {email.subject}</p>
   <div className="twocol" style={{marginTop:'10px'}}>
-   <a href={mailto} style={{textAlign:'center',background:'#214f36',color:'#fff',borderRadius:'7px',padding:'9px 12px',fontSize:'11px',fontWeight:600,textDecoration:'none'}}>Ouvrir l'email à envoyer</a>
-   <button onClick={()=>navigator.clipboard?.writeText(`${email.subject}\n\n${email.text}`)}>Copier le contenu</button>
+   <a href={mailto} onClick={()=>setStatus('opened')} style={{textAlign:'center',background:'#214f36',color:'#fff',borderRadius:'7px',padding:'9px 12px',fontSize:'11px',fontWeight:600,textDecoration:'none'}}>Ouvrir l'email à envoyer</a>
+   <button onClick={()=>{navigator.clipboard?.writeText(`${email.subject}\n\n${email.text}`);setStatus('copied')}}>Copier le contenu</button>
   </div>
+  <button disabled title="Envoi réel à brancher sur une fonction serveur (Supabase Edge Function / route Vercel) — jamais déclenché depuis cette Preview" style={{marginTop:'8px',opacity:0.5,cursor:'not-allowed',width:'100%'}}>🔒 Envoi réel (indisponible en staging local)</button>
  </section>
 }
 
@@ -503,7 +521,6 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
        <p style={{margin:0, color:'#c9a84c', fontSize:'10px', fontWeight:700, letterSpacing:'1.6px', textTransform:'uppercase', fontFamily:"'Montserrat', sans-serif"}}>Espace client</p>
        <h2 style={{margin:'8px 0 6px', color:'#fff', fontSize:'30px', fontWeight:400, letterSpacing:'0.5px', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Support</h2>
        <p style={{margin:0, color:'rgba(255,255,255,0.68)', fontSize:'13px', fontWeight:300, fontFamily:"'Montserrat', sans-serif"}}>🛟 Posez vos questions à l'équipe et suivez les réponses ici. Chaque demande garde sa propre conversation ci-dessous.</p>
-       <p style={{margin:'16px 0 0', color:'rgba(255,255,255,0.42)', fontSize:'10px', fontFamily:"'Montserrat', sans-serif"}}>Démonstration locale · données fictives</p>
       </div>
       <div style={{marginTop:'22px', display:'flex', justifyContent:'flex-end'}}>
        <button className="btn-gold text-sm" onClick={()=>setShowNewTicket(true)}>＋ Nouvelle demande de support</button>
@@ -544,9 +561,14 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
         <div className="w-12 h-12 rounded-full bg-[#25d366] flex items-center justify-center shadow-lg shadow-[#25d366]/30"><WhatsAppIcon className="w-6 h-6 text-white"/></div>
         <div className="text-center"><p className="font-bold text-gray-800">WhatsApp Direct</p><p className="text-xs text-gray-500 mt-0.5">Réponse en moins de 2h</p><p className="text-xs text-[#25d366] font-semibold mt-1">9h – 20h GMT+1</p></div>
        </a>
-       <div className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-orias-gold bg-orias-gold/5">
-        <div className="w-12 h-12 rounded-full bg-orias-gold flex items-center justify-center shadow-lg shadow-orias-gold/30"><CalendarIcon className="w-6 h-6 text-white"/></div>
-        <div className="text-center"><p className="font-bold text-gray-800">Prendre RDV</p><p className="text-xs text-gray-500 mt-0.5">Appel de suivi personnalisé</p><p className="text-xs text-orias-gold font-semibold mt-1">Réservation Calendly</p></div>
+       {/* Correctif "Calendly présenté comme fonctionnel" (audit inspection
+           navigateur, 2026-09-26) : cette tuile avait le même style que les
+           deux options réellement actives (WhatsApp, message) sans jamais
+           rien faire au clic — état désactivé explicite tant qu'aucune
+           intégration Calendly n'est configurée. */}
+       <div className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 opacity-70" title="Prise de rendez-vous bientôt disponible — intégration Calendly à configurer">
+        <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center"><CalendarIcon className="w-6 h-6 text-white"/></div>
+        <div className="text-center"><p className="font-bold text-gray-500">Prendre RDV</p><p className="text-xs text-gray-400 mt-0.5">Bientôt disponible</p><p className="text-xs text-gray-400 font-semibold mt-1">🔒 Intégration à venir</p></div>
        </div>
        <div onClick={()=>setShowNewTicket(true)} style={{cursor:'pointer'}}
         className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-orias-green bg-orias-green/5 hover:bg-orias-green/10 transition-all duration-200">
@@ -559,9 +581,9 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
        <h3 className="font-bold text-orias-green text-lg mb-4 flex items-center gap-2"><CalendarIcon className="w-5 h-5 text-orias-gold"/>Réserver un appel de suivi</h3>
        <div className="bg-orias-bg rounded-xl border-2 border-dashed border-orias-border p-10 text-center">
         <CalendarIcon className="w-12 h-12 text-orias-gold/40 mx-auto mb-3"/>
-        <p className="font-semibold text-gray-600">Calendly — Réservation en ligne</p>
-        <p className="text-sm text-gray-400 mt-1">Intégration Calendly disponible après configuration</p>
-        <button className="btn-gold mt-4">Ouvrir le calendrier</button>
+        <p className="font-semibold text-gray-600">Prise de rendez-vous bientôt disponible</p>
+        <p className="text-sm text-gray-400 mt-1">L'intégration Calendly n'est pas encore configurée sur cet environnement.</p>
+        <button className="btn-gold mt-4" disabled style={{opacity:0.5,cursor:'not-allowed'}}>Ouvrir le calendrier</button>
        </div>
       </div>
 
@@ -629,6 +651,13 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // atteindre cette carte, qui est désormais le SEUL chemin qui fait
  // réellement passer un prospect à "Client" (voir validatePayment/patch).
  const [convertAttempt,setConvertAttempt]=useState(false);
+ // Correctif "conversion immédiate sans confirmation" (audit inspection
+ // navigateur, 2026-09-26) : un seul clic marquait aussitôt le premier
+ // paiement comme réglé (23 940 DH cité dans le rapport) sans aucun
+ // récapitulatif intermédiaire — étape de confirmation explicite ajoutée
+ // (résumé client/pack/montant + bouton "Confirmer"), jamais une action
+ // irréversible en un clic.
+ const [confirmingPayment,setConfirmingPayment]=useState(false);
  const board=useRef(null),close=useRef(null),opener=useRef(null); const lead=leads.find(l=>l.id===selected);
  // "Clients à relancer" (feedback #6) : preset dédié, filtré en plus de
  // selectLeads() (qui ignore la clé `relance`, non destructurée par sa
@@ -723,8 +752,19 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // statut, TOUJOURS possible — mais ne crée pas le compte/dossier. Seule
  // cette action explicite (bouton "Valider le paiement & créer le compte")
  // exécute réellement la conversion (voir src/local/conversion.js).
- function validatePayment(id){setLeads(prev=>applyPaymentValidation(prev,id))}
- function open(l,e){opener.current=e.currentTarget;setNote('');setNewApptDate('');setNewApptType('appel');setNotesDraft(l.notes||'');setEditingInfo(false);setActionDraft(l.action||'');setRelanceAt('');setRelanceNote('');setLossReasonDraft(l.lossReason||'');setConvertAttempt(false);setSelected(l.id)}
+ // Correctif "centre de notifications incomplet" (audit inspection
+ // navigateur, 2026-09-26, item 10) : applyPaymentValidation() reste une
+ // fonction pure (aucun effet de bord, voir conversion.js) — la
+ // notification admin est donc déclenchée ici, au point d'appel réel,
+ // jamais dans la fonction pure elle-même.
+ function validatePayment(id){
+  const before=leads.find(l=>l.id===id);
+  setLeads(prev=>applyPaymentValidation(prev,id));
+  if(before&&!before.paymentValidated){
+   addAdminNotification({type:'conversion',title:`Client converti — ${before.name}`,message:`Paiement validé, compte créé, email d'activation préparé.`,clientId:id,clientName:before.name,context:{tab:'clients',clientId:id},dedupeKey:`admin-notif:converted:${id}`});
+  }
+ }
+ function open(l,e){opener.current=e.currentTarget;setNote('');setNewApptDate('');setNewApptType('appel');setNotesDraft(l.notes||'');setEditingInfo(false);setActionDraft(l.action||'');setRelanceAt('');setRelanceNote('');setLossReasonDraft(l.lossReason||'');setConvertAttempt(false);setConfirmingPayment(false);setSelected(l.id)}
  function change(k,v){setFilter(f=>({...f,[k]:v}));setSaved('Personnalisée')}
  function preset(label){setSaved(label);setFilter({...defaults,...(label==='À relancer en retard'?{overdue:true}:label==='Mes prospects'?{owner:owners[0]}:label==='Clients à relancer'?{relance:true}:{})})}
  function sort(k){setFilter(f=>({...f,sort:k,desc:f.sort===k?!f.desc:false}))}
@@ -744,11 +784,11 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  if(mode==='client')return <ClientSpace onBack={onExitClient} overrideClientId={clientId} overrideIdentity={clientIdentity}/>;
  const latestClient=leads.filter(l=>l.stage==='Client'&&l.paymentValidated).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))[0]||null;
  const previewIdentity=latestClient?{id:latestClient.id,name:latestClient.name,email:latestClient.email||null}:null;
- return <div className="oriafenlocal"><main><div className="demo"><span>● Démonstration locale · données fictives</span><span>Modifications enregistrées sur ce navigateur</span></div><header><div><div className="eyebrow">RELATION CLIENT</div><h1>Votre pipeline commercial</h1><p>Les bonnes priorités, au bon moment.</p></div><div className="header-actions"><button className="client-switch" disabled={!previewIdentity} title={previewIdentity?`Voir l'espace de ${previewIdentity.name}`:'Convertissez d’abord un prospect en client'} onClick={()=>onEnterClient(previewIdentity)}>{previewIdentity?`Voir l'espace client — ${previewIdentity.name}`:"Voir l'espace client"}</button><button className="primary" onClick={e=>{opener.current=e.currentTarget;setCreating(true)}}>＋ Nouveau prospect</button></div></header><section className="metrics" aria-label="Indicateurs CRM"><article><span>Prospects</span><strong>{leads.length}</strong><small>Toutes les étapes</small></article><article><span>Potentiel ouvert</span><strong>{money(leads.filter(l=>!['Client','Perdu'].includes(l.stage)).reduce((n,l)=>n+l.value,0))}</strong><small>Hors clients et prospects perdus</small></article><article><span>Actions en retard</span><strong>{leads.filter(l=>!l.done&&l.due<today).length}</strong><small>À traiter en priorité</small></article><article><span>Conversion</span><strong>{leads.length?Math.round(totalClients/leads.length*100):0}%</strong><small>{totalClients} clients sur {leads.length} prospects</small></article></section>
+ return <div className="oriafenlocal"><main><div className="demo"><span>● Environnement de test (staging)</span><span>Données enregistrées localement dans ce navigateur, pas encore synchronisées avec la production</span></div><header><div><div className="eyebrow">RELATION CLIENT</div><h1>Votre pipeline commercial</h1><p>Les bonnes priorités, au bon moment.</p></div><div className="header-actions"><button className="client-switch" disabled={!previewIdentity} title={previewIdentity?`Voir l'espace de ${previewIdentity.name}`:'Convertissez d’abord un prospect en client'} onClick={()=>onEnterClient(previewIdentity)}>{previewIdentity?`Voir l'espace client — ${previewIdentity.name}`:"Voir l'espace client"}</button><button className="primary" onClick={e=>{opener.current=e.currentTarget;setCreating(true)}}>＋ Nouveau prospect</button></div></header><section className="metrics" aria-label="Indicateurs CRM"><article><span>Prospects</span><strong>{leads.length}</strong><small>Toutes les étapes</small></article><article><span>Potentiel ouvert</span><strong>{money(leads.filter(l=>!['Client','Perdu'].includes(l.stage)).reduce((n,l)=>n+l.value,0))}</strong><small>Hors clients et prospects perdus</small></article><article><span>Actions en retard</span><strong>{leads.filter(l=>!l.done&&l.due<today).length}</strong><small>À traiter en priorité</small></article><article><span>Conversion</span><strong>{leads.length?Math.round(totalClients/leads.length*100):0}%</strong><small>{totalClients} clients sur {leads.length} prospects</small></article></section>
  <section className="stagebar" aria-label="Répartition par étape">{stages.map((s,i)=><button key={s} className={'stagechip '+(count(s)?'':'zero ')+(filter.stage===s?'chosen':'')} onClick={()=>change('stage',filter.stage===s?'':s)}><i className={'dot d'+i}/><span>{s}</span><b>{count(s)}</b></button>)}<div className="sources"><span>Sources</span>{sources.filter(s=>leads.some(l=>l.source===s)).map(s=><span key={s}>{s} <b>{leads.filter(l=>l.source===s).length}</b></span>)}</div></section>
  <section className="panel"><div className="paneltop"><div className="saved">{['Tous les prospects','À relancer en retard','Clients à relancer','Mes prospects'].map(s=><button className={saved===s?'active':''} key={s} onClick={()=>preset(s)}>{s}</button>)}</div><div className="views">{['Liste','Kanban','Agenda','Calendrier'].map(v=><button key={v} className={view===v?'active':''} onClick={()=>setView(v)}>{v}</button>)}</div></div><div className="filters"><input aria-label="Rechercher" placeholder="Rechercher un nom, un email, une ville…" value={filter.search} onChange={e=>change('search',e.target.value)}/>{[['stage','Toutes les étapes',stages],['owner','Tous les responsables',owners],['source','Toutes les sources',sources]].map(([key,label,items])=><select aria-label={label} key={key} value={filter[key]} onChange={e=>change(key,e.target.value)}><option value="">{label}</option>{items.map(x=><option key={x}>{x}</option>)}</select>)}<label className="check"><input type="checkbox" checked={filter.overdue} onChange={e=>change('overdue',e.target.checked)}/>En retard</label><button onClick={()=>preset('Tous les prospects')}>Réinitialiser</button></div><div className="results"><span>{rows.length} prospect{rows.length!==1?'s':''} · {saved}</span><span>Cliquer sur un prospect pour ouvrir sa fiche</span></div>
  {rows.length===0?<div className="empty"><h3>Aucun prospect ne correspond</h3><p>Essayez une autre recherche ou réinitialisez les filtres.</p><button onClick={()=>preset('Tous les prospects')}>Voir tous les prospects</button></div>:view==='Liste'?<div className="tablewrap"><table><thead><tr>{[['name','Prospect'],['stage','Étape'],['source','Source'],['owner','Responsable'],['value','Potentiel'],['due','Prochaine action']].map(([k,t])=><th key={k} aria-sort={filter.sort===k?(filter.desc?'descending':'ascending'):'none'}><button onClick={()=>sort(k)}>{t} {filter.sort===k?(filter.desc?'↓':'↑'):'↕'}</button></th>)}</tr></thead><tbody>{rows.map(l=>{const relance=relanceReason(l),relanceLate=isRelanceOverdue(l);return <tr key={l.id}><td><button className="person" onClick={e=>open(l,e)}><span className="avatar">{l.name.slice(0,2).toUpperCase()}</span><span><b>{l.name}</b><small>{l.email}</small></span></button></td><td><span className="status"><i className={'dot d'+stages.indexOf(l.stage)}/><b className="statuslabel">{l.stage}</b></span></td><td>{l.source}</td><td>{l.owner}</td><td className="amount">{money(l.value)}</td><td><button className={'action '+(!l.done&&l.due<today?'late':'')} onClick={e=>open(l,e)}><b className="actionlabel">{l.done?'✓ Terminée':l.action}</b><small>{l.due}{!l.done&&l.due<today?' · En retard':''}</small>{relance&&<small className={'relance-hint'+(relanceLate?' late':'')}>{relance}{relanceLate?' · En retard':''}</small>}</button></td></tr>})}</tbody></table></div>:view==='Kanban'?<><div className="boardnav"><span>{stages.length} étapes · faites défiler horizontalement pour explorer le pipeline</span><div><button aria-label="Étapes précédentes" onClick={()=>board.current.scrollBy({left:-600,behavior:'smooth'})}>←</button><button aria-label="Étapes suivantes" onClick={()=>board.current.scrollBy({left:600,behavior:'smooth'})}>→</button></div></div><div className="board" ref={board}>{stages.map((s,i)=>{const colLeads=sortRecentFirst(rows.filter(l=>l.stage===s));const total=colLeads.reduce((n,l)=>n+l.value,0);const weighted=total*STAGE_WEIGHTS[i];return <section className="column" key={s}><div className="column-head"><h3><i className={'dot d'+i}/><span>{s}</span><b>{colLeads.length}</b></h3></div><div className="column-body">{colLeads.map(l=>{const relance=relanceReason(l),relanceLate=isRelanceOverdue(l);return <button className="leadcard" key={l.id} onClick={e=>open(l,e)}><b className="cardname">{l.name}</b><small>{l.source} · {l.owner}</small><strong>{money(l.value)}</strong><div className={!l.done&&l.due<today?'late':''}><b className="actionlabel">{l.done?'✓ Terminée':l.action}</b><small>{l.due}</small></div>{relance&&<div className={'relance-hint'+(relanceLate?' late':'')}>{relance}{relanceLate?' · En retard':''}</div>}</button>})}{!colLeads.length&&<p className="muted">Aucun prospect</p>}</div>{total>0&&<div className="column-foot"><div><b>{money(total)}</b> · Potentiel total</div><div><b>{money(weighted)}</b> · Pondéré ({Math.round(STAGE_WEIGHTS[i]*100)}%)</div></div>}</section>})}</div></>:<div className={view==='Calendrier'?'calendar':'agenda'}>{[...new Set(rows.map(l=>l.due))].sort().map(d=><section key={d}><h3>{new Date(d+'T12:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'})}</h3>{rows.filter(l=>l.due===d).map(l=><button key={l.id} onClick={e=>open(l,e)}><b>{l.name}</b><span>{l.done?'✓ Terminée':l.action}</span><small>{l.owner}</small></button>)}</section>)}</div>}</section><footer>Oriafen CRM · Aperçu isolé · Aucun envoi d’email ni synchronisation externe</footer></main>
- {creating && <NewProspectModal onClose={()=>setCreating(false)} onCreated={l=>{setLeads([...leads,l]);setCreating(false);setSelected(l.id)}} />}
+ {creating && <NewProspectModal onClose={()=>setCreating(false)} onCreated={l=>{setLeads([...leads,l]);setCreating(false);setSelected(l.id);addAdminNotification({type:'conversion',title:`Nouveau prospect — ${l.name}`,message:`Créé manuellement (${l.source}).`,clientId:l.id,clientName:l.name,context:{tab:'crm'},dedupeKey:`admin-notif:prospect-created:${l.id}`})}} />}
 {lead && <div className="overlay" onMouseDown={e=>{if(e.target===e.currentTarget)setSelected(null)}}>
  <section className="drawer" role="dialog" aria-modal="true" aria-label={lead.name}>
   <div className="drawerhead">
@@ -895,7 +935,23 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
       {convertAttempt&&<p className="muted" style={{color:'#a13636',fontWeight:600}}>{PAYMENT_GATE_MESSAGE}</p>}
       {!String(lead.email||'').trim()&&<p className="muted" style={{color:'#a13636',fontWeight:600}}>{EMAIL_GATE_MESSAGE}</p>}
       <p className="muted">Crée le compte client, génère les paiements ({lead.packId&&findPackById(lead.packId)?.paymentType==='full'?'100%':'50% / 25% / 25%'}) et marque le premier comme réglé — cette action fait aussi passer le statut à "Client". Tant que cette action n'a pas été effectuée, ce prospect n'apparaît pas dans l'onglet Clients.</p>
-      <button className="primary" disabled={!lead.packId||!String(lead.email||'').trim()} onClick={()=>{validatePayment(lead.id);setConvertAttempt(false)}}>{!lead.packId?'Sélectionnez un pack ci-dessus':!String(lead.email||'').trim()?'Ajoutez un email avant conversion':'📌 Valider le paiement & créer le compte'}</button>
+      {confirmingPayment?(
+       <div className="detailbox" style={{background:'#fff8e8',border:'1px solid #e8d9a8',marginTop:'10px'}}>
+        <h4 style={{margin:'0 0 8px'}}>Confirmer la conversion</h4>
+        <ul className="payment-rows" style={{marginBottom:'10px'}}>
+         <li><span>Client</span><b>{lead.name}</b></li>
+         <li><span>Pack</span><b>{lead.packId?findPackById(lead.packId)?.name:'—'}</b></li>
+         <li><span>Montant total</span><b>{money(lead.finalPrice||0)}</b></li>
+         <li><span>Premier versement (marqué payé)</span><b>{money(lead.packId&&findPackById(lead.packId)?.paymentType==='full'?(lead.finalPrice||0):Math.round((lead.finalPrice||0)*0.5))}</b></li>
+        </ul>
+        <div className="twocol">
+         <button className="primary" onClick={()=>{validatePayment(lead.id);setConvertAttempt(false);setConfirmingPayment(false)}}>✓ Confirmer et valider le paiement</button>
+         <button onClick={()=>setConfirmingPayment(false)}>Annuler</button>
+        </div>
+       </div>
+      ):(
+       <button className="primary" disabled={!lead.packId||!String(lead.email||'').trim()} onClick={()=>setConfirmingPayment(true)}>{!lead.packId?'Sélectionnez un pack ci-dessus':!String(lead.email||'').trim()?'Ajoutez un email avant conversion':'📌 Valider le paiement & créer le compte'}</button>
+      )}
      </>}
     </section>}
 

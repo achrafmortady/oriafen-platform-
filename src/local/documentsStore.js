@@ -2,6 +2,7 @@ import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { logActivity } from './activityLog'
 import { addClientNotification } from './clientTrackingStore'
 import { isCanonicalDemoClientId } from './adapters/identity'
+import { addAdminNotification } from './adminNotificationsStore'
 
 // Complète localement (aucun Supabase, aucun appel réseau) ce que le live
 // gère déjà partiellement pour les documents client — mêmes conventions
@@ -16,6 +17,15 @@ function nowLabel() {
   const d = new Date()
   const pad = n => String(n).padStart(2, '0')
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} · ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// Correctif "double point 'complète..'" (audit inspection navigateur,
+// 2026-09-26) : les messages de rejet ajoutaient toujours un "." après le
+// motif, y compris quand celui-ci se terminait déjà par une ponctuation
+// (ex: "...plus nette et complète." -> "...complète.."). Retire toute
+// ponctuation finale avant de rajouter le point du message.
+function withoutTrailingPunctuation(text) {
+  return String(text || '').trim().replace(/[.!?]+$/, '')
 }
 
 function readAll() {
@@ -114,7 +124,7 @@ function backfillDocActivity(clientId, doc) {
     at: doc.rejectedAt,
   })
 
-  const message = `Votre document ${doc.categoryLabel} a été refusé.${doc.rejectionReason ? ` Motif : ${doc.rejectionReason}.` : ''} Merci de téléverser un nouveau document pour poursuivre le traitement de votre dossier.`
+  const message = `Votre document ${doc.categoryLabel} a été refusé.${doc.rejectionReason ? ` Motif : ${withoutTrailingPunctuation(doc.rejectionReason)}.` : ''} Merci de téléverser un nouveau document pour poursuivre le traitement de votre dossier.`
   const notif = addClientNotification(clientId, {
     kind: 'Document',
     title: `Document refusé : ${doc.categoryLabel}`,
@@ -201,7 +211,7 @@ export function rejectDocument(clientId, categoryId, reason, rejectedBy = 'Équi
     at,
   })
 
-  const message = `Votre document ${doc.categoryLabel} a été refusé.${cleanReason ? ` Motif : ${cleanReason}.` : ''} Merci de téléverser un nouveau document pour poursuivre le traitement de votre dossier.`
+  const message = `Votre document ${doc.categoryLabel} a été refusé.${cleanReason ? ` Motif : ${withoutTrailingPunctuation(cleanReason)}.` : ''} Merci de téléverser un nouveau document pour poursuivre le traitement de votre dossier.`
   const notif = addClientNotification(clientId, {
     kind: 'Document',
     title: `Document refusé : ${doc.categoryLabel}`,
@@ -275,6 +285,21 @@ export function uploadDocument(clientId, categoryId, categoryLabel, file) {
     action: wasRejected ? 'Document de remplacement téléversé' : 'Nouvelle version reçue',
     detail: nextDoc.categoryLabel,
     at,
+  })
+
+  // Correctif "centre de notifications incomplet" (audit inspection
+  // navigateur, 2026-09-26, item 10) : un document envoyé par le client ne
+  // déclenchait aucune alerte admin — l'équipe ne le découvrait qu'en
+  // ouvrant manuellement la fiche. dedupeKey inclut uploadedAt (horodatage
+  // à la minute) : un envoi = une notification, jamais un doublon si la
+  // même minute relit ce même envoi.
+  addAdminNotification({
+    type: 'document',
+    title: `Nouveau document envoyé — ${nextDoc.categoryLabel}`,
+    message: `${nextDoc.fileName} en attente de validation.`,
+    clientId,
+    context: { tab: 'clients', clientId },
+    dedupeKey: `admin-notif:doc-uploaded:${clientId}:${categoryId}:${at}`,
   })
 
   return nextDoc

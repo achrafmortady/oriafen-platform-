@@ -142,11 +142,17 @@ const STATUS_DISPLAY_LABEL = { 'Complété': 'ORIAS obtenu', 'En cours': 'En cou
 // retour client). Utilisé comme title/aria-label accessible (hover ET
 // focus clavier) sur le badge de statut, pour les 4 statuts.
 function statusReason(client) {
-  const { status, missingDocs, nextAction } = client
+  const { status, missingDocs, rejectedDocs, nextAction } = client
+  // Correctif "Bloqué/À relancer basé sur des documents jamais envoyés"
+  // (audit inspection navigateur, 2026-09-26) : ces deux statuts reposent
+  // désormais sur les documents RÉELLEMENT REFUSÉS (rejectedDocs), jamais
+  // sur missingDocs (qui inclut aussi les documents simplement pas encore
+  // envoyés) — le texte de la bulle d'aide doit refléter la vraie raison.
   if (status === 'Bloqué' || status === 'À relancer') {
-    return `${missingDocs} document${missingDocs > 1 ? 's' : ''} manquant${missingDocs > 1 ? 's' : ''} sur ${REQUIRED_DOCUMENTS.length} — ${nextAction}`
+    return `${rejectedDocs} document${rejectedDocs > 1 ? 's' : ''} refusé${rejectedDocs > 1 ? 's' : ''} sur ${REQUIRED_DOCUMENTS.length} — ${nextAction}`
   }
   if (status === 'Complété') return 'Dossier complet — aucune action requise'
+  if (missingDocs > 0) return `${missingDocs} document${missingDocs > 1 ? 's' : ''} pas encore envoyé${missingDocs > 1 ? 's' : ''} — ${nextAction}`
   return `Prochaine action : ${nextAction}`
 }
 const STATUS_STYLES = {

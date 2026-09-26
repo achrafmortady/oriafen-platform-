@@ -442,6 +442,12 @@ function setDocsState(id, validCount, pendingCount) {
     } else if (i < validCount + pendingCount) {
       uploadDocument(id, req.id, req.label, { name: `${req.id}.pdf` })
     } else {
+      // Correctif (audit inspection navigateur, 2026-09-26) : rejectDocument
+      // est désormais un no-op sur un document jamais envoyé (fileName=null,
+      // voir documentsStore.js — un client réel démarre sans aucun document,
+      // plus de seed avec fileName par défaut). Un document envoyé PUIS
+      // rejeté reproduit fidèlement un vrai rejet, comme le ferait l'admin.
+      uploadDocument(id, req.id, req.label, { name: `${req.id}.pdf` })
       rejectDocument(id, req.id, 'reset', 'Admin Test')
     }
   })

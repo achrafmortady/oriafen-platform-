@@ -95,7 +95,12 @@ leads = addAppointment(leads, newLead.id, { scheduledAt: '2026-09-20T14:00', typ
 }
 
 // Schedule follow-up (relance) après le RDV
-leads = scheduleRelance(leads, newLead.id, { at: '2026-09-25T09:00', note: 'Revenir vers lui après réflexion' })
+// Date programmée volontairement loin dans le futur (jamais une date fixe
+// proche de "aujourd'hui", qui finit par passer dans le passé au fil des
+// sessions et fait échouer l'assertion "jamais en retard" ci-dessous sans
+// rapport avec le code testé — vu se produire le 2026-09-26).
+const farFutureRelance = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)
+leads = scheduleRelance(leads, newLead.id, { at: farFutureRelance, note: 'Revenir vers lui après réflexion' })
 {
   const lead = leads.find(l => l.id === newLead.id)
   assert.ok(isToRelaunch(lead), 'un prospect avec une relance programmée doit être détecté "à relancer"')
