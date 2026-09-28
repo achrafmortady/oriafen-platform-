@@ -522,11 +522,41 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
        <h2 style={{margin:'8px 0 6px', color:'#fff', fontSize:'30px', fontWeight:400, letterSpacing:'0.5px', fontFamily:"'Cormorant Garamond', Georgia, serif"}}>Support</h2>
        <p style={{margin:0, color:'rgba(255,255,255,0.68)', fontSize:'13px', fontWeight:300, fontFamily:"'Montserrat', sans-serif"}}>🛟 Posez vos questions à l'équipe et suivez les réponses ici. Chaque demande garde sa propre conversation ci-dessous.</p>
       </div>
-      <div style={{marginTop:'22px', display:'flex', justifyContent:'flex-end'}}>
-       <button className="btn-gold text-sm" onClick={()=>setShowNewTicket(true)}>＋ Nouvelle demande de support</button>
+      {/* Correctif layout (2026-09-28) : l'action "Nouvelle demande de
+          support" devient la carte CENTRALE de cette rangée de 3 (au lieu
+          d'un bouton séparé au-dessus + une 3e tuile identique en style aux
+          deux autres) — même flux existant (showNewTicket/submitNewTicket),
+          jamais dupliqué, juste repositionné et mis en avant visuellement
+          comme le canal de contact principal. Restauration V1 -> V2 (audit
+          2026-09-19) : src/pages/student/Support.jsx (live non modifié)
+          proposait aussi WhatsApp direct, une prise de RDV Calendly
+          (placeholder côté live) et une FAQ. */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 items-stretch">
+       <a href="https://wa.me/212600000000" target="_blank" rel="noopener noreferrer"
+        className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#25d366] bg-[#25d366]/5 hover:bg-[#25d366]/10 transition-all duration-200">
+        <div className="w-12 h-12 rounded-full bg-[#25d366] flex items-center justify-center shadow-lg shadow-[#25d366]/30"><WhatsAppIcon className="w-6 h-6 text-white"/></div>
+        <div className="text-center"><p className="font-bold text-gray-800">WhatsApp Direct</p><p className="text-xs text-gray-500 mt-0.5">Réponse en moins de 2h</p><p className="text-xs text-[#25d366] font-semibold mt-1">9h – 20h GMT+1</p></div>
+       </a>
+       <button type="button" onClick={()=>setShowNewTicket(true)}
+        className="relative flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-orias-gold transition-all duration-200 hover:shadow-lg"
+        style={{background:'linear-gradient(135deg, #1a3d2b 0%, #0d2818 100%)', boxShadow:'0 4px 20px rgba(26,61,43,0.25)'}}>
+        <span className="absolute -top-3 left-1/2 -translate-x-1/2 text-[10px] font-bold uppercase tracking-wide bg-orias-gold text-orias-green px-3 py-1 rounded-full shadow">Recommandé</span>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{background:'rgba(201,168,76,0.15)', border:'1px solid rgba(201,168,76,0.5)'}}><MessageIcon className="w-6 h-6 text-orias-gold"/></div>
+        <div className="text-center"><p className="font-bold text-white">Nouvelle demande de support</p><p className="text-xs mt-0.5" style={{color:'rgba(255,255,255,0.65)'}}>Le moyen le plus rapide de nous contacter</p><p className="text-xs text-orias-gold font-semibold mt-1">Réponse sous 24h</p></div>
+       </button>
+       {/* Correctif "Calendly présenté comme fonctionnel" (audit inspection
+           navigateur, 2026-09-26) : cette tuile avait le même style que les
+           deux options réellement actives (WhatsApp, message) sans jamais
+           rien faire au clic — état désactivé explicite tant qu'aucune
+           intégration Calendly n'est configurée. */}
+       <div className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 opacity-70" title="Prise de rendez-vous bientôt disponible — intégration Calendly à configurer">
+        <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center"><CalendarIcon className="w-6 h-6 text-white"/></div>
+        <div className="text-center"><p className="font-bold text-gray-500">Prendre RDV</p><p className="text-xs text-gray-400 mt-0.5">Bientôt disponible</p><p className="text-xs text-gray-400 font-semibold mt-1">🔒 Intégration à venir</p></div>
+       </div>
       </div>
+
       {showNewTicket && (
-       <form onSubmit={submitNewTicket} className="card p-5 mt-3 space-y-3">
+       <form onSubmit={submitNewTicket} className="card p-5 mt-4 space-y-3">
         <div>
          <label className="block text-xs font-semibold text-gray-500 mb-1">Sujet *</label>
          <input value={newTicket.subject} onChange={e=>setNewTicket(prev=>({...prev,subject:e.target.value}))} className="input-field text-sm" placeholder="Résumez votre demande" required/>
@@ -550,31 +580,6 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
       )}
       <div style={{marginTop:'22px'}}>
        <LocalTrackedCommunications items={items} drafts={drafts} setDrafts={setDrafts} sendingId={sending} sendReply={sendReply} onOpenFile={openFile} />
-      </div>
-
-      {/* Restauration V1 -> V2 (audit 2026-09-19) : src/pages/student/Support.jsx
-          (live non modifié) proposait aussi WhatsApp direct, une prise de RDV
-          Calendly (placeholder côté live) et une FAQ — absents de V2 jusqu'ici. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-       <a href="https://wa.me/212600000000" target="_blank" rel="noopener noreferrer"
-        className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-[#25d366] bg-[#25d366]/5 hover:bg-[#25d366]/10 transition-all duration-200">
-        <div className="w-12 h-12 rounded-full bg-[#25d366] flex items-center justify-center shadow-lg shadow-[#25d366]/30"><WhatsAppIcon className="w-6 h-6 text-white"/></div>
-        <div className="text-center"><p className="font-bold text-gray-800">WhatsApp Direct</p><p className="text-xs text-gray-500 mt-0.5">Réponse en moins de 2h</p><p className="text-xs text-[#25d366] font-semibold mt-1">9h – 20h GMT+1</p></div>
-       </a>
-       {/* Correctif "Calendly présenté comme fonctionnel" (audit inspection
-           navigateur, 2026-09-26) : cette tuile avait le même style que les
-           deux options réellement actives (WhatsApp, message) sans jamais
-           rien faire au clic — état désactivé explicite tant qu'aucune
-           intégration Calendly n'est configurée. */}
-       <div className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 opacity-70" title="Prise de rendez-vous bientôt disponible — intégration Calendly à configurer">
-        <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center"><CalendarIcon className="w-6 h-6 text-white"/></div>
-        <div className="text-center"><p className="font-bold text-gray-500">Prendre RDV</p><p className="text-xs text-gray-400 mt-0.5">Bientôt disponible</p><p className="text-xs text-gray-400 font-semibold mt-1">🔒 Intégration à venir</p></div>
-       </div>
-       <div onClick={()=>setShowNewTicket(true)} style={{cursor:'pointer'}}
-        className="flex flex-col items-center gap-3 p-6 rounded-xl border-2 border-orias-green bg-orias-green/5 hover:bg-orias-green/10 transition-all duration-200">
-        <div className="w-12 h-12 rounded-full bg-orias-green flex items-center justify-center shadow-lg shadow-orias-green/30"><MessageIcon className="w-6 h-6 text-white"/></div>
-        <div className="text-center"><p className="font-bold text-gray-800">Envoyer un message</p><p className="text-xs text-gray-500 mt-0.5">Formulaire de contact</p><p className="text-xs text-orias-green font-semibold mt-1">Réponse sous 24h</p></div>
-       </div>
       </div>
 
       <div className="card p-6 mt-4">

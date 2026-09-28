@@ -43,10 +43,10 @@ check('LocalCRM.jsx : la navigation client utilise "Support", plus "Mes échange
   assert.match(src, /\['support',\s*'Support'\]/, 'le libellé de nav doit être "Support"')
 })
 
-check('LocalCRM.jsx : le titre de la page Support est "Support" et le bouton reste "＋ Nouvelle demande de support" (jamais "Mes échanges" dans un texte affiché à l\'écran)', () => {
+check('LocalCRM.jsx : le titre de la page Support est "Support" et l\'action "Nouvelle demande de support" reste présente (carte centrale, layout 2026-09-28), jamais "Mes échanges" dans un texte affiché à l\'écran', () => {
   const src = readFileSync('./src/local/LocalCRM.jsx', 'utf8')
   assert.match(src, />Support<\/h2>/)
-  assert.match(src, /＋ Nouvelle demande de support/)
+  assert.match(src, /Nouvelle demande de support/)
   assert.match(src, />Voir Support<\/button>/)
   // Seules des références en commentaires de code (non affichées à l'écran)
   // peuvent encore mentionner l'ancien nom — jamais un noeud de texte JSX.
