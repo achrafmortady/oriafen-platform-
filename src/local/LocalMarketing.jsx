@@ -774,7 +774,12 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
       </section>
       <AdminBrandIntakeCard intake={brandIntake} clientName={clientName} clientEmail={clientEmail} />
       <ChannelsCard channels={channels} editable onUpdate={(channelId, patch) => { updateMarketingChannel(clientId, channelId, patch); refresh() }} />
-      <DeliverablesCard deliverables={deliverables} editable onAdd={form => { addDeliverable(clientId, form, clientName); refresh() }} />
+      {/* Correctif "masquer Livrables côté admin uniquement" (2026-10-02) :
+          section retirée de l'UI admin sur demande — logique/store/données
+          intacts (état deliverables, getDeliverables, addDeliverable,
+          composant DeliverablesCard, DELIVERABLE_TYPES tous inchangés). Le
+          client continue de voir ses livrables normalement dans
+          ClientMarketingPanel plus bas dans ce fichier, non modifié. */}
       <section className="card p-6">
         <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Demandes de modification client</h3>
         {!requests.length && <p className="text-sm text-gray-400">Aucune demande reçue.</p>}

@@ -123,11 +123,10 @@ check('marketingStore.js : addDeliverable() retombe sur "other" pour un type inc
   assert.equal(d.type, 'other')
 })
 
-check('LocalMarketing.jsx : DeliverablesCard regroupe les livrables par type et n\'affiche le formulaire de publication que pour l\'admin (editable)', () => {
+check('LocalMarketing.jsx : DeliverablesCard regroupe les livrables par type et n\'affiche le formulaire de publication que pour l\'admin (editable) — comportement du composant, même s\'il n\'est plus rendu côté admin depuis le 2026-10-02 (voir local-check-marketing-simplified-ux-2026-09-30.mjs)', () => {
   const src = readFileSync('./src/local/LocalMarketing.jsx', 'utf8')
   assert.match(src, /function DeliverablesCard\(\{ deliverables, editable = false, onAdd \}\)/)
   assert.match(src, /Object\.keys\(DELIVERABLE_TYPES\)\.map\(type =>/)
-  assert.match(src, /<DeliverablesCard deliverables=\{deliverables\} editable onAdd=/)
 })
 
 // ================================================================

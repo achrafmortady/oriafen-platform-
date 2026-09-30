@@ -107,9 +107,21 @@ check('Livrables : état vide court et clair côté client quand il n\'y en a au
   assert.match(src, /if \(!deliverables\.length && !editable\) \{/, 'l\'état vide compact ne doit se déclencher que côté client')
 })
 
-check('DeliverablesCard reste éditable côté admin (publication d\'un livrable typé) — même fonction addDeliverable, jamais dupliquée', () => {
-  assert.match(src, /function DeliverablesCard\(\{ deliverables, editable = false, onAdd \}\)/)
-  assert.match(src, /<DeliverablesCard deliverables=\{deliverables\} editable onAdd=/)
+// Correctif "masquer Livrables côté admin uniquement" (2026-10-02) : la
+// section a été retirée de l'UI admin sur demande — le composant/la
+// logique/le store restent intacts (rien supprimé, juste plus rendu ici).
+check('DeliverablesCard/addDeliverable/DELIVERABLE_TYPES restent définis et importés (logique intacte pour un usage futur), mais l\'UI admin ne rend plus <DeliverablesCard>', () => {
+  assert.match(src, /function DeliverablesCard\(\{ deliverables, editable = false, onAdd \}\)/, 'le composant doit toujours exister')
+  assert.match(src, /addDeliverable, DELIVERABLE_TYPES/, 'les imports du store doivent rester présents')
+  const adminFnMatch = src.match(/export function AdminMarketingPanel[\s\S]*/)
+  assert.ok(adminFnMatch)
+  assert.doesNotMatch(adminFnMatch[0], /<DeliverablesCard/, 'AdminMarketingPanel ne doit plus rendre DeliverablesCard')
+})
+
+check('Le client continue de voir ses livrables (ClientMarketingPanel rend toujours <DeliverablesCard>, inchangé)', () => {
+  const clientFnMatch = src.match(/export function ClientMarketingPanel[\s\S]*?\nexport function AdminMarketingPanel/)
+  assert.ok(clientFnMatch, 'ClientMarketingPanel doit exister avant AdminMarketingPanel dans le fichier')
+  assert.match(clientFnMatch[0], /<DeliverablesCard deliverables=\{deliverables\} \/>/, 'le client doit toujours voir ses livrables')
 })
 
 // ================================================================
