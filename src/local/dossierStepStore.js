@@ -86,3 +86,14 @@ export function subscribeToDossierSteps(callback) {
   window.addEventListener(CHANGE_EVENT, handler)
   return () => window.removeEventListener(CHANGE_EVENT, handler)
 }
+
+// Numéro de dossier — dérivé du clientId (déterministe, unique par
+// client), extrait ici comme SEULE définition (2026-10-03) : reprend
+// exactement la formule introduite dans LocalMonDossier.jsx (correctif
+// "numéro de dossier dupliqué OR-2026-1236", audit inspection navigateur
+// 2026-09-26) pour que LocalMonDossier.jsx ET le livret IAS1 généré depuis
+// l'onglet Dossiers affichent toujours le même numéro pour un même client
+// — jamais une deuxième formule qui pourrait diverger.
+export function dossierNumberFor(clientId) {
+  return `OR-${new Date().getFullYear()}-${String(Math.abs(Number(clientId) || 0) % 9000 + 1000)}`
+}

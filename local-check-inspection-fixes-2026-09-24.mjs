@@ -236,10 +236,10 @@ check('LocalMarketing.jsx : le résumé client (BrandSummaryCard) affiche audien
   }
 })
 
-check('LocalMarketing.jsx : un sélecteur de client existe dans AdminMarketingPanel (clients=[], defaultClientId), plus un unique clientId figé', () => {
+check('LocalMarketing.jsx : le choix du client se fait via une liste (jamais un unique clientId figé) — remplacé depuis le 2026-10-03 par une vue liste-première avec action "Voir" (voir local-check-marketing-admin-list-first-2026-10-03.mjs pour le détail du nouveau flux)', () => {
   const src = readFileSync('./src/local/LocalMarketing.jsx', 'utf8')
   assert.match(src, /export function AdminMarketingPanel\(\{\s*clients\s*=\s*\[\]/)
-  assert.match(src, /clients\.length > 1 && \(/)
+  assert.match(src, /function MarketingClientListView/, 'la sélection de client passe désormais par une liste dédiée')
 })
 
 check('LocalDossierSection.jsx : "Valider →" est bloqué (raison explicite) tant que des documents sont manquants', () => {

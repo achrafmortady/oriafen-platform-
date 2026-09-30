@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { CheckCircleIcon, ClockIcon, LockIcon } from '../components/Icons'
 import { getActiveClientId } from './adapters/identity'
-import { getDossierStep, subscribeToDossierSteps } from './dossierStepStore'
+import { getDossierStep, subscribeToDossierSteps, dossierNumberFor } from './dossierStepStore'
 import { ORIAS_STEPS, defaultStepIndexFor } from './clientsOverviewData'
 import { getClientDocuments, subscribeToDocuments } from './documentsStore'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
@@ -57,10 +57,11 @@ export default function LocalMonDossier({ clientId = getActiveClientId() }) {
   const clientLead = (() => { try { const raw = JSON.parse(localStorage.getItem(CRM_STORAGE_KEY)); return cleanPreviewLeads(raw || []).find(l => l.id === clientId) || null } catch { return null } })()
   // Correctif "numéro de dossier dupliqué OR-2026-1236" (audit inspection
   // navigateur, 2026-09-26) : identique en dur pour tous les clients —
-  // dérivé désormais du clientId (déterministe, unique par client, jamais
-  // stocké séparément puisqu'aucune donnée réelle "numéro de dossier"
-  // n'existe ailleurs dans ce store local).
-  const dossierNumber = `OR-${new Date().getFullYear()}-${String(Math.abs(Number(clientId) || 0) % 9000 + 1000)}`
+  // dérivé désormais du clientId (déterministe, unique par client). Formule
+  // extraite dans dossierStepStore.dossierNumberFor() (2026-10-03) pour
+  // rester la SEULE définition, réutilisée aussi par le livret IAS1 généré
+  // depuis l'onglet admin Dossiers (LocalDossierSection.jsx).
+  const dossierNumber = dossierNumberFor(clientId)
   const pack = clientLead?.pack || 'Non renseigné'
   const status = 'En cours'
 

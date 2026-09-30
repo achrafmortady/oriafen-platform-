@@ -138,7 +138,11 @@ check('LocalMarketing.jsx : AdminMarketingPanel ne retombe JAMAIS implicitement 
   const src = readFileSync('./src/local/LocalMarketing.jsx', 'utf8')
   assert.doesNotMatch(src, /getActiveClientId/, 'plus aucun repli implicite sur getActiveClientId() dans ce fichier')
   assert.match(src, /export function AdminMarketingPanel\(\{\s*clients\s*=\s*\[\]/, 'clients doit être [] par défaut, jamais un id de démo')
-  assert.match(src, /if \(!clients\.length \|\| clientId == null\)/, 'un état vide explicite doit être rendu tant qu\'aucun client réel n\'existe')
+  // Correctif "Marketing admin liste d'abord" (2026-10-03) : l'état vide se
+  // vérifie désormais séparément (!clients.length), la liste/détail se
+  // décide ensuite (clientId == null || !project) — même garantie, aucun
+  // repli implicite sur un client de démo dans les deux cas.
+  assert.match(src, /if \(!clients\.length\) \{/, 'un état vide explicite doit être rendu tant qu\'aucun client réel n\'existe')
 })
 
 check('LocalAdminShell.jsx : latestClientPreview (utilisé pour "Voir l\'espace client" ET comme client par défaut de l\'onglet Marketing) sélectionne le client réellement converti le plus récent, pas clientRows[0] (trié par priorité de statut)', () => {

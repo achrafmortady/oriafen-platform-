@@ -3,6 +3,7 @@ import { cleanPreviewLeads } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import { ClientDocumentsPanel, AssociateDocumentsPanel } from './LocalClientsOverview'
 import { STEP_LABELS, getDossierStep, setDossierStep, subscribeToDossierSteps } from './dossierStepStore'
+import { generateIas1Livret } from './ias1LivretGenerator'
 import { CheckCircleIcon, EyeIcon } from '../components/Icons'
 import ProgressBar from '../components/ProgressBar'
 
@@ -60,6 +61,21 @@ export default function LocalDossierSection() {
   const selected = clients.find(c => c.id === selectedId) || null
   const currentStep = selected ? getDossierStep(selected.id, selected.stepIndex + 1) : 1
   const pendingCount = selected ? selected.pendingDocs : 0
+  // Génération réelle du livret IAS1 (2026-10-03) : produit un vrai fichier
+  // .html téléchargeable (voir ias1LivretGenerator.js), jamais un faux
+  // succès. Résultat réinitialisé à chaque changement de client sélectionné
+  // pour ne jamais laisser un lien de téléchargement pointer vers un autre
+  // client.
+  const [livretResult, setLivretResult] = useState(null)
+  const [generatingLivret, setGeneratingLivret] = useState(false)
+  useEffect(() => { setLivretResult(null) }, [selectedId])
+  const handleGenerateLivret = () => {
+    if (!selected) return
+    setGeneratingLivret(true)
+    const result = generateIas1Livret({ clientId: selected.id, clientName: selected.name, clientEmail: selected.email, pack: selected.pack })
+    setLivretResult(result)
+    setGeneratingLivret(false)
+  }
   // Correctif "Valider fonctionne même avec des documents manquants" (audit
   // inspection navigateur, 2026-09-24) : "Valider →" faisait toujours
   // avancer l'étape, y compris avec des documents jamais envoyés
@@ -142,6 +158,29 @@ export default function LocalDossierSection() {
                   )
                 })}
               </div>
+            </div>
+
+            {/* Correctif "livret IAS1 non fonctionnel" (2026-10-03) :
+                génération réelle (fichier .html téléchargeable, voir
+                ias1LivretGenerator.js) à partir des données réellement
+                disponibles pour ce client — jamais une simple vitrine. */}
+            <div className="card p-5">
+              <h4 className="font-bold text-orias-green mb-1">Livret / attestation IAS1</h4>
+              <p className="text-[11px] text-gray-400 mb-3">Document généré localement (.html) à partir des informations réelles de ce client — nom, email, pack, numéro de dossier, progression formation.</p>
+              <button onClick={handleGenerateLivret} disabled={generatingLivret} className="btn-gold text-sm disabled:opacity-50">
+                {generatingLivret ? 'Génération…' : '✨ Générer automatiquement le livret IAS1'}
+              </button>
+              {livretResult && (
+                <div className="mt-4 rounded-xl border border-orias-gold/40 bg-orias-gold/5 p-4">
+                  <p className="text-sm font-bold text-orias-green">✓ Livret généré</p>
+                  <p className="text-xs text-gray-600 mt-1">Fichier : <span className="font-semibold">{livretResult.fileName}</span></p>
+                  <p className="text-xs text-gray-400">Généré le {livretResult.generatedAt}</p>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <a href={livretResult.url} download={livretResult.fileName} className="btn-green text-xs">⬇ Télécharger</a>
+                    <a href={livretResult.url} target="_blank" rel="noreferrer" className="btn-outline-green text-xs">Ouvrir dans un nouvel onglet</a>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="card p-5">

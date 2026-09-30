@@ -703,11 +703,78 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
 // SANS repli implicite sur le client de démo : tant qu'aucun client réel
 // n'est converti, `clients` est vide et cette vue affiche un état vide
 // explicite (même garantie que "Voir l'espace client" dans LocalCRM.jsx).
+// Correctif "Marketing admin ouvre directement le détail d'un client"
+// (2026-10-03) : la première vue doit être une liste des clients, jamais
+// le brief/projet complet d'un client précis — même données que la vue
+// détail (getBrandIntake/getMarketingProject/getMarketingChannels), lues
+// pour chaque client de la liste, aucune nouvelle logique métier.
+function MarketingClientListRow({ client, onView }) {
+  const brandIntake = getBrandIntake(client.id)
+  const project = getMarketingProject(client.id)
+  const channels = getMarketingChannels(client.id)
+  const channelStatus = id => {
+    const ch = channels.find(c => c.id === id)
+    return ch ? <span className={`inline-flex text-[11px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap ${CHANNEL_STATUS_STYLE[ch.status]}`}>{ch.status}</span> : <span className="text-xs text-gray-300">—</span>
+  }
+  return (
+    <tr className="border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors">
+      <td className="px-4 py-3">
+        <p className="font-semibold text-gray-800">{client.name}</p>
+        {client.email && <p className="text-xs text-gray-400">{client.email}</p>}
+      </td>
+      <td className="px-4 py-3 hidden md:table-cell"><span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-semibold bg-orias-green/10 text-orias-green border border-orias-green/20">{client.pack || '—'}</span></td>
+      <td className="px-4 py-3"><span className={`text-xs font-semibold ${brandIntake ? 'text-emerald-700' : 'text-gray-400'}`}>{brandIntake ? 'Reçu' : 'En attente'}</span></td>
+      <td className="px-4 py-3 hidden lg:table-cell">{channelStatus('site')}</td>
+      <td className="px-4 py-3 hidden lg:table-cell">{channelStatus('instagram')}</td>
+      <td className="px-4 py-3 hidden lg:table-cell">{channelStatus('facebook')}</td>
+      <td className="px-4 py-3 hidden lg:table-cell">{channelStatus('ads_manager')}</td>
+      <td className="px-4 py-3 hidden xl:table-cell text-xs text-gray-400">{project.lastUpdate || '—'}</td>
+      <td className="px-4 py-3 text-right">
+        <button onClick={() => onView(client.id)} className="btn-outline-green text-xs">Voir</button>
+      </td>
+    </tr>
+  )
+}
+
+function MarketingClientListView({ clients, onView }) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Marketing</p>
+        <h1 className="text-xl font-bold text-orias-green">Sélectionnez un client</h1>
+        <p className="text-sm text-gray-500 mt-1">{clients.length} client{clients.length > 1 ? 's' : ''} converti{clients.length > 1 ? 's' : ''}. Cliquez sur "Voir" pour ouvrir le brief, les canaux et les demandes de modification d'un client.</p>
+      </div>
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-orias-border bg-orias-bg">
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Client</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden md:table-cell">Pack</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Brief</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Site web</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Instagram</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Facebook</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden lg:table-cell">Meta Ads</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 hidden xl:table-cell">Dernière mise à jour</th>
+                <th className="text-right px-4 py-3 font-semibold text-gray-600">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {clients.map(c => <MarketingClientListRow key={c.id} client={c} onView={onView} />)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
-  const [selectedClientId, setSelectedClientId] = useState(defaultClientId)
+  const [selectedClientId, setSelectedClientId] = useState(null)
   useEffect(() => {
-    if (selectedClientId == null || !clients.some(c => c.id === selectedClientId)) setSelectedClientId(defaultClientId)
-  }, [defaultClientId, clients])
+    if (selectedClientId != null && !clients.some(c => c.id === selectedClientId)) setSelectedClientId(null)
+  }, [clients])
   const clientId = selectedClientId
   const selectedClient = clients.find(c => c.id === clientId) || null
   const clientName = selectedClient?.name || null
@@ -727,7 +794,7 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
   useEffect(() => subscribeToMarketing(refresh), [clientId])
   useEffect(() => { if (project) setPhaseDraft(project.phase) }, [project?.phase])
 
-  if (!clients.length || clientId == null) {
+  if (!clients.length) {
     return (
       <section className="card p-10 max-w-2xl mx-auto text-center border-dashed border-orias-border">
         <span className="text-[10px] font-bold tracking-wide text-orias-gold uppercase">Marketing</span>
@@ -737,15 +804,23 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
     )
   }
 
+  // Correctif "Marketing admin ouvre directement le détail" (2026-10-03) :
+  // tant qu'aucun client n'a été explicitement choisi via "Voir", on
+  // affiche la liste — jamais un client présélectionné automatiquement.
+  if (clientId == null || !project) {
+    return <MarketingClientListView clients={clients} onView={setSelectedClientId} />
+  }
+
   const { nextStepLabel } = deriveMarketingSteps(brandIntake, channels, deliverables)
 
   return (
     <div className="space-y-5">
+      <button type="button" onClick={() => setSelectedClientId(null)} className="text-sm font-semibold text-orias-green hover:underline flex items-center gap-1">← Retour à la liste</button>
       {/* Correctif simplification UX (2026-09-30) : résumé opérationnel
           unique (client/pack/brief/prochaine action équipe/dernière mise à
-          jour + sélecteur de client + édition de la phase) — remplace 2
-          cartes séparées ("Client affiché" + "Étape 1 — Informations de
-          marque"), mêmes données/actions (updateMarketingProject inchangé). */}
+          jour + édition de la phase) — remplace 2 cartes séparées
+          ("Client affiché" + "Étape 1 — Informations de marque"), mêmes
+          données/actions (updateMarketingProject inchangé). */}
       <section className="card p-5">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="min-w-0">
@@ -753,11 +828,6 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
             <p className="font-bold text-gray-800 truncate">{clientName}{clientEmail ? <span className="text-gray-400 font-normal"> · {clientEmail}</span> : ''}</p>
             {selectedClient?.pack && <p className="text-xs text-gray-400 mt-0.5">{selectedClient.pack}</p>}
           </div>
-          {clients.length > 1 && (
-            <select value={clientId} onChange={e => setSelectedClientId(Number(e.target.value))} className="input-field text-sm w-auto flex-shrink-0">
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          )}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm border-t border-orias-border mt-4 pt-4">
           <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Brief</p><p className="font-bold text-gray-800 mt-0.5">{brandIntake ? 'Reçu' : 'En attente'}</p></div>

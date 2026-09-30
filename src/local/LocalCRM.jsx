@@ -642,7 +642,7 @@ function ClientSpace({onBack, overrideClientId, overrideIdentity=null}){
   </div>
  )
 }
-export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null,clientId=null,clientIdentity=null}){
+export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient=()=>{},presetRequest=null,autoOpenCreateRequest=null,clientId=null,clientIdentity=null}){
  const [leads,setLeads]=useState(()=>{try{const raw=JSON.parse(localStorage.getItem(storage));return cleanPreviewLeads(raw||[])}catch{return []}});
  const [filter,setFilter]=useState(defaults),[view,setView]=useState('Liste'),[selected,setSelected]=useState(null),[note,setNote]=useState(''),[saved,setSaved]=useState('Tous les prospects'),[creating,setCreating]=useState(false),[toast,setToast]=useState('');
  const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel');
@@ -673,6 +673,11 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  // LocalAdminShell.jsx) : réutilise le preset() existant plus bas — aucune
  // nouvelle logique de filtrage, juste un déclenchement externe.
  useEffect(()=>{if(presetRequest?.preset)preset(presetRequest.preset)},[presetRequest]);
+ // Correctif "bouton d'ajout absent sur la page Clients" (2026-10-03) :
+ // déclenché à distance depuis LocalAdminShell.jsx (onglet Clients) —
+ // ouvre la MÊME modale de création que le bouton "＋ Nouveau prospect"
+ // local, jamais une seconde implémentation.
+ useEffect(()=>{if(autoOpenCreateRequest)setCreating(true)},[autoOpenCreateRequest]);
  useEffect(()=>{
   // Ce polling suppose un backend WhatsApp local (server/, voir .gitignore)
   // lancé sur la machine du développeur — jamais accessible depuis un

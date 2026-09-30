@@ -5,7 +5,7 @@ import { buildLeadTimeline, findFirstEntry, applyStatusChange, addManualComment,
 import { toDisplayDateSafe } from './dateUtils'
 import { findPackById } from './packsData'
 import ProgressBar from '../components/ProgressBar'
-import { UsersIcon, XCircleIcon, ClockIcon, AwardIcon, SearchIcon, EyeIcon, XIcon, MessageIcon } from '../components/Icons'
+import { UsersIcon, XCircleIcon, ClockIcon, AwardIcon, SearchIcon, EyeIcon, XIcon, MessageIcon, EditIcon, WhatsAppIcon } from '../components/Icons'
 import { getClientSends, subscribeToClientTracking, getAdminSendStatus, respondToClientRequest } from './clientTrackingStore'
 import { subscribeToActivityLog } from './activityLog'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
@@ -552,7 +552,7 @@ function sameFilter(a, b) {
 // "marketing request does not notify admin" / "support flow unclear") — même
 // mécanisme que `initialFilter` (un objet {clientId, ts} pour forcer l'effet
 // même si le même client est redemandé deux fois de suite).
-export default function LocalClientsOverview({ initialFilter = null, openClientRequest = null }) {
+export default function LocalClientsOverview({ initialFilter = null, openClientRequest = null, onAddProspect = null }) {
   const [leads, persistLeads] = useLocalLeads()
   const { rows: allRows, kpis } = buildClientsOverview(leads)
   const [filter, setFilter] = useState(initialFilter)
@@ -567,7 +567,22 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
   // `selected` — même nom d'état que ClientsSection (live) pour le client
   // ouvert dans le modal "Voir".
   const [selectedId, setSelectedId] = useState(null)
+  // Correctif "icônes d'action restreintes à Voir" (2026-10-03) : l'icône
+  // Message ouvre la même fiche (aucune 2e vue), puis fait défiler jusqu'au
+  // suivi des envois/support déjà présent dans le modal (LocalClientSendHistoryPanel)
+  // — jamais une nouvelle logique de messagerie.
+  const [scrollToSupport, setScrollToSupport] = useState(false)
   useEffect(() => { if (openClientRequest?.clientId != null) setSelectedId(openClientRequest.clientId) }, [openClientRequest])
+  useEffect(() => {
+    if (!selectedId || !scrollToSupport) return
+    const el = document.getElementById('client-support-panel')
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    setScrollToSupport(false)
+  }, [selectedId, scrollToSupport])
+  const openClientRow = (clientId, { focusSupport = false } = {}) => {
+    setSelectedId(clientId)
+    setScrollToSupport(focusSupport)
+  }
   const selected = rows.find(r => r.id === selectedId) || allRows.find(r => r.id === selectedId) || null
 
   const firstEntry = selected ? findFirstEntry({ activity: selected.leadActivity }) : null
@@ -615,6 +630,14 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
           />
         </div>
         <span className="text-sm text-gray-500">{rows.length} client{rows.length > 1 ? 's' : ''}</span>
+        {/* Correctif "pas de bouton d'ajout sur la page Clients" (2026-10-03) :
+            réutilise le flux de création existant (NewProspectModal dans
+            LocalCRM.jsx) — jamais une seconde implémentation. onAddProspect
+            (transmis par LocalAdminShell.jsx) bascule sur l'onglet CRM et
+            déclenche l'ouverture de la même modale "＋ Nouveau prospect". */}
+        {onAddProspect && (
+          <button onClick={onAddProspect} className="btn-gold text-sm flex-shrink-0">＋ Ajouter un prospect</button>
+        )}
       </div>
 
       {/* ==================== REPRODUCTION EXACTE — tableau (ClientsSection, live) ==================== */}
@@ -656,7 +679,13 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                       </div>
                     </td>
                     <td className="px-4 py-4 hidden md:table-cell">
-                      <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-orias-green/10 text-orias-green border border-orias-green/20">{client.pack}</span>
+                      {/* Correctif "badge Pack sur 2 lignes" (2026-10-03) :
+                          whitespace-nowrap + inline-block empêchent
+                          "Pack Essentiel"/"Pack Accélération"/"Pack
+                          Croissance" de se replier sur 2 lignes dans une
+                          colonne étroite — le badge peut simplement
+                          déborder/s'élargir au lieu de wrapper. */}
+                      <span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-semibold bg-orias-green/10 text-orias-green border border-orias-green/20">{client.pack}</span>
                     </td>
                     <td className="px-4 py-4 hidden lg:table-cell min-w-32">
                       <div>
@@ -682,9 +711,31 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                     </td>
                     <td className="px-4 py-4 hidden xl:table-cell text-xs text-gray-400">{client.lastActivity ? `${client.lastActivity.label} · ${client.lastActivity.at}` : '—'}</td>
                     <td className="px-5 py-4">
+                      {/* Correctif "icônes d'action restreintes à Voir" (2026-10-03) :
+                          restaure Voir/Modifier/Message/WhatsApp comme en V1 — sans
+                          dupliquer de logique. Modifier ouvre la même fiche complète
+                          (c'est déjà là que le CRM/le statut/les documents/l'associé
+                          se modifient localement — aucune fiche d'édition séparée
+                          n'existe, en reproduire une créerait une 2e implémentation).
+                          "Supprimer" (live) appelait deleteClientAccount() côté
+                          Supabase, sans équivalent local — volontairement absent ici,
+                          comme documenté en tête de fichier. */}
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => setSelectedId(client.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-orias-green hover:bg-orias-green/10 transition-colors" title="Voir">
+                        <button onClick={() => openClientRow(client.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-orias-green hover:bg-orias-green/10 transition-colors" title="Voir">
                           <EyeIcon className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openClientRow(client.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-orias-green hover:bg-orias-green/10 transition-colors" title="Modifier">
+                          <EditIcon className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => openClientRow(client.id, { focusSupport: true })} className="p-1.5 rounded-lg text-gray-400 hover:text-orias-green hover:bg-orias-green/10 transition-colors" title="Message / Support">
+                          <MessageIcon className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => window.open(client.phone && client.phone !== 'Non renseigné' ? `https://wa.me/${client.phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(`Bonjour ${client.name.split(' ')[0]}, `)}` : `https://wa.me/?text=${encodeURIComponent(`Bonjour ${client.name.split(' ')[0]}, `)}`, '_blank')}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-[#25d366] hover:bg-[#25d366]/10 transition-colors"
+                          title="WhatsApp"
+                        >
+                          <WhatsAppIcon className="w-4 h-4" />
                         </button>
                       </div>
                     </td>
@@ -886,7 +937,9 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                     <span className={`status-badge border ${STATUS_STYLES[selected.status]} text-xs`}>{selected.nextAction}</span>
                   </div>
 
-                  <LocalClientSendHistoryPanel clientId={selected.id} />
+                  <div id="client-support-panel">
+                    <LocalClientSendHistoryPanel clientId={selected.id} />
+                  </div>
                 </div>
               </div>
             </div>

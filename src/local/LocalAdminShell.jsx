@@ -130,6 +130,17 @@ export default function LocalAdminShell() {
     setActiveTab('crm')
   }
 
+  // "＋ Ajouter un prospect" depuis l'onglet Clients (2026-10-03) : même
+  // mécanisme de requête que les KPI cliquables ci-dessus — bascule sur
+  // l'onglet CRM et déclenche l'ouverture de la modale de création déjà
+  // existante (NewProspectModal, LocalCRM.jsx), jamais une seconde
+  // implémentation de formulaire de création.
+  const [crmCreateRequest, setCrmCreateRequest] = useState(null)
+  const openCrmCreateProspect = () => {
+    setCrmCreateRequest({ ts: Date.now() })
+    setActiveTab('crm')
+  }
+
   // Deep-link depuis une notification admin (marketing/support) — même
   // mécanisme de "requête" que les KPI cliquables ci-dessus (un objet avec
   // un `ts` unique pour forcer l'effet même si la même cible est redemandée).
@@ -154,12 +165,13 @@ export default function LocalAdminShell() {
           onEnterClient={(identity = latestClientPreview) => { setClientPreviewIdentity(identity); setClientPreview(true) }}
           onExitClient={() => { setClientPreview(false); setClientPreviewIdentity(null) }}
           presetRequest={crmPresetRequest}
+          autoOpenCreateRequest={crmCreateRequest}
           clientId={clientPreviewIdentity?.id}
           clientIdentity={clientPreviewIdentity}
         />
       )
     }
-    if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
+    if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} onAddProspect={openCrmCreateProspect} />
     if (activeTab === 'marketing') return <AdminMarketingPanel clients={clientRows.map(r => ({ id: r.id, name: r.name, email: r.email, pack: r.pack }))} defaultClientId={latestClientPreview?.id ?? null} />
     if (activeTab === 'finance') return <LocalFinanceSection leads={leads} />
     if (activeTab === 'dossiers') return <LocalDossierSection />
