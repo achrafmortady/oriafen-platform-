@@ -31,43 +31,134 @@ function statusToPatch(status, currentProgressPct) {
   return { status }
 }
 
-function ChannelsCard({ channels, editable = false, onUpdate }) {
+// ================================================================
+// Redesign "Mon site & communication" (simplification UX, 2026-09-30) :
+// la page était trop chargée (plusieurs grosses cartes empilées, tout le
+// brief affiché en permanence) — aucune donnée/logique nouvelle ici,
+// uniquement une lecture combinée de ce qui existe déjà (brandIntake/
+// project/channels/deliverables) pour donner un résumé + un stepper en
+// haut de page, compréhensible en quelques secondes.
+// ================================================================
+const STEP_STATE_STYLE = {
+  done: { icon: '✓', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  in_progress: { icon: '●', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  waiting: { icon: '○', cls: 'bg-gray-50 text-gray-400 border-gray-200' },
+}
+
+function deriveMarketingSteps(brandIntake, channels, deliverables) {
+  const hasIntake = Boolean(brandIntake)
+  const anyChannelStarted = channels.some(ch => ch.status !== 'À démarrer' || ch.progressPct > 0)
+  const allChannelsDone = channels.length > 0 && channels.every(ch => ch.status === 'Terminé')
+  const hasDeliverables = deliverables.length > 0
+
+  const steps = [
+    {
+      id: 'brief',
+      label: 'Informations de marque',
+      state: hasIntake ? 'done' : 'waiting',
+      hint: hasIntake ? 'Brief reçu' : 'En attente du brief client',
+    },
+    {
+      id: 'brandkit',
+      label: 'Brand kit',
+      state: !hasIntake ? 'waiting' : anyChannelStarted ? 'done' : 'in_progress',
+      hint: !hasIntake ? 'En attente du brief' : anyChannelStarted ? 'Brand kit prêt' : 'Préparation en cours',
+    },
+    {
+      id: 'production',
+      label: 'Production des canaux',
+      state: !hasIntake ? 'waiting' : allChannelsDone ? 'done' : anyChannelStarted ? 'in_progress' : 'waiting',
+      hint: !hasIntake ? 'En attente du brand kit' : allChannelsDone ? 'Tous les canaux terminés' : anyChannelStarted ? 'En cours' : 'Pas encore démarrée',
+    },
+    {
+      id: 'deliverables',
+      label: 'Livrables & modifications',
+      state: hasDeliverables ? 'in_progress' : 'waiting',
+      hint: hasDeliverables ? 'Livrables disponibles' : 'Aucun livrable pour le moment',
+    },
+  ]
+  const next = steps.find(s => s.state !== 'done')
+  return { steps, nextStepLabel: next ? `${next.label} — ${next.hint}` : 'Tout est à jour' }
+}
+
+function MarketingSummaryCard({ project, steps, nextStepLabel }) {
   return (
     <section className="card p-6">
-      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-1">Étape 2 — Production par canal</h3>
-      <p className="text-xs text-gray-400 mb-4">Chaque partie avance séparément : Site web, Instagram, Facebook, Meta Business Manager / Ads Manager.</p>
-      <div className="space-y-4">
-        {channels.map(ch => (
-          <div key={ch.id} className="border border-orias-border rounded-xl p-4">
-            <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
-              <p className="font-bold text-gray-800 text-sm">{ch.label}</p>
-              {editable ? (
-                <select
-                  value={ch.status}
-                  onChange={e => onUpdate(ch.id, statusToPatch(e.target.value, ch.progressPct))}
-                  className={`text-xs font-bold px-2 py-1 rounded-full border cursor-pointer ${CHANNEL_STATUS_STYLE[ch.status]}`}
-                >
-                  {CHANNEL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              ) : (
-                <span className={`inline-flex text-xs font-bold px-2.5 py-1 rounded-full border ${CHANNEL_STATUS_STYLE[ch.status]}`}>{ch.status}</span>
-              )}
+      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Votre projet communication</p>
+      <h3 className="text-lg font-bold text-orias-green mb-4">{project.name}</h3>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mb-5">
+        <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Phase actuelle</p><p className="font-bold text-gray-800 mt-0.5">{project.phase}</p></div>
+        <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Statut</p><p className="font-bold text-gray-800 mt-0.5">{project.status}</p></div>
+        <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Prochaine étape</p><p className="font-bold text-orias-green mt-0.5">{nextStepLabel}</p></div>
+        <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Dernière mise à jour</p><p className="font-bold text-gray-800 mt-0.5">{project.lastUpdate || 'Non renseigné'}</p></div>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+        {steps.map((s, i) => {
+          const st = STEP_STATE_STYLE[s.state]
+          return (
+            <div key={s.id} className="flex-1 flex items-center gap-2">
+              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full border text-xs font-bold flex-shrink-0 ${st.cls}`}>{st.icon}</span>
+              <div className="min-w-0">
+                <p className="text-xs font-semibold text-gray-800 truncate">{s.label}</p>
+                <p className="text-[11px] text-gray-400 truncate">{s.hint}</p>
+              </div>
+              {i < steps.length - 1 && <span className="hidden sm:block flex-1 h-px bg-orias-border mx-2" />}
             </div>
-            <div className="h-1.5 rounded-full bg-orias-bg overflow-hidden mb-2">
-              <div className="h-full bg-orias-gold" style={{ width: `${ch.progressPct}%` }} />
-            </div>
-            <div className="flex items-center justify-between gap-3 text-xs text-gray-500 mb-2">
-              <span>{ch.progressPct}%</span>
-              {editable && (
-                <input
-                  type="range" min="0" max="100" value={ch.progressPct}
-                  onChange={e => onUpdate(ch.id, { progressPct: Number(e.target.value) })}
-                  className="flex-1 mx-2"
-                />
-              )}
-            </div>
-            {editable ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+// Correctif simplification UX (2026-09-30) : remplace les grosses cartes
+// empilées (une par canal, barre de progression pleine largeur + tous les
+// champs toujours visibles) par des lignes compactes — statut, %, dernière
+// mise à jour visibles d'un coup d'oeil ; le détail (étape actuelle/reste à
+// faire, et côté admin le curseur + les champs texte) reste disponible
+// derrière "Voir détail", jamais retiré. Même données/onUpdate qu'avant.
+function ChannelRow({ ch, editable, onUpdate }) {
+  const [open, setOpen] = useState(false)
+  const hasDetail = Boolean(ch.currentStep || ch.remainingWork)
+  return (
+    <div className="border border-orias-border rounded-xl px-4 py-3">
+      <div className="flex items-center gap-3 flex-wrap">
+        <p className="font-bold text-gray-800 text-sm flex-shrink-0 w-full sm:w-40">{ch.label}</p>
+        {editable ? (
+          <select
+            value={ch.status}
+            onChange={e => onUpdate(ch.id, statusToPatch(e.target.value, ch.progressPct))}
+            className={`text-xs font-bold px-2 py-1 rounded-full border cursor-pointer flex-shrink-0 ${CHANNEL_STATUS_STYLE[ch.status]}`}
+          >
+            {CHANNEL_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        ) : (
+          <span className={`inline-flex text-xs font-bold px-2.5 py-1 rounded-full border flex-shrink-0 ${CHANNEL_STATUS_STYLE[ch.status]}`}>{ch.status}</span>
+        )}
+        <div className="flex items-center gap-2 flex-1 min-w-[100px]">
+          <div className="h-1.5 flex-1 rounded-full bg-orias-bg overflow-hidden">
+            <div className="h-full bg-orias-gold" style={{ width: `${ch.progressPct}%` }} />
+          </div>
+          <span className="text-xs text-gray-500 flex-shrink-0">{ch.progressPct}%</span>
+        </div>
+        <span className="text-[11px] text-gray-400 flex-shrink-0 hidden md:inline">{ch.updatedAt ? `MAJ ${ch.updatedAt}` : 'Pas encore mis à jour'}</span>
+        {(editable || hasDetail) && (
+          <button type="button" onClick={() => setOpen(o => !o)} className="text-xs font-semibold text-orias-green hover:underline flex-shrink-0 ml-auto sm:ml-0">
+            {open ? 'Masquer' : 'Voir détail'}
+          </button>
+        )}
+      </div>
+      <span className="text-[11px] text-gray-400 md:hidden block mt-1">{ch.updatedAt ? `Mis à jour le ${ch.updatedAt}` : 'Pas encore mis à jour'}</span>
+      {open && (
+        <div className="mt-3 pt-3 border-t border-orias-border">
+          {editable ? (
+            <div className="space-y-2">
+              <input
+                type="range" min="0" max="100" value={ch.progressPct}
+                onChange={e => onUpdate(ch.id, { progressPct: Number(e.target.value) })}
+                className="w-full"
+              />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <input
                   value={ch.currentStep || ''}
                   onChange={e => onUpdate(ch.id, { currentStep: e.target.value })}
@@ -81,15 +172,27 @@ function ChannelsCard({ channels, editable = false, onUpdate }) {
                   className="input-field text-xs"
                 />
               </div>
-            ) : (
-              <>
-                {ch.currentStep && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold">Étape actuelle :</span> {ch.currentStep}</p>}
-                {ch.remainingWork && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold">Reste à faire :</span> {ch.remainingWork}</p>}
-              </>
-            )}
-            {ch.updatedAt && <p className="text-[11px] text-gray-400 mt-2">Mis à jour le {ch.updatedAt}</p>}
-          </div>
-        ))}
+            </div>
+          ) : (
+            <>
+              {ch.currentStep && <p className="text-xs text-gray-600"><span className="font-semibold">Étape actuelle :</span> {ch.currentStep}</p>}
+              {ch.remainingWork && <p className="text-xs text-gray-600 mt-1"><span className="font-semibold">Reste à faire :</span> {ch.remainingWork}</p>}
+              {!hasDetail && <p className="text-xs text-gray-400">Aucun détail renseigné pour l'instant.</p>}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ChannelsCard({ channels, editable = false, onUpdate }) {
+  return (
+    <section className="card p-6">
+      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-1">Production par canal</h3>
+      <p className="text-xs text-gray-400 mb-4">Site web, Instagram, Facebook, Meta Business Manager / Ads Manager — chacun avance séparément.</p>
+      <div className="space-y-2">
+        {channels.map(ch => <ChannelRow key={ch.id} ch={ch} editable={editable} onUpdate={onUpdate} />)}
       </div>
     </section>
   )
@@ -231,40 +334,57 @@ function BrandIntakeForm({ clientName, onSubmit }) {
   )
 }
 
+// Correctif simplification UX (2026-09-30) : le brief complet ne doit plus
+// occuper toute la première vue — repliable par défaut derrière "Voir les
+// informations transmises". Mêmes champs qu'avant (audience/offres/tone/
+// logo/site/Instagram/Facebook/Meta Ads/couleurs/notes), rien retiré,
+// uniquement masqué tant que le client ne l'a pas demandé.
 function BrandSummaryCard({ intake }) {
+  const [open, setOpen] = useState(false)
   return (
     <section className="card p-6 border-orias-gold/40">
-      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Brand kit reçu</p>
-      <h3 className="text-lg font-bold text-orias-green mb-4">{intake.brandName}</h3>
-      {/* Correctif "résumé client incomplet" (audit inspection navigateur,
-          2026-09-24) : audience/offres/valeurs/notes étaient bien envoyées
-          et sauvegardées (submitBrandIntake), mais jamais réaffichées ici —
-          le client ne pouvait donc pas relire ce qu'il avait réellement
-          transmis. Ajoutés sans rien retirer des champs déjà présents. */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Activité</p><p className="font-semibold text-gray-800">{intake.activity || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Clientèle cible</p><p className="font-semibold text-gray-800">{intake.audience || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Offres à mettre en avant</p><p className="font-semibold text-gray-800">{intake.offer || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Ton</p><p className="font-semibold text-gray-800">{intake.tone || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Valeurs / inspirations</p><p className="font-semibold text-gray-800">{intake.values || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Logo</p><p className="font-semibold text-gray-800">{intake.logoStatus}{intake.logoInfo ? ` — ${intake.logoInfo}` : ''}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Site web</p><p className="font-semibold text-gray-800">{intake.websiteGoal || 'Non renseigné'}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Instagram</p><p className="font-semibold text-gray-800">{intake.instagramStatus || 'À créer'}{intake.instagram ? ` — ${intake.instagram}` : ''}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Facebook</p><p className="font-semibold text-gray-800">{intake.facebookStatus || 'À créer'}{intake.facebook ? ` — ${intake.facebook}` : ''}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Meta Ads</p><p className="font-semibold text-gray-800">{intake.metaBusinessStatus || 'À créer'}{intake.metaBusiness ? ` — ${intake.metaBusiness}` : ''}</p></div>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brand kit reçu ✓</p>
+          <h3 className="text-lg font-bold text-orias-green">{intake.brandName}</h3>
+        </div>
+        <button type="button" onClick={() => setOpen(o => !o)} className="btn-outline-green text-xs flex-shrink-0">
+          {open ? 'Masquer les informations' : 'Voir les informations transmises'}
+        </button>
       </div>
-      {intake.notes && (
-        <div className="mt-4">
-          <p className="text-[11px] text-gray-400 font-semibold uppercase">Notes complémentaires</p>
-          <p className="text-sm font-semibold text-gray-800 whitespace-pre-wrap mt-1">{intake.notes}</p>
-        </div>
+      {open && (
+        <>
+          {/* Correctif "résumé client incomplet" (audit inspection navigateur,
+              2026-09-24) : audience/offres/valeurs/notes étaient bien envoyées
+              et sauvegardées (submitBrandIntake), mais jamais réaffichées ici —
+              le client ne pouvait donc pas relire ce qu'il avait réellement
+              transmis. Ajoutés sans rien retirer des champs déjà présents. */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mt-4">
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Activité</p><p className="font-semibold text-gray-800">{intake.activity || 'Non renseigné'}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Clientèle cible</p><p className="font-semibold text-gray-800">{intake.audience || 'Non renseigné'}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Offres à mettre en avant</p><p className="font-semibold text-gray-800">{intake.offer || 'Non renseigné'}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Ton</p><p className="font-semibold text-gray-800">{intake.tone || 'Non renseigné'}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Valeurs / inspirations</p><p className="font-semibold text-gray-800">{intake.values || 'Non renseigné'}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Logo</p><p className="font-semibold text-gray-800">{intake.logoStatus}{intake.logoInfo ? ` — ${intake.logoInfo}` : ''}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Site web</p><p className="font-semibold text-gray-800">{intake.websiteGoal || 'Non renseigné'}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Instagram</p><p className="font-semibold text-gray-800">{intake.instagramStatus || 'À créer'}{intake.instagram ? ` — ${intake.instagram}` : ''}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Facebook</p><p className="font-semibold text-gray-800">{intake.facebookStatus || 'À créer'}{intake.facebook ? ` — ${intake.facebook}` : ''}</p></div>
+            <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Meta Ads</p><p className="font-semibold text-gray-800">{intake.metaBusinessStatus || 'À créer'}{intake.metaBusiness ? ` — ${intake.metaBusiness}` : ''}</p></div>
+          </div>
+          {intake.notes && (
+            <div className="mt-4">
+              <p className="text-[11px] text-gray-400 font-semibold uppercase">Notes complémentaires</p>
+              <p className="text-sm font-semibold text-gray-800 whitespace-pre-wrap mt-1">{intake.notes}</p>
+            </div>
+          )}
+          {Array.isArray(intake.colors) && intake.colors.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />{color}</span>)}
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
+        </>
       )}
-      {Array.isArray(intake.colors) && intake.colors.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />{color}</span>)}
-        </div>
-      )}
-      <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
     </section>
   )
 }
@@ -341,29 +461,48 @@ function AdminBrandIntakeCard({ intake, clientName = null, clientEmail = null })
     ['Valeurs / inspirations', intake.values],
     ['Notes', intake.notes],
   ]
+  // Correctif simplification UX (2026-09-30) : le détail complet du brief
+  // (12 champs) était toujours affiché, dominant toute la vue admin — replié
+  // par défaut derrière "Voir le brief complet", le bouton de téléchargement
+  // reste lui toujours visible (jamais masqué par le repli).
+  return (
+    <AdminBrandIntakeCardBody intake={intake} rows={rows} clientName={clientName} clientEmail={clientEmail} />
+  )
+}
+
+function AdminBrandIntakeCardBody({ intake, rows, clientName, clientEmail }) {
+  const [open, setOpen] = useState(false)
   return (
     <section className="card p-6">
-      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-1">
         <div>
-          <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brief client reçu</p>
-          <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide">Demandes client pour brand kit, site, réseaux et ads</h3>
+          <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Brief client reçu ✓</p>
+          <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide">{intake.brandName}</h3>
+          <p className="text-[11px] text-gray-400 mt-0.5">Ce sont les informations transmises par le client — toujours la première étape du projet.</p>
         </div>
-        <button type="button" className="btn-outline-green text-sm flex-shrink-0" onClick={() => downloadBrandIntake(intake, clientName, clientEmail)}>⬇ Télécharger le brief brand kit</button>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button type="button" className="btn-outline-green text-xs" onClick={() => setOpen(o => !o)}>{open ? 'Masquer le brief' : 'Voir le brief complet'}</button>
+          <button type="button" className="btn-outline-green text-xs" onClick={() => downloadBrandIntake(intake, clientName, clientEmail)}>⬇ Télécharger le brief brand kit</button>
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-        {rows.map(([label, value]) => (
-          <div key={label} className="rounded-xl border border-orias-border bg-orias-bg/40 p-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
-            <p className="mt-1 font-semibold text-gray-800 whitespace-pre-wrap">{value || 'Non renseigné'}</p>
+      {open && (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mt-4">
+            {rows.map(([label, value]) => (
+              <div key={label} className="rounded-xl border border-orias-border bg-orias-bg/40 p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">{label}</p>
+                <p className="mt-1 font-semibold text-gray-800 whitespace-pre-wrap">{value || 'Non renseigné'}</p>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      {Array.isArray(intake.colors) && intake.colors.length > 0 && (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />Couleur {index + 1}: {color}</span>)}
-        </div>
+          {Array.isArray(intake.colors) && intake.colors.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {intake.colors.map((color, index) => <span key={`${color}-${index}`} className="inline-flex items-center gap-2 rounded-full border border-orias-border px-3 py-1 text-xs font-semibold text-gray-600"><i className="h-4 w-4 rounded-full border border-gray-200" style={{ background: color }} />Couleur {index + 1}: {color}</span>)}
+            </div>
+          )}
+          <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
+        </>
       )}
-      <p className="text-[11px] text-gray-400 mt-4">Envoyé le {intake.submittedAt}</p>
     </section>
   )
 }
@@ -379,32 +518,13 @@ function StatusBadge({ status }) {
   return <span className={`inline-flex text-xs font-bold px-2.5 py-1 rounded-full border ${STATUS_STYLE[status] || STATUS_STYLE['Envoyée']}`}>{status}</span>
 }
 
-function ProjectOverviewCard({ project }) {
-  return (
-    <section className="card p-6">
-      <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
-      <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Aperçu du projet — basé sur les informations transmises par le client</h3>
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Projet</p><p className="font-bold text-gray-800 mt-0.5">{project.name}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Type</p><p className="font-bold text-gray-800 mt-0.5">{project.type}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Statut</p><p className="font-bold text-orias-green mt-0.5">{project.status}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Phase actuelle</p><p className="font-bold text-gray-800 mt-0.5">{project.phase}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Dernière mise à jour</p><p className="font-bold text-gray-800 mt-0.5">{project.lastUpdate}</p></div>
-        <div><p className="text-[11px] text-gray-400 font-semibold uppercase">Progression du brief</p><p className="font-bold text-gray-800 mt-0.5">{project.progressPct}%</p></div>
-      </div>
-      <div className="mt-4 h-2 rounded-full bg-orias-bg overflow-hidden">
-        <div className="h-full bg-orias-gold" style={{ width: `${project.progressPct}%` }} />
-      </div>
-      {/* Correctif "progression globale incohérente avec les canaux" (audit
-          inspection navigateur, 2026-09-24) : ce pourcentage ne mesure QUE
-          la réception/l'avancement du brief (Étape 1), jamais une moyenne
-          des canaux ci-dessous (Site web/Instagram/Facebook/Meta Business
-          Manager, chacun avec sa propre progression indépendante) — précisé
-          explicitement pour ne pas laisser croire à un résumé global. */}
-      <p className="text-[11px] text-gray-400 mt-2">Ce pourcentage mesure uniquement l'avancement du brief (Étape 1) — la progression de chaque canal (Site web, Instagram, Facebook, Meta Business Manager) est suivie séparément ci-dessous.</p>
-    </section>
-  )
-}
+// Correctif simplification UX (2026-09-30) : ProjectOverviewCard (grosse
+// carte "Aperçu du projet" avec 6 champs + barre de progression pleine
+// largeur) est remplacée par MarketingSummaryCard (résumé + stepper) en
+// haut de ClientMarketingPanel — mêmes données (project.*), présentation
+// condensée. La précision "ce pourcentage ne mesure que le brief" reste
+// nécessaire : reprise dans MarketingSummaryCard via le stepper lui-même
+// (chaque étape a son propre état, jamais un pourcentage unique ambigu).
 
 // Correctif "livrables non séparés par type" (audit inspection navigateur,
 // 2026-09-26) : regroupe désormais les livrables par type
@@ -419,10 +539,23 @@ function DeliverablesCard({ deliverables, editable = false, onAdd }) {
     items: deliverables.filter(d => (d.type || 'other') === type),
   })).filter(g => g.items.length > 0 || editable)
 
+  // Correctif simplification UX (2026-09-30) : côté client sans livrable,
+  // un état vide simple et court remplace 5 sous-sections vides répétées
+  // ("Aucun livrable de ce type...") — jamais affiché côté admin (editable),
+  // qui a besoin de voir chaque type pour en publier un.
+  if (!deliverables.length && !editable) {
+    return (
+      <section className="card p-6">
+        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-2">Livrables</h3>
+        <p className="text-sm text-gray-400">Aucun livrable disponible pour le moment.</p>
+        <p className="text-xs text-gray-400 mt-1">Vous les verrez ici dès qu'ils seront prêts.</p>
+      </section>
+    )
+  }
+
   return (
     <section className="card p-6">
       <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Livrables</h3>
-      {!deliverables.length && !editable && <p className="text-sm text-gray-400">Aucun livrable pour le moment.</p>}
       <div className="space-y-4">
         {grouped.map(g => (
           <div key={g.type}>
@@ -534,12 +667,14 @@ export function ClientMarketingPanel({ clientId, clientName = null }) {
   const refresh = () => { setBrandIntake(getBrandIntake(clientId)); setProject(getMarketingProject(clientId)); setChannels(getMarketingChannels(clientId)); setDeliverables(getDeliverables(clientId)); setRequests(getModificationRequests(clientId)) }
   useEffect(() => subscribeToMarketing(refresh), [clientId])
 
+  const { steps, nextStepLabel } = deriveMarketingSteps(brandIntake, channels, deliverables)
+
   return (
     <div className="space-y-5">
+      <MarketingSummaryCard project={project} steps={steps} nextStepLabel={nextStepLabel} />
       {brandIntake
         ? <BrandSummaryCard intake={brandIntake} />
         : <BrandIntakeForm clientName={clientName} onSubmit={form => { submitBrandIntake(clientId, form, clientName); refresh() }} />}
-      <ProjectOverviewCard project={project} />
       <ChannelsCard channels={channels} />
       <DeliverablesCard deliverables={deliverables} />
       <RequestsCard requests={requests} onNewRequest={() => setShowModal(true)} />
@@ -602,32 +737,42 @@ export function AdminMarketingPanel({ clients = [], defaultClientId = null }) {
     )
   }
 
+  const { nextStepLabel } = deriveMarketingSteps(brandIntake, channels, deliverables)
+
   return (
     <div className="space-y-5">
-      <section className="card p-4 flex items-center justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-orias-gold mb-0.5">Client affiché</p>
-          <p className="font-bold text-gray-800 truncate">{clientName}{clientEmail ? <span className="text-gray-400 font-normal"> · {clientEmail}</span> : ''}</p>
+      {/* Correctif simplification UX (2026-09-30) : résumé opérationnel
+          unique (client/pack/brief/prochaine action équipe/dernière mise à
+          jour + sélecteur de client + édition de la phase) — remplace 2
+          cartes séparées ("Client affiché" + "Étape 1 — Informations de
+          marque"), mêmes données/actions (updateMarketingProject inchangé). */}
+      <section className="card p-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-orias-gold mb-0.5">Client affiché</p>
+            <p className="font-bold text-gray-800 truncate">{clientName}{clientEmail ? <span className="text-gray-400 font-normal"> · {clientEmail}</span> : ''}</p>
+            {selectedClient?.pack && <p className="text-xs text-gray-400 mt-0.5">{selectedClient.pack}</p>}
+          </div>
+          {clients.length > 1 && (
+            <select value={clientId} onChange={e => setSelectedClientId(Number(e.target.value))} className="input-field text-sm w-auto flex-shrink-0">
+              {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          )}
         </div>
-        {clients.length > 1 && (
-          <select value={clientId} onChange={e => setSelectedClientId(Number(e.target.value))} className="input-field text-sm w-auto flex-shrink-0">
-            {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        )}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm border-t border-orias-border mt-4 pt-4">
+          <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Brief</p><p className="font-bold text-gray-800 mt-0.5">{brandIntake ? 'Reçu' : 'En attente'}</p></div>
+          <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Prochaine action équipe</p><p className="font-bold text-orias-green mt-0.5">{nextStepLabel}</p></div>
+          <div><p className="text-[10px] text-gray-400 font-semibold uppercase">Dernière mise à jour</p><p className="font-bold text-gray-800 mt-0.5">{project.lastUpdate || 'Non renseigné'}</p></div>
+          <div>
+            <label className="block text-[10px] text-gray-400 font-semibold uppercase mb-1">Phase</label>
+            <div className="flex gap-1">
+              <input value={phaseDraft} onChange={e => setPhaseDraft(e.target.value)} className="input-field text-xs" />
+              <button className="btn-outline-green text-xs flex-shrink-0" disabled={phaseDraft === project.phase} onClick={() => { updateMarketingProject(clientId, { phase: phaseDraft }); refresh() }}>OK</button>
+            </div>
+          </div>
+        </div>
       </section>
       <AdminBrandIntakeCard intake={brandIntake} clientName={clientName} clientEmail={clientEmail} />
-      <section className="card p-6">
-        <p className="text-[11px] font-semibold text-orias-gold uppercase tracking-wide mb-1">Étape 1 — Informations de marque</p>
-        <h3 className="text-sm font-bold text-orias-green uppercase tracking-wide mb-4">Projet client — basé sur les informations transmises par le client</h3>
-        <div className="flex flex-wrap items-end gap-3">
-          <div className="flex-1 min-w-[220px]">
-            <label className="block text-xs font-semibold text-gray-500 mb-1">Phase actuelle</label>
-            <input value={phaseDraft} onChange={e => setPhaseDraft(e.target.value)} className="input-field text-sm" />
-          </div>
-          <button className="btn-gold text-sm" disabled={phaseDraft === project.phase} onClick={() => { updateMarketingProject(clientId, { phase: phaseDraft }); refresh() }}>Mettre à jour la phase</button>
-        </div>
-        <p className="text-[11px] text-gray-400 mt-3">Statut : {project.status} · Dernière mise à jour : {project.lastUpdate}</p>
-      </section>
       <ChannelsCard channels={channels} editable onUpdate={(channelId, patch) => { updateMarketingChannel(clientId, channelId, patch); refresh() }} />
       <DeliverablesCard deliverables={deliverables} editable onAdd={form => { addDeliverable(clientId, form, clientName); refresh() }} />
       <section className="card p-6">

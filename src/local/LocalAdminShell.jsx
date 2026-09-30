@@ -160,7 +160,7 @@ export default function LocalAdminShell() {
       )
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} />
-    if (activeTab === 'marketing') return <AdminMarketingPanel clients={clientRows.map(r => ({ id: r.id, name: r.name, email: r.email }))} defaultClientId={latestClientPreview?.id ?? null} />
+    if (activeTab === 'marketing') return <AdminMarketingPanel clients={clientRows.map(r => ({ id: r.id, name: r.name, email: r.email, pack: r.pack }))} defaultClientId={latestClientPreview?.id ?? null} />
     if (activeTab === 'finance') return <LocalFinanceSection leads={leads} />
     if (activeTab === 'dossiers') return <LocalDossierSection />
     if (activeTab === 'formation') return <LocalFormationTrackingSection />

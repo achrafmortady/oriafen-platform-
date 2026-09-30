@@ -116,7 +116,7 @@ check('LocalMarketing.jsx : buildBrandIntakeText inclut le nom/email client, la 
 
 check('LocalAdminShell.jsx : l\'onglet Marketing transmet la liste des clients convertis (avec name/email) et le client par défaut à AdminMarketingPanel, pour que le fichier téléchargé identifie le bon client quel que soit celui sélectionné', () => {
   const src = readFileSync('./src/local/LocalAdminShell.jsx', 'utf8')
-  assert.match(src, /AdminMarketingPanel clients=\{clientRows\.map\(r => \(\{ id: r\.id, name: r\.name, email: r\.email \}\)\)\} defaultClientId=\{latestClientPreview\?\.id/)
+  assert.match(src, /AdminMarketingPanel clients=\{clientRows\.map\(r => \(\{ id: r\.id, name: r\.name, email: r\.email[\s\S]{0,30}\}\)\)\} defaultClientId=\{latestClientPreview\?\.id/)
 })
 
 // ================================================================

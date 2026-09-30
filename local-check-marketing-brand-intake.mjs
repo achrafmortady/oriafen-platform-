@@ -115,7 +115,15 @@ check('LocalMarketing.jsx : AdminBrandIntakeCard affiche marque, activité, audi
   const src = readFileSync('./src/local/LocalMarketing.jsx', 'utf8')
   const adminCardMatch = src.match(/function AdminBrandIntakeCard[\s\S]*?\n}\n/)
   assert.ok(adminCardMatch, 'AdminBrandIntakeCard doit exister')
-  const body = adminCardMatch[0]
+  // Correctif simplification UX (2026-09-30) : le détail (12 champs) est
+  // désormais replié par défaut derrière "Voir le brief complet", extrait
+  // dans un sous-composant AdminBrandIntakeCardBody (même contenu, juste
+  // masqué tant que l'admin ne demande pas à le voir) — les deux corps sont
+  // concaténés ici pour vérifier la présence des champs, peu importe dans
+  // laquelle des deux fonctions ils vivent.
+  const bodyMatch = src.match(/function AdminBrandIntakeCardBody[\s\S]*?\n}\n/)
+  assert.ok(bodyMatch, 'AdminBrandIntakeCardBody doit exister')
+  const body = adminCardMatch[0] + bodyMatch[0]
   for (const field of ['intake.brandName', 'intake.activity', 'intake.audience', 'intake.offer', 'intake.tone', 'intake.logoStatus', 'intake.logoInfo', 'intake.websiteGoal', 'intake.instagramStatus', 'intake.instagram', 'intake.facebookStatus', 'intake.facebook', 'intake.metaBusinessStatus', 'intake.metaBusiness', 'intake.notes', 'intake.colors']) {
     assert.ok(body.includes(field), `AdminBrandIntakeCard doit afficher ${field}`)
   }
