@@ -484,6 +484,15 @@ export function respondToClientRequest(sendId, message) {
         // cloche cliente compte bien cette réponse comme nouvelle, sans
         // dupliquer le fil de discussion.
         seenAt: null,
+        // Correctif "popup notification client au login" (2026-10-06) : une
+        // demande de support est créée avec important=false (normalizeItem,
+        // jamais mise à jour) — une réponse de l'équipe ne déclenchait donc
+        // jamais le popup de connexion (getImportantUnseen filtre sur
+        // important && !seenAt), seulement un badge sur la cloche. Une
+        // réponse de l'équipe est par définition un évènement important pour
+        // le client — jamais l'inverse (une demande déjà marquée importante
+        // par erreur ne le redevient pas ici, seulement si elle l'était déjà).
+        important: true,
       }
     })
   })

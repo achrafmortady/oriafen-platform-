@@ -236,6 +236,7 @@ export function validateDocument(clientId, categoryId, validatedBy = 'Équipe Or
   if (!data[clientId]) data[clientId] = initialDocsFor(clientId)
   const doc = data[clientId][categoryId]
   if (!doc || !doc.fileName) return false
+  const wasAlreadyValid = doc.status === 'valid'
 
   data[clientId][categoryId] = { ...doc, status: 'valid', rejectionReason: null, rejectedAt: null, rejectedBy: null }
   writeAll(data)
@@ -245,6 +246,21 @@ export function validateDocument(clientId, categoryId, validatedBy = 'Équipe Or
     action: 'Nouvelle version validée',
     detail: doc.categoryLabel,
   })
+
+  // Correctif "popup notification client au login" (2026-10-06) : la
+  // validation d'un document ne notifiait le client d'aucune façon (ni
+  // popup, ni cloche) — seul le rejet le faisait (voir plus haut). Même
+  // mécanisme que le rejet (addClientNotification important:true), jamais
+  // un second système de notification. Idempotent : revalider un document
+  // déjà 'valid' (ex: rappel automatique) ne renotifie pas inutilement.
+  if (!wasAlreadyValid) {
+    addClientNotification(clientId, {
+      kind: 'Document',
+      title: `Document validé : ${doc.categoryLabel}`,
+      message: `Votre document ${doc.categoryLabel} a été validé par l'équipe. Merci !`,
+      important: true,
+    })
+  }
   return true
 }
 
