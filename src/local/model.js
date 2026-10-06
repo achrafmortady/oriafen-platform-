@@ -122,8 +122,26 @@ export function isDemoLead(lead) {
   )
 }
 
+// Valeurs de test "Cabinet / société" pour les fiches QA locales du staging V2
+// (aperçu uniquement, jamais des données réelles). Clés = nom EXACT du lead ;
+// ne remplit que si le champ est vide — jamais d'écrasement, jamais de création.
+export const QA_SAMPLE_COMPANIES = {
+  'QA Compare V2 Admin': 'Cabinet QA Compare V2',
+  'QA Inspecteur Test3': 'Cabinet QA Inspecteur',
+  'Amine Test 1': 'Cabinet Amine Test',
+  'Amine Test 2': 'Cabinet Amine Test',
+}
+
+export function backfillQaSampleCompanies(leads) {
+  return (leads || []).map(l => {
+    const sample = l && QA_SAMPLE_COMPANIES[l.name]
+    if (!sample || String(l.company || '').trim()) return l
+    return { ...l, company: sample }
+  })
+}
+
 export function cleanPreviewLeads(raw) {
-  return normalizeCanonicalDemoClient(normalizeInconsistentClientStage(normalizeLeadsStage(raw || [])))
+  return normalizeCanonicalDemoClient(normalizeInconsistentClientStage(normalizeLeadsStage(backfillQaSampleCompanies(raw || []))))
     .filter(lead => !isDemoLead(lead))
 }
 

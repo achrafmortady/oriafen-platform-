@@ -140,4 +140,29 @@ check('formulaire "Nouveau prospect" et édition fiche Prospect proposent le cha
   assert.match(src, /<small>Cabinet \/ société<\/small><p>\{lead\.company\|\|'Non renseigné'\}<\/p>/)
 })
 
+// ================================================================
+// 7. Backfill QA local : valeurs de test sur fiches QA existantes, sans pollution
+// ================================================================
+const { cleanPreviewLeads } = await import('./src/local/model.js')
+check('backfill QA : un lead QA sans cabinet reçoit la valeur de test, après relecture', () => {
+  // email hors @example.invalid : sinon isDemoLead() écarterait ces fiches QA
+  const raw = [
+    makeProspect(9201, { name: 'QA Compare V2 Admin', email: 'qa-compare@cabinet.test' }),
+    makeProspect(9202, { name: 'Amine Test 1', email: 'amine-test1@cabinet.test' }),
+  ]
+  const cleaned = cleanPreviewLeads(raw)
+  assert.equal(cleaned.find(l => l.id === 9201).company, 'Cabinet QA Compare V2')
+  assert.equal(cleaned.find(l => l.id === 9202).company, 'Cabinet Amine Test')
+})
+
+check('backfill QA : ne écrase jamais un cabinet déjà saisi', () => {
+  const raw = [makeProspect(9203, { name: 'QA Inspecteur Test3', email: 'qa-insp@cabinet.test', company: 'Saisi à la main' })]
+  assert.equal(cleanPreviewLeads(raw)[0].company, 'Saisi à la main')
+})
+
+check('backfill QA : un prospect hors liste QA reste sans cabinet ("Non renseigné")', () => {
+  const raw = [makeProspect(9204, { name: 'Prospect Réel Sans Cabinet', email: 'reel@cabinet.test' })]
+  assert.equal(cleanPreviewLeads(raw)[0].company, '')
+})
+
 console.log(`\n${passed} checks OK — company-name`)
