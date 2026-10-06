@@ -165,4 +165,76 @@ check('backfill QA : un prospect hors liste QA reste sans cabinet ("Non renseign
   assert.equal(cleanPreviewLeads(raw)[0].company, '')
 })
 
+// ================================================================
+// 8. Backfill insensible à la casse / espaces, et écriture immédiate
+// ================================================================
+const { backfillQaSampleCompanies, persistQaSampleCompanies } = await import('./src/local/model.js')
+check('backfill : "Qa Inspecteur Test3" et "QA Inspecteur Test3" reçoivent le même cabinet', () => {
+  const raw = [
+    makeProspect(9301, { name: 'Qa Inspecteur Test3', email: 'a@cabinet.test' }),
+    makeProspect(9302, { name: 'QA Inspecteur Test3', email: 'b@cabinet.test' }),
+    makeProspect(9303, { name: '  qa   inspecteur  test3 ', email: 'c@cabinet.test' }),
+  ]
+  const out = backfillQaSampleCompanies(raw)
+  assert.deepEqual(out.map(l => l.company), ['Cabinet QA Inspecteur', 'Cabinet QA Inspecteur', 'Cabinet QA Inspecteur'])
+})
+
+check('backfill : Amine Test 1 / Amine Test 2 et QA Compare V2 Admin en casse libre', () => {
+  const out = backfillQaSampleCompanies([
+    makeProspect(9304, { name: 'amine test 2', email: 'd@cabinet.test' }),
+    makeProspect(9305, { name: 'QA COMPARE V2 ADMIN', email: 'e@cabinet.test' }),
+  ])
+  assert.equal(out[0].company, 'Cabinet Amine Test')
+  assert.equal(out[1].company, 'Cabinet QA Compare V2')
+})
+
+check('backfill : un nom proche mais différent (ex: "Amine Test 3") ne reçoit rien', () => {
+  const out = backfillQaSampleCompanies([makeProspect(9306, { name: 'Amine Test 3', email: 'f@cabinet.test' })])
+  assert.equal(out[0].company, '')
+})
+
+check('persistQaSampleCompanies : écrit le backfill dans localStorage, puis ne réécrit plus (idempotent)', () => {
+  const key = 'oriafen-isolated-crm-v1'
+  localStorage.setItem(key, JSON.stringify([makeProspect(9307, { name: 'Amine Test 1', email: 'g@cabinet.test' })]))
+  persistQaSampleCompanies(key)
+  const stored = JSON.parse(localStorage.getItem(key))
+  assert.equal(stored[0].company, 'Cabinet Amine Test', 'valeur écrite dans le stockage immédiatement')
+  const before = localStorage.getItem(key)
+  persistQaSampleCompanies(key)
+  assert.equal(localStorage.getItem(key), before, 'second passage sans changement')
+})
+
+check('persistQaSampleCompanies : ne supprime aucun lead du stockage (même démo)', () => {
+  const key = 'oriafen-isolated-crm-v1'
+  localStorage.setItem(key, JSON.stringify([makeProspect(9308, { email: 'h@example.invalid', name: 'Demo Exemple 1' })]))
+  persistQaSampleCompanies(key)
+  assert.equal(JSON.parse(localStorage.getItem(key)).length, 1)
+})
+
+// ================================================================
+// 9. Affichage : chaque liste/fiche expose la ligne "Cabinet"
+// ================================================================
+check('CRM : chaque ligne de liste affiche "Cabinet : …" (ou "Non renseigné"), fiche avec "Cabinet / société : …"', () => {
+  const src = readFileSync('./src/local/LocalCRM.jsx', 'utf8')
+  assert.match(src, /Cabinet : \{resolveCompanyName\(l\)\|\|'Non renseigné'\}/)
+  assert.match(src, /Cabinet \/ société : \{resolveCompanyName\(lead\)\|\|'Non renseigné'\}/)
+})
+
+check('Clients : ligne "Cabinet : …" directement visible sous le nom (pas masquée)', () => {
+  const src = readFileSync('./src/local/LocalClientsOverview.jsx', 'utf8')
+  assert.match(src, /<p className="text-xs font-medium text-gray-600">Cabinet : \{client\.company \|\| 'Non renseigné'\}<\/p>/)
+  assert.match(src, /Cabinet \/ société : \{selected\.company \|\| 'Non renseigné'\}/)
+})
+
+check('Marketing admin : la liste des clients affiche le cabinet (sous-titre), alimenté par clientRows', () => {
+  const mk = readFileSync('./src/local/LocalMarketing.jsx', 'utf8')
+  const shell = readFileSync('./src/local/LocalAdminShell.jsx', 'utf8')
+  assert.match(mk, /Cabinet : \{client\.company \|\| 'Non renseigné'\}/)
+  assert.match(shell, /company: r\.company \}\)\)/)
+})
+
+check('valeur vide : resolveCompanyName renvoie null → "Non renseigné" côté affichage', () => {
+  assert.equal(resolveCompanyName(makeProspect(9309, { company: '' })), null)
+})
+
 console.log(`\n${passed} checks OK — company-name`)

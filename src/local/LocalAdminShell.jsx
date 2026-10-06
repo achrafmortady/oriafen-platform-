@@ -9,7 +9,7 @@ import LocalFormationTrackingSection from './LocalFormationTrackingSection'
 import LocalFinanceSection from './LocalFinanceSection'
 import Logo from '../components/Logo'
 import { BellIcon, MessageIcon, LogoutIcon, UsersIcon, TargetIcon, StarIcon, EyeIcon, BookIcon, ClockIcon, XCircleIcon, TrendingUpIcon } from '../components/Icons'
-import { stages, today, cleanPreviewLeads } from './model'
+import { stages, today, cleanPreviewLeads, persistQaSampleCompanies } from './model'
 import { buildClientsOverview } from './clientsOverviewData'
 import { getAllClientInitiatedItems, getAdminSendStatus, subscribeToClientTracking } from './clientTrackingStore'
 
@@ -66,6 +66,7 @@ function CompactKpiCard({ icon, label, value, sub, accent = 'green', onClick }) 
 
 function useLocalLeadStats() {
   const [leads, setLeads] = useState(() => {
+    persistQaSampleCompanies('oriafen-isolated-crm-v1')
     try { const raw = JSON.parse(localStorage.getItem('oriafen-isolated-crm-v1')); return cleanPreviewLeads(raw || []) } catch { return [] }
   })
   useEffect(() => {
@@ -172,7 +173,7 @@ export default function LocalAdminShell() {
       )
     }
     if (activeTab === 'clients') return <LocalClientsOverview initialFilter={clientsFilterRequest} openClientRequest={openClientRequest} onAddProspect={openCrmCreateProspect} />
-    if (activeTab === 'marketing') return <AdminMarketingPanel clients={clientRows.map(r => ({ id: r.id, name: r.name, email: r.email, pack: r.pack }))} defaultClientId={latestClientPreview?.id ?? null} />
+    if (activeTab === 'marketing') return <AdminMarketingPanel clients={clientRows.map(r => ({ id: r.id, name: r.name, email: r.email, pack: r.pack, company: r.company }))} defaultClientId={latestClientPreview?.id ?? null} />
     if (activeTab === 'finance') return <LocalFinanceSection leads={leads} />
     if (activeTab === 'dossiers') return <LocalDossierSection />
     if (activeTab === 'formation') return <LocalFormationTrackingSection />

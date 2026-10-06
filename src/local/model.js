@@ -132,12 +132,29 @@ export const QA_SAMPLE_COMPANIES = {
   'Amine Test 2': 'Cabinet Amine Test',
 }
 
+// Clé de comparaison tolérante à la casse et aux espaces multiples :
+// "Qa Inspecteur Test3" et "QA  Inspecteur Test3" correspondent à la même entrée.
+const normalizeQaName = name => String(name || '').trim().replace(/\s+/g, ' ').toLowerCase()
+const QA_SAMPLE_BY_KEY = Object.fromEntries(Object.entries(QA_SAMPLE_COMPANIES).map(([name, company]) => [normalizeQaName(name), company]))
+
 export function backfillQaSampleCompanies(leads) {
   return (leads || []).map(l => {
-    const sample = l && QA_SAMPLE_COMPANIES[l.name]
+    const sample = l && QA_SAMPLE_BY_KEY[normalizeQaName(l.name)]
     if (!sample || String(l.company || '').trim()) return l
     return { ...l, company: sample }
   })
+}
+
+// Écrit immédiatement le backfill dans le localStorage (uniquement si quelque
+// chose change) — même clé que le CRM. Ne supprime jamais de lead : contrairement
+// à cleanPreviewLeads, le filtre des données de démo n'est pas appliqué ici.
+export function persistQaSampleCompanies(storageKey) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(storageKey))
+    if (!Array.isArray(raw)) return
+    const next = backfillQaSampleCompanies(raw)
+    if (JSON.stringify(next) !== JSON.stringify(raw)) localStorage.setItem(storageKey, JSON.stringify(next))
+  } catch { /* stockage indisponible : rien à migrer */ }
 }
 
 export function cleanPreviewLeads(raw) {

@@ -148,7 +148,7 @@ check('LocalMarketing.jsx : AdminMarketingPanel ne retombe JAMAIS implicitement 
 check('LocalAdminShell.jsx : latestClientPreview (utilisé pour "Voir l\'espace client" ET comme client par défaut de l\'onglet Marketing) sélectionne le client réellement converti le plus récent, pas clientRows[0] (trié par priorité de statut)', () => {
   const src = readFileSync('./src/local/LocalAdminShell.jsx', 'utf8')
   assert.match(src, /leads\.filter\(l => l\.stage === 'Client' && l\.paymentValidated\)\.sort\(\(a, b\) => \(b\.createdAt \|\| 0\) - \(a\.createdAt \|\| 0\)\)\[0\] \|\| null/, 'même logique que LocalCRM.jsx (createdAt desc), jamais clientRows[0]')
-  assert.match(src, /AdminMarketingPanel clients=\{clientRows\.map[\s\S]{0,80}defaultClientId=\{latestClientPreview\?\.id/, 'l\'onglet Marketing doit recevoir la même sélection par défaut que "Voir l\'espace client"')
+  assert.match(src, /AdminMarketingPanel clients=\{clientRows\.map[\s\S]{0,160}defaultClientId=\{latestClientPreview\?\.id/, 'l\'onglet Marketing doit recevoir la même sélection par défaut que "Voir l\'espace client"')
 })
 
 console.log(`PASS (${passed} checks): brief brand kit (logo/Instagram/Facebook/Meta Business Manager conditionnels + 3 couleurs) sauvegardé et visible intégralement côté admin, jamais de repli sur le client de démo.`)

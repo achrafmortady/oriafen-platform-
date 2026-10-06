@@ -720,6 +720,7 @@ function MarketingClientListRow({ client, onView }) {
     <tr className="border-b border-orias-border/50 hover:bg-orias-bg/50 transition-colors">
       <td className="px-4 py-3">
         <p className="font-semibold text-gray-800">{client.name}</p>
+        <p className="text-xs font-medium text-gray-600">Cabinet : {client.company || 'Non renseigné'}</p>
         {client.email && <p className="text-xs text-gray-400">{client.email}</p>}
       </td>
       <td className="px-4 py-3 hidden md:table-cell"><span className="inline-block whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-semibold bg-orias-green/10 text-orias-green border border-orias-green/20">{client.pack || '—'}</span></td>
