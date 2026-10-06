@@ -3,6 +3,7 @@ import { getClientDocuments } from './documentsStore'
 import { REQUIRED_DOCUMENTS } from '../data/mockData'
 import { getDossierStep } from './dossierStepStore'
 import { getFormationState } from './formationProgressStore'
+import { getBrandIntake } from './marketingStore'
 
 // Vue "Clients" admin — dérive un état de dossier lisible par client à
 // partir des mêmes données locales déjà utilisées ailleurs dans le CRM
@@ -98,6 +99,16 @@ export function defaultStepIndexFor() {
   return 0
 }
 
+// Nom du cabinet / société affiché sur la fiche client : le "Nom de marque /
+// cabinet" du brand kit fait foi s'il existe (c'est le nom que le client a
+// lui-même déclaré pour sa communication), sinon le champ société saisi côté
+// CRM (prospect/fiche). Jamais inventé : null si aucun des deux n'est renseigné.
+export function resolveCompanyName(lead) {
+  const brandName = getBrandIntake(lead.id)?.brandName?.trim()
+  const crmCompany = String(lead.company || '').trim()
+  return brandName || crmCompany || null
+}
+
 function deriveDossier(lead) {
   // Étape : dossierStepStore est la SEULE source de vérité une fois qu'une
   // action réelle a eu lieu (même store que l'onglet admin "Dossiers" et
@@ -184,6 +195,8 @@ function deriveDossier(lead) {
   return {
     id: lead.id,
     name: lead.name,
+    // Cabinet / société : brand kit d'abord, puis champ CRM (voir resolveCompanyName)
+    company: resolveCompanyName(lead),
     email: lead.email,
     phone: lead.phone,
     city: lead.city,

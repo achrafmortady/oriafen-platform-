@@ -136,7 +136,7 @@ function PackPricingFields({ packId, pricingMode, discountPercent, onChange }) {
 }
 
 function NewProspectModal({ onClose, onCreated }) {
-  const [form, setForm] = useState({ source: sources[0], prenom: '', nom: '', phone: '', email: '', city: '', packId: LOCAL_PACKS[0]?.id || '', pricingMode: 'ttc', discountPercent: 0, message: '', owner: owners[0] })
+  const [form, setForm] = useState({ source: sources[0], prenom: '', nom: '', company: '', phone: '', email: '', city: '', packId: LOCAL_PACKS[0]?.id || '', pricingMode: 'ttc', discountPercent: 0, message: '', owner: owners[0] })
   const update = (k, v) => setForm(prev => ({ ...prev, [k]: v }))
   const updatePricing = (patch) => setForm(prev => ({ ...prev, ...patch }))
 
@@ -156,6 +156,7 @@ function NewProspectModal({ onClose, onCreated }) {
       email: form.email || '',
       phone: form.phone || 'Non renseigné',
       city: form.city || '',
+      company: form.company.trim(),
       pack: pack?.name || '',
       packId: form.packId,
       pricingMode: form.pricingMode,
@@ -222,6 +223,11 @@ function NewProspectModal({ onClose, onCreated }) {
             <div>
               <label className="block text-xs font-semibold text-gray-500 mb-1">Ville</label>
               <input value={form.city} onChange={e => update('city', e.target.value)} className="input-field text-sm" placeholder="Casablanca, Rabat..." />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Nom du cabinet / société</label>
+              <input value={form.company} onChange={e => update('company', e.target.value)} className="input-field text-sm" placeholder="Nom du cabinet / société" />
             </div>
 
             <PackPricingFields packId={form.packId} pricingMode={form.pricingMode} discountPercent={form.discountPercent} onChange={updatePricing} />
@@ -647,7 +653,7 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
  const [filter,setFilter]=useState(defaults),[view,setView]=useState('Liste'),[selected,setSelected]=useState(null),[note,setNote]=useState(''),[saved,setSaved]=useState('Tous les prospects'),[creating,setCreating]=useState(false),[toast,setToast]=useState('');
  const [newApptDate,setNewApptDate]=useState(''),[newApptType,setNewApptType]=useState('appel');
  const [notesDraft,setNotesDraft]=useState('');
- const [editingInfo,setEditingInfo]=useState(false),[infoName,setInfoName]=useState(''),[infoEmail,setInfoEmail]=useState(''),[infoPhone,setInfoPhone]=useState(''),[infoCity,setInfoCity]=useState('');
+ const [editingInfo,setEditingInfo]=useState(false),[infoName,setInfoName]=useState(''),[infoCompany,setInfoCompany]=useState(''),[infoEmail,setInfoEmail]=useState(''),[infoPhone,setInfoPhone]=useState(''),[infoCity,setInfoCity]=useState('');
  const [actionDraft,setActionDraft]=useState(''),[relanceAt,setRelanceAt]=useState(''),[relanceNote,setRelanceNote]=useState(''),[lossReasonDraft,setLossReasonDraft]=useState('');
  // Gate paiement (audit "final blocker" 2026-09-20) : mémorise qu'une
  // tentative de passage direct à "Client" a été bloquée (select Statut) pour
@@ -911,20 +917,22 @@ export default function LocalCRM({mode='admin',onEnterClient=()=>{},onExitClient
      <h3>Coordonnées</h3>
      {editingInfo?<>
       <label>Nom complet<input value={infoName} onChange={e=>setInfoName(e.target.value)}/></label>
+      <label>Nom du cabinet / société<input value={infoCompany} onChange={e=>setInfoCompany(e.target.value)}/></label>
       <label>Email<input type="email" value={infoEmail} onChange={e=>setInfoEmail(e.target.value)}/></label>
       <label>Téléphone<input value={infoPhone} onChange={e=>setInfoPhone(e.target.value)}/></label>
       <label>Ville<input value={infoCity} onChange={e=>setInfoCity(e.target.value)}/></label>
       <div className="twocol">
-       <button className="primary" onClick={()=>{patch(lead.id,{name:infoName||lead.name,email:infoEmail,phone:infoPhone,city:infoCity});setEditingInfo(false)}}>Enregistrer</button>
+       <button className="primary" onClick={()=>{patch(lead.id,{name:infoName||lead.name,company:infoCompany.trim(),email:infoEmail,phone:infoPhone,city:infoCity});setEditingInfo(false)}}>Enregistrer</button>
        <button onClick={()=>setEditingInfo(false)}>Annuler</button>
       </div>
      </>:<>
+      <small>Cabinet / société</small><p>{lead.company||'Non renseigné'}</p>
       <small>Email</small><p>{lead.email}</p>
       <small>Téléphone</small><p>{lead.phone}</p>
       <small>Ville</small><p>{lead.city}</p>
       <small>Source</small><p>{lead.source}</p>
       <small>Pack intéressé</small><p>{lead.pack||'Non renseigné'}</p>
-      <button onClick={()=>{setInfoName(lead.name);setInfoEmail(lead.email);setInfoPhone(lead.phone);setInfoCity(lead.city);setEditingInfo(true)}}>✎ Modifier les infos</button>
+      <button onClick={()=>{setInfoName(lead.name);setInfoCompany(lead.company||'');setInfoEmail(lead.email);setInfoPhone(lead.phone);setInfoCity(lead.city);setEditingInfo(true)}}>✎ Modifier les infos</button>
      </>}
     </section>
 

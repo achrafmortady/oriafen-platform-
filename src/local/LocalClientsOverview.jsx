@@ -674,6 +674,7 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                         </div>
                         <div>
                           <p className="font-semibold text-gray-800">{client.name}</p>
+                          <p className="text-xs text-gray-500 hidden sm:block">{client.company || 'Non renseigné'}</p>
                           <p className="text-xs text-gray-400 hidden sm:block">{client.email}</p>
                         </div>
                       </div>
@@ -765,6 +766,7 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                   </div>
                   <div>
                     <h3 className="font-bold text-white text-lg">{selected.name}</h3>
+                    <p className="text-green-200 text-sm">{selected.company || 'Non renseigné'}</p>
                     <p className="text-green-300 text-sm">{selected.email}</p>
                   </div>
                 </div>
@@ -890,6 +892,7 @@ export default function LocalClientsOverview({ initialFilter = null, openClientR
                   <div className="card p-5">
                     <p className="text-xs font-semibold text-orias-gold uppercase tracking-wide mb-3">Identité / origine</p>
                     <div className="grid grid-cols-2 gap-3">
+                      <InfoField label="Cabinet / société" value={selected.company} />
                       <InfoField label="Téléphone" value={selected.phone} />
                       <InfoField label="Ville" value={selected.city} />
                       <InfoField label="Source" value={selected.source} />

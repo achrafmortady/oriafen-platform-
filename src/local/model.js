@@ -77,6 +77,9 @@ export function blankLeadTemplate() {
     email: '',
     phone: 'Non renseigné',
     city: '',
+    // Nom du cabinet / société (saisi à la création ou dans la fiche Prospect).
+    // Vide par défaut : jamais inventé, affiché "Non renseigné" tant que absent.
+    company: '',
     stage: 'Nouveau',
     owner: owners[0],
     source: sources[0],
